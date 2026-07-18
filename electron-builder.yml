@@ -3,6 +3,8 @@ productName: ingesto
 copyright: "Copyright © 2026 Just Edit"
 compression: maximum
 asar: true
+directories:
+  buildResources: build-resources
 files:
   - src/**/*
   - package.json
@@ -57,6 +59,7 @@ nsis:
   perMachine: false
   allowElevation: false
   allowToChangeInstallationDirectory: true
+  license: build-resources/license_en.txt
   installerLanguages:
     - en_US
     - fr_FR
