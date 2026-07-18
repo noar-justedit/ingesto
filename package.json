@@ -1,0 +1,34 @@
+{
+  "name": "ingesto",
+  "version": "2.0.0",
+  "description": "Professional camera media ingest application",
+  "main": "src/main/main.js",
+  "author": "Just Edit <contact@just-edit.fr>",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noar-justedit/ingesto.git"
+  },
+  "homepage": "https://github.com/noar-justedit/ingesto",
+  "bugs": {
+    "url": "https://github.com/noar-justedit/ingesto/issues"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --config electron-builder.yml --mac --arm64",
+    "build:dmg": "electron-builder --mac dmg",
+    "pack": "electron-builder --dir",
+    "build:universal": "electron-builder --config electron-builder.yml --mac",
+    "build:win": "electron-builder --config electron-builder.yml --win --x64",
+    "build:all": "electron-builder --config electron-builder.yml --mac --arm64 && electron-builder --config electron-builder.yml --win --x64"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "hash-wasm": "^4.12.0",
+    "xxhash-wasm": "^1.1.0"
+  }
+}

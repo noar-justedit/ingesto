@@ -1,0 +1,65 @@
+appId: fr.just-edit.ingesto
+productName: ingesto
+copyright: "Copyright © 2026 Just Edit"
+compression: maximum
+asar: true
+files:
+  - src/**/*
+  - package.json
+  - node_modules/xxhash-wasm/**/*
+  - build-resources/*.ico
+  - build-resources/*.icns
+  - build-resources/*.plist
+  - "LICENSE"
+
+mac:
+  category: public.app-category.photography
+  icon: build-resources/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build-resources/entitlements.mac.plist
+  entitlementsInherit: build-resources/entitlements.mac.plist
+  target:
+    - target: dmg
+      arch:
+        - arm64
+
+dmg:
+  title: "ingesto"
+  writeUpdateInfo: false
+  icon: null
+  window:
+    width: 540
+    height: 400
+  contents:
+    - x: 150
+      y: 160
+      type: file
+    - x: 390
+      y: 160
+      type: link
+      path: /Applications
+    - x: 270
+      y: 320
+      type: file
+      path: "LICENSE"
+
+win:
+  icon: build-resources/icon.ico
+  requestedExecutionLevel: asInvoker
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  installerLanguages:
+    - en_US
+    - fr_FR
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ingesto
