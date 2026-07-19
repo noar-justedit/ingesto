@@ -12,6 +12,14 @@ available. See the license file for the full terms.
 
 ---
 
+## Screenshots
+
+| Main window | Kiosk mode | Report |
+|---|---|---|
+| ![ingesto main window](docs/screenshots/ingesto-main.png) | ![ingesto kiosk mode](docs/screenshots/ingesto-kiosk.png) | ![ingesto ingest report](docs/screenshots/ingesto-report.png) |
+
+---
+
 ## Quick install (no coding knowledge required)
 
 ### Step 1 — Install Node.js
@@ -126,6 +134,8 @@ ingesto/
 ├── build-resources/
 │   ├── icon.icns / icon.ico   — Compiled app icons
 │   └── entitlements.mac.plist
+├── docs/
+│   └── screenshots/            — Screenshots used in this README
 ├── scripts/
 │   ├── build-mac.sh           — Build the app for Mac
 │   ├── build-win-from-mac.sh  — Build the app for Windows from a Mac
