@@ -1,6 +1,6 @@
 {
   "name": "ingesto",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Professional camera media ingest application",
   "main": "src/main/main.js",
   "author": "Just Edit <contact@just-edit.fr>",
@@ -24,11 +24,10 @@
     "build:all": "electron-builder --config electron-builder.yml --mac --arm64 && electron-builder --config electron-builder.yml --win --x64"
   },
   "devDependencies": {
-    "electron": "^28.0.0",
+    "electron": "^34.0.0",
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "hash-wasm": "^4.12.0",
-    "xxhash-wasm": "^1.1.0"
+    "hash-wasm": "^4.12.0"
   }
 }
