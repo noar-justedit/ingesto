@@ -1720,7 +1720,7 @@ function renderVolumes(){
     const isSrc=srcIdx>=0, isDst=dstIdx>=0;
     const isHidden=S.hiddenVolumes.has(v.path);
     const tagH=isSrc?`<div class="vc-tag tag-src">SRC${srcIdx+1}</div>`:isDst?`<div class="vc-tag tag-dst">DST${dstIdx+1}</div>`:isHidden?'<div class="vc-tag tag-hidden">HIDDEN</div>':'';
-    const sp2=v.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const sp2=v.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     const camBrand = (v.camera?.brand||'').toUpperCase();
     const camSameAsBrand = v.camera?.model && v.camera.model.toLowerCase() === (v.camera.brand||'').toLowerCase();
     const camH = v.camera && v.camera.model
@@ -1932,7 +1932,7 @@ function renderZoneList(z){
   if(!arr.length){list.innerHTML='';return;}
   const tag=z==='src'?'SRC':'DST';
   list.innerHTML=arr.map((e,i)=>{
-    const sp=e.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const sp=e.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     const icon=z==='src'?`<div class="zi-icon">${getZoneIcon(z)}</div>`:'';
     return`<div class="zi zi-${z}">
       ${icon}
@@ -2125,7 +2125,7 @@ function updatePreview(){
     .replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
     .replaceAll('{YY}',String(now.getFullYear()).slice(-2))
     .replaceAll('{MM}',p(now.getMonth()+1)).replaceAll('{DD}',p(now.getDate()))
-    .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes()));
+    .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes())).replaceAll('{SS}',p(now.getSeconds()));
   document.getElementById('tpl-preview').textContent=r||'—';
   refreshCardPreviews();
 }
@@ -2141,7 +2141,7 @@ function previewForSource(src, i){
     .replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
     .replaceAll('{YY}',String(now.getFullYear()).slice(-2))
     .replaceAll('{MM}',p(now.getMonth()+1)).replaceAll('{DD}',p(now.getDate()))
-    .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes()));
+    .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes())).replaceAll('{SS}',p(now.getSeconds()));
   return r||'—';
 }
 function refreshCardPreviews(){
@@ -2403,7 +2403,7 @@ function renderSourceInfoCards(){
     const op      = src.operator || '';
     const cam     = src.camera   || '';
     const note    = src.note     || '';
-    const sp      = src.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const sp      = src.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     return `<div class="src-info-card${isOpen ? ' open' : ''}" id="sic-${i}">
       <div class="src-info-header" onclick="toggleSIC(${i})">
         <span class="src-info-chevron">▶</span>
@@ -2946,7 +2946,7 @@ function showSummary(R){
   rows.push(srow('Mode', modeTxt, 'font-size:14px'));
   if(er>0) rows.push(srow('Errors', er, 'color:var(--red)'));
   const destRows = R.map(r=>{
-    const jp=(r.destPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const jp=(r.destPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     return `<div class="srow" style="grid-column:1/-1;align-items:center">`+
       `<div class="sr-lbl">→ ${esc(r.sourceName)}</div>`+
       `<div class="sr-dest"><div class="sr-destpath">${esc(r.destPath)}</div>`+
@@ -3135,13 +3135,17 @@ function onHookField(){ S.hookCommand=(document.getElementById('set-hook').value
 function runPostHook(R){
   const cmd=(S.hookCommand||'').trim(); if(!cmd) return;
   if(R.length>0 && R.every(r=>r.canceled)) return;   // skip on cancel
+  // Card names come from volume labels — attacker-controllable. Strip shell
+  // metacharacters from every substituted value so a hostile card name can't
+  // inject into the user's shell command.
+  const shSafe = v => String(v==null?'':v).replace(/[`$;|&<>"'\n\r]/g,'');
   const er=R.reduce((a,r)=>a+(r.errors||0),0);
   const failed=R.reduce((a,r)=>a+((r.failedFiles&&r.failedFiles.length)||0),0);
   const unstable=R.reduce((a,r)=>a+((r.unstableFiles&&r.unstableFiles.length)||0),0);
   const result = unstable ? 'suspect' : ((er||failed) ? 'errors' : 'ok');
   const uniq=[...new Set(R.map(r=>r.sourceName))];
   const bytes=[...new Map(R.map(r=>[r.sourceName,r.totalBytes])).values()].reduce((a,b)=>a+(b||0),0);
-  const vars={ '{destPath}':(S.dests[0]?S.dests[0].path:''), '{card}':uniq.join(', '),
+  const vars={ '{destPath}':shSafe(S.dests[0]?S.dests[0].path:''), '{card}':shSafe(uniq.join(', ')),
     '{count}':String(uniq.length), '{bytes}':String(bytes), '{result}':result };
   let final=cmd; for(const k in vars){ final=final.split(k).join(vars[k]); }
   try{ window.ingesto.runHook(final); }catch(_){}
@@ -3281,7 +3285,8 @@ async function updateReports(R, base){
     return { n:String(base+i).padStart(3,'0'), date:dateStr, card:name,
       operator:src.operator||'', cam:src.camera||'', note:src.note||'',
       mode:reportModeLabel(r0), modeClass:reportModeClass(r0),
-      files:r0.totalFiles||0, bytes:r0.totalBytes||0, result, rclass };
+      files:r0.totalFiles||0, bytes:r0.totalBytes||0, result, rclass,
+      fileList:(r0.fileList||[]).map(f=>({path:f.path,size:f.size,mtime:f.mtime})) };
   });
   for(const d of S.dests){
     let created=isoNow, records=[];
@@ -3297,8 +3302,11 @@ async function updateReports(R, base){
 }
 function buildReportCsv(records){
   const q=(x)=>{ const s=String(x==null?'':x); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const head=['#','Date','Card','Operator','Cam','Mode','Files','Bytes','Size','Result','Note'];
-  const rows=records.map(r=>[r.n,r.date,r.card,r.operator,r.cam,r.mode,r.files,r.bytes,fmtSize(r.bytes),r.result,r.note].map(q).join(','));
+  const head=['#','Date','Card','Operator','Cam','Mode','Files','Bytes','Size','Result','Note','Files list'];
+  const rows=records.map(r=>{
+    const fl=(r.fileList||[]).map(f=>`${f.path} (${fmtSize(f.size)})`).join(' | ');
+    return [r.n,r.date,r.card,r.operator,r.cam,r.mode,r.files,r.bytes,fmtSize(r.bytes),r.result,r.note,fl].map(q).join(',');
+  });
   return head.join(',')+'\n'+rows.join('\n')+'\n';
 }
 function buildReportJson(created, updated, destPath, records){
@@ -3307,13 +3315,34 @@ function buildReportJson(created, updated, destPath, records){
 function buildReportHtml(created, updated, destPath, records){
   const escH=(x)=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const totalBytes=records.reduce((a,r)=>a+(r.bytes||0),0);
-  const rows=records.map(r=>`<tr>`+
-    `<td class="c-num">${escH(r.n)}</td><td class="c-mut">${escH(r.date)}</td><td>${escH(r.card)}</td>`+
-    `<td class="c-txt">${escH(r.operator)}</td><td>${escH(r.cam)}</td>`+
-    `<td class="${r.modeClass}">${escH(r.mode)}</td>`+
-    `<td class="c-r">${r.files}</td><td class="c-r">${fmtSize(r.bytes)}</td>`+
-    `<td class="${r.rclass}">${escH(r.result)}</td><td class="c-txt c-mut">${escH(r.note)}</td></tr>`).join('');
-  const data=JSON.stringify({created, records});
+  // File lists are NOT rendered into the rows: they would store every path twice
+  // (once in the hidden HTML, once in the embedded JSON below). The chevron builds
+  // the list on demand from that JSON, so each path is stored once.
+  const rows=records.map((r,ri)=>{
+    const hasFl = Array.isArray(r.fileList) && r.fileList.length>0;
+    const chev = hasFl
+      ? `<td class="c-chev" onclick="tgl(${ri})" id="ch-${ri}" title="Show files">\u25b8</td>`
+      : `<td class="c-chev c-mut" title="No file detail (older record)">\u00b7</td>`;
+    const main = `<tr class="rec">`+chev+
+      `<td class="c-num">${escH(r.n)}</td><td class="c-mut">${escH(r.date)}</td><td>${escH(r.card)}</td>`+
+      `<td class="c-txt">${escH(r.operator)}</td><td>${escH(r.cam)}</td>`+
+      `<td class="${r.modeClass}">${escH(r.mode)}</td>`+
+      `<td class="c-r">${r.files}</td><td class="c-r">${fmtSize(r.bytes)}</td>`+
+      `<td class="${r.rclass}">${escH(r.result)}</td><td class="c-txt c-mut">${escH(r.note)}</td></tr>`;
+    if(!hasFl) return main;
+    return main+`<tr class="det" id="det-${ri}" style="display:none;"><td></td><td colspan="10"></td></tr>`;
+  }).join('');
+  // Compact encoding: [path, size] pairs instead of {path,size,mtime} objects
+  // (~30 chars of JSON scaffolding saved per file). mtime is dropped — it is
+  // never displayed and the card sentinel already keeps it.
+  const slim = records.map(r=>{
+    const o = { n:r.n, date:r.date, card:r.card, operator:r.operator, cam:r.cam,
+      mode:r.mode, modeClass:r.modeClass, files:r.files, bytes:r.bytes,
+      result:r.result, rclass:r.rclass, note:r.note };
+    if (Array.isArray(r.fileList) && r.fileList.length) o.f = r.fileList.map(x=>[x.path, x.size]);
+    return o;
+  });
+  const data=JSON.stringify({created, v:2, records:slim});
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>INGESTO — Ingest Report</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}
 body{margin:0;background:#0e0f13;color:#e8e8ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
@@ -3331,11 +3360,22 @@ tbody td{padding:10px 12px;border-top:1px solid #18181c;font-family:ui-monospace
 .c-txt{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 .m-fast{color:#4d90f0;font-weight:600;}.m-verified{color:#35c98b;font-weight:600;}.m-secure{color:#f2a03d;font-weight:600;}.m-pro{color:#a880ff;font-weight:600;}
 .r-ok{color:#35c98b;font-weight:700;}.r-err{color:#f2555a;font-weight:700;}.r-suspect{color:#f2a03d;font-weight:700;}
+.c-chev{cursor:pointer;color:#6a6a72;width:22px;text-align:center;user-select:none;font-family:inherit;}
+.c-chev:hover{color:#4d90f0;}
+.det td{border-top:none !important;padding-top:0;}
+.fl-hd{font-size:11px;color:#6a6a72;font-weight:700;letter-spacing:.04em;margin:2px 0 6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+.fl-list{max-height:260px;overflow:auto;border:1px solid #18181c;border-radius:8px;padding:6px 10px;margin-bottom:8px;background:#101014;}
+.fl-row{display:flex;justify-content:space-between;gap:16px;padding:2px 0;font-size:12px;}
+.fl-p{color:#c8c8d0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fl-s{color:#7a7a82;flex-shrink:0;}
 .ft{margin-top:14px;font-size:11px;color:#5a5a62;}
 @media print{:root{color-scheme:light}body{background:#fff;color:#1a1a1e;}.pdf{display:none;}
 .hd{border-bottom:2px solid #1a1a1e;}.ttl{color:#333;}.path,.meta{color:#666;}
 thead th{color:#555;border-bottom:1px solid #ccc;}tbody td{border-top:1px solid #eee;}
-tbody tr:nth-child(even) td{background:#fafafa;}.c-mut{color:#666;}
+tbody tr.rec:nth-child(even) td{background:#fafafa;}.c-mut{color:#666;}
+.c-chev{display:none;}.det td:first-child{display:none;}
+.fl-list{max-height:none;overflow:visible;border-color:#ddd;background:#fff;}
+.fl-hd{color:#555;}.fl-p{color:#333;}.fl-s{color:#666;}
 .m-fast{color:#1a73c7;}.m-verified{color:#0f9d58;}.m-secure{color:#d97706;}.m-pro{color:#7c3aed;}
 .r-ok{color:#0f9d58;}.r-err{color:#d32f2f;}.r-suspect{color:#ea8600;}.ft{color:#999;}}
 </style></head><body><div class="wrap">
@@ -3344,10 +3384,20 @@ tbody tr:nth-child(even) td{background:#fafafa;}.c-mut{color:#666;}
 <div class="path">${escH(destPath)}</div>
 <div class="meta">Generated: ${fmtReportDate(created)} · Last update: ${fmtReportDate(updated)} · ${records.length} card${records.length>1?'s':''} · ${fmtSize(totalBytes)}</div>
 </div><button class="pdf" onclick="window.print()">⭳ Export PDF</button></div>
-<table><thead><tr><th>#</th><th>DATE</th><th>CARD</th><th>OPERATOR</th><th>CAM</th><th>MODE</th><th class="c-r">FILES</th><th class="c-r">SIZE</th><th>RESULT</th><th>NOTE</th></tr></thead>
+<table><thead><tr><th></th><th>#</th><th>DATE</th><th>CARD</th><th>OPERATOR</th><th>CAM</th><th>MODE</th><th class="c-r">FILES</th><th class="c-r">SIZE</th><th>RESULT</th><th>NOTE</th></tr></thead>
 <tbody>${rows}</tbody></table>
-<div class="ft">Written by INGESTO — this file lives in the destination and updates after each ingest.</div>
+<div class="ft">Written by INGESTO — this file lives in the destination and updates after each ingest. Click \u25b8 on a line to list the ingested files.</div>
 </div>
+<script>var _D=null,_B=[];function _sz(b){if(!b)return'0 B';var u=['B','KB','MB','GB','TB'],i=0;while(b>=1024&&i<4){b/=1024;i++;}return(i?b.toFixed(1):Math.round(b))+' '+u[i];}
+function _esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function _data(){if(!_D){try{_D=JSON.parse(document.getElementById('ingesto-report-data').textContent);}catch(e){_D={records:[]};}}return _D;}
+function _fill(i){if(_B[i])return;var r=(_data().records||[])[i]||{},f=r.f||[],h='';
+for(var k=0;k<f.length;k++){h+='<div class="fl-row"><span class="fl-p">'+_esc(f[k][0])+'</span><span class="fl-s">'+_sz(f[k][1])+'</span></div>';}
+var c=document.getElementById('det-'+i).getElementsByTagName('td')[1];
+c.innerHTML='<div class="fl-hd">'+f.length+' file'+(f.length>1?'s':'')+' ingested</div><div class="fl-list">'+h+'</div>';_B[i]=1;}
+function tgl(i){var d=document.getElementById('det-'+i),c=document.getElementById('ch-'+i);if(!d)return;var open=d.style.display!=='none';if(!open)_fill(i);d.style.display=open?'none':'table-row';if(c)c.textContent=open?'\u25b8':'\u25be';}
+function _all(){var t=document.querySelectorAll('tr.det');for(var i=0;i<t.length;i++){var n=+t[i].id.slice(4);_fill(n);t[i].style.display='table-row';}}
+window.addEventListener('beforeprint',_all);<\/script>
 <script id="ingesto-report-data" type="application/json">${data}<\/script>
 </body></html>`;
 }

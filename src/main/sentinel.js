@@ -182,6 +182,10 @@ async function appendIngest(root, destination, filesIngested, ingestoVersion) {
   if (!isWritable(root)) {
     return { ok: false, reason: 'write-protected' };
   }
+  // destination may be a single path (legacy) or an array of destination paths.
+  // 'destination' (singular, first path) is kept so older readers still work;
+  // 'destinations' lists every destination that succeeded.
+  const destList = Array.isArray(destination) ? destination : [destination];
   const sentPath = path.join(root, SENTINEL_NAME);
   let sentinel = readSentinel(root);
   if (!sentinel) {
@@ -191,7 +195,8 @@ async function appendIngest(root, destination, filesIngested, ingestoVersion) {
   }
   sentinel.ingests.push({
     date:         new Date().toISOString(),
-    destination:  destination,
+    destination:  destList[0] || '',
+    destinations: destList,
     files_count:  filesIngested.length,
     files:        filesIngested,
   });

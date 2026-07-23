@@ -19,7 +19,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, screen, powerSaveBlocker } =
 const path   = require('path');
 const fs     = require('fs');
 const os     = require('os');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const https = require('https');
 
 // ── Update check — reads a small shared JSON hosted on GitHub ──────────────
@@ -72,17 +72,10 @@ function checkForUpdate() {
 const { detectCamera }                 = require('./camera-detect');
 const { inspectCard, appendIngest, listAllFiles } = require('./sentinel');
 
-let _xxhash = null;
-async function getXXHash() {
-  if (!_xxhash) {
-    const xxhashModule = require('xxhash-wasm');
-    _xxhash = await (typeof xxhashModule === 'function' ? xxhashModule() : xxhashModule.default());
-  }
-  return _xxhash;
-}
-
-// PRO mode hashing — hash-wasm (pure WASM, no native binary). SECURE stays on
-// xxhash-wasm above, untouched. PRO supports xxHash64 / xxHash128 / MD5.
+// All fingerprints (SECURE xxHash64, PRO xxHash64/128/MD5, Verify) go through
+// hash-wasm — a single library, pure WASM, no native binary. INGESTO ≤ 2.0.2
+// used a second library (xxhash-wasm) for SECURE, whose hex output omitted
+// leading zeros and caused false "hash mismatch" results in Verify.
 let _hashwasm = null;
 function getHashWasm() { if (!_hashwasm) _hashwasm = require('hash-wasm'); return _hashwasm; }
 const PRO_EXT = { xxh64:'.xxh', xxh128:'.xxh3', md5:'.md5' };
@@ -92,25 +85,22 @@ async function newProHasher(algo) {
   if (algo === 'xxh64') return hw.createXXHash64();
   return hw.createXXHash128();               // default: xxHash128
 }
-// Copy a file and compute its source fingerprint with the chosen algo (PRO).
-function copyAndHashPro(src, dest, onBytes, hasher) {
+// Fingerprint a file with the chosen algo (used by SECURE, PRO and Verify).
+//  - Small files (<= 8 MB): single buffered read + one update(). Removes the per-file
+//    stream setup/teardown that dominates on card structures with thousands of tiny
+//    files (Sony XDROOT XML/BIM/SMI, thumbnails…).
+//  - Large files: stream with a bounded buffer so RAM stays flat.
+const HASH_SMALL_LIMIT = 8 * 1024 * 1024;
+async function hashPro(fp, hasher) {
+  hasher.init();
+  let size = Infinity;
+  try { size = fs.statSync(fp).size; } catch (_) {}
+  if (size <= HASH_SMALL_LIMIT) {
+    const buf = await fs.promises.readFile(fp);
+    try { hasher.update(buf); } catch (_) {}
+    return hasher.digest();
+  }
   return new Promise((res, rej) => {
-    hasher.init();
-    const rs = fs.createReadStream(src, { highWaterMark: 8*1024*1024 });
-    const ws = fs.createWriteStream(dest);
-    rs.on('data', c => { try { hasher.update(c); } catch(_){} onBytes(c.length); });
-    rs.on('error', rej); ws.on('error', rej);
-    ws.on('finish', () => {
-      try { const s=fs.statSync(src); fs.chmodSync(dest,s.mode); fs.utimesSync(dest,s.atime,s.mtime); } catch(_){}
-      res(hasher.digest());
-    });
-    rs.pipe(ws);
-  });
-}
-// Fingerprint a file with the chosen algo (PRO verify).
-function hashPro(fp, hasher) {
-  return new Promise((res, rej) => {
-    hasher.init();
     const s = fs.createReadStream(fp, { highWaterMark: 4*1024*1024 });
     s.on('data', d => { try { hasher.update(d); } catch(_){} });
     s.on('end', () => res(hasher.digest()));
@@ -267,7 +257,11 @@ ipcMain.handle('verify-folder', async (event, destPath) => {
     } else {
       try {
         const digest = await hashPro(abs, hasher);
-        if (String(digest).toLowerCase() === entry.hash.toLowerCase()) matched.push(entry.rel);
+        // Normalize before comparing: checksum lists written by INGESTO ≤ 2.0.2
+        // in SECURE mode omit leading zeros (15-char hashes), while hash-wasm
+        // always emits the full padded form. Same value, different text.
+        const norm = h => String(h).toLowerCase().replace(/^0+(?=.)/, '');
+        if (norm(digest) === norm(entry.hash)) matched.push(entry.rel);
         else corrupted.push(entry.rel);
       } catch(_) { corrupted.push(entry.rel); }
     }
@@ -328,7 +322,6 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
-      webSecurity: false,
     },
     show: true
   });
@@ -384,12 +377,6 @@ app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) creat
 
 // ─── IPC: Preload drop (Windows drag & drop fix) ────────────────────────────
 ipcMain.on('preload-drop', (_, { path: filePath, clientX }) => {
-  if (process.platform === 'win32') {
-    try {
-      const lp = require('path').join(require('os').homedir(), 'Desktop', 'ingesto-debug.log');
-      require('fs').appendFileSync(lp, '[PRELOAD-DROP] ' + filePath + ' clientX=' + clientX + '\n');
-    } catch(_) {}
-  }
   mainWindow.webContents.send('finder-drop', filePath, clientX);
 });
 
@@ -447,7 +434,9 @@ function getMountedVolumes() {
     if (!isNetwork && !isSystem) {
       // diskutil info — limited timeout to avoid blocking
       try {
-        const info = execSync(`diskutil info "${fullPath}" 2>/dev/null`, { encoding:'utf8', timeout:3000 });
+        // execFileSync: args passed without a shell — a hostile volume name cannot inject commands
+        const info = execFileSync('diskutil', ['info', fullPath],
+          { encoding:'utf8', timeout:3000, stdio:['ignore','pipe','ignore'] });
         if (/Device Location:\s+Internal/i.test(info)) isSystem = true;
 
         // Detect media type from Protocol field
@@ -465,7 +454,8 @@ function getMountedVolumes() {
     // Disk usage
     let totalSize=0, freeSize=0;
     try {
-      const parts = execSync(`df -k "${fullPath}"`, { encoding:'utf8', timeout:1500 })
+      const parts = execFileSync('df', ['-k', fullPath],
+          { encoding:'utf8', timeout:1500, stdio:['ignore','pipe','ignore'] })
         .trim().split('\n')[1]?.trim().split(/\s+/);
       if (parts?.length >= 4) { totalSize=parseInt(parts[1])*1024; freeSize=parseInt(parts[3])*1024; }
     } catch (_) {}
@@ -481,6 +471,25 @@ function getMountedVolumes() {
 
 function getMountedVolumesWin() {
   const volumes = [];
+  // Single PowerShell call for every drive. Previously: one process per existing
+  // drive letter (up to ~4 s each) — scans could take 20-30 s with several drives.
+  // No string interpolation in the command → no injection surface.
+  let byLetter = new Map();
+  try {
+    const ps = execSync(
+      'powershell -NoProfile -Command "Get-PSDrive -PSProvider FileSystem | Select-Object -Property Name,Used,Free,Description,DisplayRoot | ConvertTo-Json -Compress"',
+      { encoding: 'utf8', timeout: 8000 }
+    ).trim();
+    if (ps) {
+      const parsed = JSON.parse(ps);
+      for (const d of (Array.isArray(parsed) ? parsed : [parsed])) {
+        if (d && typeof d.Name === 'string' && /^[A-Za-z]$/.test(d.Name)) {
+          byLetter.set(d.Name.toUpperCase(), d);
+        }
+      }
+    }
+  } catch (_) {}
+
   // Enumerate drive letters A-Z
   for (let code = 65; code <= 90; code++) {
     const letter = String.fromCharCode(code);
@@ -496,32 +505,22 @@ function getMountedVolumesWin() {
     let fsType = 'usb'; // default for removable
     let isSystem = false, isNetwork = false;
 
-    // Get disk info via PowerShell (WMIC deprecated on Win11)
-    try {
-      const ps = execSync(
-        `powershell -NoProfile -Command "Get-PSDrive -Name '${letter}' -PSProvider FileSystem | Select-Object -Property Used,Free,Description,DisplayRoot | ConvertTo-Json -Compress"`,
-        { encoding: 'utf8', timeout: 4000 }
-      ).trim();
-      if (ps && ps.startsWith('{')) {
-        const d = JSON.parse(ps);
-        freeSize  = d.Free  || 0;
-        totalSize = (d.Used || 0) + freeSize;
-        const volName = (d.Description || '').trim();
-        const displayRoot = (d.DisplayRoot || '').trim();
-        if (volName) name = volName + ' (' + letter + ':)';
-        // Detect network drive via DisplayRoot (UNC path like \server\share)
-        if (displayRoot.startsWith('\\\\') || displayRoot.startsWith('\\')) {
-          isNetwork = true; fsType = 'network';
-        } else if (letter === 'C') {
-          isSystem = true; fsType = 'system';
-        } else {
-          // Use fsType detection via DriveType from Get-WmiObject fallback or default
-          fsType = 'usb';
-        }
+    const d = byLetter.get(letter);
+    if (d) {
+      freeSize  = d.Free  || 0;
+      totalSize = (d.Used || 0) + freeSize;
+      const volName = (d.Description || '').trim();
+      const displayRoot = (d.DisplayRoot || '').trim();
+      if (volName) name = volName + ' (' + letter + ':)';
+      // Detect network drive via DisplayRoot (UNC path like \\server\share)
+      if (displayRoot.startsWith('\\\\') || displayRoot.startsWith('\\')) {
+        isNetwork = true; fsType = 'network';
+      } else if (letter === 'C') {
+        isSystem = true; fsType = 'system';
       }
-    } catch (_) {
-      // PowerShell fallback: detect system/network by letter heuristic
-      if (letter === 'C') { isSystem = true; fsType = 'system'; }
+    } else if (letter === 'C') {
+      // PowerShell info unavailable: detect system by letter heuristic
+      isSystem = true; fsType = 'system';
     }
 
     let camera = null;
@@ -584,12 +583,9 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
   const allResults = [];
   for (const source of sources) {
     if (cancelCopy) break;
-    const promises = destinations.map((dest, di) =>
-      performCopy(source, dest.path, options, prog =>
-        mainWindow.webContents.send('copy-progress', { ...prog, destIndex:di, destName:dest.name })
-      )
+    const sourceResults = await performCopyMulti(source, destinations, options,
+      prog => mainWindow.webContents.send('copy-progress', prog)
     );
-    const sourceResults = await Promise.all(promises);
     allResults.push(...sourceResults);
 
     // ── Write sentinel on the source card after successful ingest ────────
@@ -598,10 +594,14 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
     if (!cancelCopy) {
       const firstOK = sourceResults.find(r => r && (r.success || r.copiedFiles > 0));
       if (options.writeSentinel === true && firstOK && firstOK._copiedForSentinel && firstOK._copiedForSentinel.length) {
+        // Record every destination that succeeded, not just the first one
+        const okDests = sourceResults
+          .filter(r => r && (r.success || r.copiedFiles > 0))
+          .map(r => r.destPath);
         try {
           await appendIngest(
             source.path,
-            firstOK.destPath,
+            okDests,
             firstOK._copiedForSentinel,
             app.getVersion()
           );
@@ -612,9 +612,11 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
       }
     }
   }
-  // Strip internal _copiedForSentinel from results before sending to renderer
+  // Strip internal _copiedForSentinel from results before sending to renderer,
+  // but expose the verified file list publicly as fileList for the ingest report.
   const cleaned = allResults.map(r => {
     const { _copiedForSentinel, ...rest } = r || {};
+    rest.fileList = (_copiedForSentinel || []).map(f => ({ path: f.p, size: f.s, mtime: f.m }));
     return rest;
   });
   mainWindow.webContents.send('copy-complete', cleaned);
@@ -627,38 +629,159 @@ ipcMain.handle('cancel-copy', async () => { cancelCopy = true; return true; });
 ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath, mode, proAlgo, proDoubleRead, files, destIndex, destName }) => {
   cancelCopy = false;
   const source = { name: sourceName, path: sourcePath };
-  const result = await performCopy(
-    source, '',
+  const results = await performCopyMulti(
+    source, [{ path: '', name: destName || '' }],
     { mode, proAlgo, proDoubleRead, fixedDestPath: destPath, onlyRel: files },
     prog => mainWindow.webContents.send('copy-progress', { ...prog, destIndex: destIndex||0, destName: destName||'' })
   );
-  const { _copiedForSentinel, ...rest } = result;   // not re-writing the sentinel on a retry
+  const { _copiedForSentinel, ...rest } = results[0] || {};   // not re-writing the sentinel on a retry
+  rest.fileList = (_copiedForSentinel || []).map(f => ({ path: f.p, size: f.s, mtime: f.m }));
   return rest;
 });
 
-// ─── Copy engine ─────────────────────────────────────────────────────────────
-async function performCopy(source, destination, options, onProgress) {
-  const t0 = Date.now();
-  let tCopyEnd=0, tV1End=0, tV2End=0;   // per-phase timing boundaries
-  let copiedFiles=0, totalFiles=0, copiedBytes=0, totalBytes=0, currentPhase='copy', errors=0;
-  const errorList = [];
-  const destPath = options.fixedDestPath || path.join(destination, buildFolderName(options.folderTemplate, source));
-  // Re-copy mode: restrict to a given set of relative paths, reuse the existing folder.
-  const onlyRel = options.onlyRel ? new Set(options.onlyRel.map(p => p.replace(/\\/g,'/'))) : null;
+// ─── Copy engine — read the source ONCE, write to every destination ─────────
+// Multi-destination used to launch one full copy per destination in parallel,
+// making N simultaneous read passes over the same card that competed for the
+// (usually slow) source medium. The fan-out engine reads each file once and
+// streams the chunks to all destinations at the same time.
 
+// Force a file's data out of the OS write cache onto the physical medium.
+// Without this, SECURE/PRO's read-back verification can be served from RAM and
+// compare the data with itself — a bad physical write would go unnoticed until
+// a later Verify. Opened 'r+' (not 'r'): Windows' FlushFileBuffers requires a
+// write-capable handle. Failure is non-fatal (some network mounts refuse fsync).
+async function fsyncFile(fp) {
+  let fh = null;
+  try { fh = await fs.promises.open(fp, 'r+'); await fh.sync(); }
+  catch (_) {}
+  finally { if (fh) { try { await fh.close(); } catch (_) {} } }
+}
+
+// Read src once; write simultaneously to every path in destFiles.
+// Per-destination failures don't stop the others. Resolves with
+// { digest, failed } where failed[i] is the Error for destination i (or null),
+// and digest is the source fingerprint when a hasher is provided.
+// Rejects only when the SOURCE read itself fails (which affects every dest).
+function copyFanOut(src, destFiles, onBytes, hasher) {
+  return new Promise((resolve, reject) => {
+    if (hasher) hasher.init();
+    const rs = fs.createReadStream(src, { highWaterMark: 8*1024*1024 });
+    const N = destFiles.length;
+    const wss = new Array(N);
+    const state = new Array(N).fill('open');   // open | done | failed
+    const failed = new Array(N).fill(null);
+    let pendingFinish = N, readEnded = false, settled = false;
+
+    const maybeSettle = () => {
+      if (settled || !readEnded || pendingFinish > 0) return;
+      settled = true;
+      resolve({ digest: hasher ? hasher.digest() : null, failed });
+    };
+    const failDest = (i, err) => {
+      if (state[i] !== 'open') return;
+      state[i] = 'failed';
+      failed[i] = err || new Error('write failed');
+      pendingFinish--;
+      try { wss[i].destroy(); } catch (_) {}
+      if (state.every(s => s === 'failed')) {
+        // No destination left — stop reading the source.
+        try { rs.destroy(); } catch (_) {}
+        readEnded = true;
+      }
+      maybeSettle();
+    };
+
+    for (let i = 0; i < N; i++) {
+      const ws = fs.createWriteStream(destFiles[i]);
+      wss[i] = ws;
+      ws.on('error', e => failDest(i, e));
+      ws.on('finish', () => {
+        if (state[i] !== 'open') return;
+        state[i] = 'done'; pendingFinish--; maybeSettle();
+      });
+    }
+
+    rs.on('data', chunk => {
+      if (hasher) { try { hasher.update(chunk); } catch (_) {} }
+      onBytes(chunk.length);
+      const slow = [];
+      for (let i = 0; i < N; i++) {
+        if (state[i] !== 'open') continue;
+        if (!wss[i].write(chunk)) slow.push(i);
+      }
+      if (slow.length) {
+        // Backpressure: pause the read until every lagging destination drained.
+        // 'close' also unblocks so a failing destination can't stall the read.
+        rs.pause();
+        let remaining = slow.length;
+        const oneDone = () => { if (--remaining === 0 && !settled) rs.resume(); };
+        for (const i of slow) {
+          const ws = wss[i];
+          const onDrain = () => { cleanup(); oneDone(); };
+          const onGone  = () => { cleanup(); oneDone(); };
+          const cleanup = () => {
+            ws.removeListener('drain', onDrain);
+            ws.removeListener('close', onGone);
+          };
+          ws.once('drain', onDrain);
+          ws.once('close', onGone);
+        }
+      }
+    });
+    rs.on('end', () => {
+      readEnded = true;
+      for (let i = 0; i < N; i++) { if (state[i] === 'open') wss[i].end(); }
+      maybeSettle();
+    });
+    rs.on('error', err => {
+      for (let i = 0; i < N; i++) {
+        if (state[i] === 'open') { state[i]='failed'; failed[i]=err; pendingFinish--; try { wss[i].destroy(); } catch (_) {} }
+      }
+      if (settled) return;
+      settled = true;
+      reject(err);
+    });
+  });
+}
+
+// Copy one source to every destination. Returns one result object PER
+// destination (same shape as the former per-destination engine, so the
+// renderer and the sentinel logic are unchanged).
+async function performCopyMulti(source, destinations, options, onProgress) {
+  const t0 = Date.now();
+  let tCopyEnd=0, tV1End=0, tV2End=0;
+  let copiedBytes=0, totalBytes=0, totalFiles=0;
+  const isPro    = options.mode === 'pro';
+  const isSecure = options.mode === 'slow';
+  const proAlgo  = options.proAlgo || 'xxh128';
+  const cksumAlgo = isPro ? proAlgo : 'xxh64';        // SECURE fingerprints are xxHash64
+  const hasher   = (isPro || isSecure) ? await newProHasher(isPro ? proAlgo : 'xxh64') : null;
+  const proDouble = isPro && options.proDoubleRead === true;
+  const folderName = options.fixedDestPath ? '' : buildFolderName(options.folderTemplate, source);
+  const destNames  = destinations.map(d => d.name).filter(Boolean).join(' + ');
+
+  // Per-destination state
+  const R = destinations.map((d, i) => ({
+    di: i,
+    name: d.name || '',
+    destPath: options.fixedDestPath || path.join(d.path, folderName),
+    active: true,
+    copiedFiles: 0, errors: 0, errorList: [], failedFiles: [], unstableFiles: [],
+    copied: [],               // { rel, src, dest, size, mtimeMs, srcHash, _writeOk }
+    copiedForSentinel: [], cksumEntries: [],
+  }));
+
+  // ── Scan the source ONCE ────────────────────────────────────────────────
+  const onlyRel = options.onlyRel ? new Set(options.onlyRel.map(p => p.replace(/\\/g,'/'))) : null;
   const allFiles=[], allDirs=[];
   const SKIP = new Set(['.DS_Store','.Spotlight-V100','.Trashes','.fseventsd','.TemporaryItems']);
-  // Files to skip because they were already ingested previously (sentinel match)
   const skipKeys = new Set(options.skipKeys || []);
-  // Sentinel name to never copy
   const SENTINEL_FILENAME = '.ingesto.json';
-
-  function scan(dir) {
+  (function scan(dir) {
     let entries; try { entries=fs.readdirSync(dir,{withFileTypes:true}); } catch(_){return;}
     if (!entries.length) { allDirs.push(dir); return; }
     for (const e of entries) {
       if (SKIP.has(e.name)) continue;
-      // Never copy the sentinel file to destination (only relevant at card root)
       if (e.name === SENTINEL_FILENAME && dir === source.path) continue;
       const full = path.join(dir, e.name);
       try {
@@ -666,9 +789,7 @@ async function performCopy(source, destination, options, onProgress) {
         else {
           const s=fs.statSync(full);
           const rel = path.relative(source.path, full).replace(/\\/g, '/');
-          // Re-copy mode: keep only the requested files
           if (onlyRel && !onlyRel.has(rel)) continue;
-          // Check skipKeys (key = "<relPath>|<size>|<mtimeSecs>")
           if (skipKeys.size) {
             const key = `${rel}|${s.size}|${Math.floor(s.mtimeMs/1000)}`;
             if (skipKeys.has(key)) continue;
@@ -678,246 +799,212 @@ async function performCopy(source, destination, options, onProgress) {
         }
       } catch(_) {}
     }
-  }
-  scan(source.path);
+  })(source.path);
   totalFiles = allFiles.length;
 
-  fs.mkdirSync(destPath, {recursive:true});
-
-  // ── Write note file if provided (skip on re-copy) ───────────────────────
-  const srcNote = source.note || options.note || '';
-  if(!options.fixedDestPath && srcNote && srcNote.trim()){
-    try {
-      const noteFileName = `${source.counter || '001'}_note.txt`;
-      const noteFilePath = path.join(destPath, noteFileName);
-      const sep = '-'.repeat(40);
-      const noteContent = [
-        'ingesto - Shooting Note',
-        sep,
-        'Date    : ' + new Date().toLocaleString(),
-        'Counter : ' + (source.counter || '001'),
-        'Card    : ' + source.name,
-        'Operator: ' + (source.cameraman || 'Unknown'),
-        'Camera  : ' + (source.camera || 'Unknown'),
-        sep,
-        '',
-        srcNote.trim(),
-        ''
-      ].join('\n');
-      fs.writeFileSync(noteFilePath, noteContent, 'utf8');
-    } catch(e) {
-      console.error('Note file write failed:', e.message);
+  // ── Destination roots, folder tree, note file ───────────────────────────
+  for (const r of R) {
+    try { fs.mkdirSync(r.destPath, {recursive:true}); }
+    catch (e) {
+      r.active = false; r.errors++;
+      r.errorList.push({ file:'(destination)', error:e.message, phase:'copy' });
     }
   }
-
+  const srcNote = source.note || options.note || '';
+  if (!options.fixedDestPath && srcNote && srcNote.trim()) {
+    const noteFileName = `${source.counter || '001'}_note.txt`;
+    const sep = '-'.repeat(40);
+    const noteContent = [
+      'ingesto - Shooting Note', sep,
+      'Date    : ' + new Date().toLocaleString(),
+      'Counter : ' + (source.counter || '001'),
+      'Card    : ' + source.name,
+      'Operator: ' + (source.cameraman || 'Unknown'),
+      'Camera  : ' + (source.camera || 'Unknown'),
+      sep, '', srcNote.trim(), ''
+    ].join('\n');
+    for (const r of R) {
+      if (!r.active) continue;
+      try { fs.writeFileSync(path.join(r.destPath, noteFileName), noteContent, 'utf8'); }
+      catch (e) { console.error('Note file write failed:', e.message); }
+    }
+  }
   if (!onlyRel) {
     for (const d of allDirs) {
-      const dd = path.join(destPath, path.relative(source.path, d));
-      fs.mkdirSync(dd,{recursive:true});
-      try { const s=fs.statSync(d); fs.utimesSync(dd,s.atime,s.mtime); } catch(_){}
+      const rel = path.relative(source.path, d);
+      let st=null; try { st=fs.statSync(d); } catch(_){}
+      for (const r of R) {
+        if (!r.active) continue;
+        try {
+          const dd = path.join(r.destPath, rel);
+          fs.mkdirSync(dd,{recursive:true});
+          if (st) fs.utimesSync(dd,st.atime,st.mtime);
+        } catch(_){}
+      }
     }
   }
 
   const spd=[], speedPush=(b,ms)=>{ if(ms>0){ spd.push(b/ms*1000); if(spd.length>12)spd.shift(); } };
   const avgSpd=()=>spd.length?spd.reduce((a,b)=>a+b)/spd.length:0;
 
-  // Track files actually copied+verified — used to update the sentinel
-  const copiedForSentinel = [];
-  // Relative paths that failed (copy OR verify) — offered to the user for re-copy
-  const failedFiles = [];
-  // PRO double-read: relative paths whose SOURCE returned different data on re-read
-  // (failing card). Distinct from failedFiles: re-copy would NOT help these.
-  const unstableFiles = [];
-  // Files copied in phase 1, carried into phase 2 (verify). srcHash set in SECURE mode.
-  const copied = []; // { rel, src, dest, size, mtimeMs, srcHash }
-
-  // PRO mode: SECURE behaviour with a user-chosen algo + a checksum list per folder.
-  const isPro = options.mode === 'pro';
-  const isSecure = options.mode === 'slow';
-  const proAlgo = options.proAlgo || 'xxh128';
-  const cksumAlgo = isPro ? proAlgo : 'xxh64';   // SECURE fingerprints are xxHash64
-  const proHasher = isPro ? await newProHasher(proAlgo) : null;
-  const cksumEntries = []; // { rel, hash, size, mtimeMs } of verified-OK files, for checksum list / MHL
-
-  // ── PHASE 1 — COPY everything (green bar) ───────────────────────────────
-  currentPhase='copy';
+  // ── PHASE 1 — read once, write to every destination (green bar) ─────────
   { let lastB=0, lastT=Date.now();
     for (let i=0; i<allFiles.length; i++) {
       if (cancelCopy) break;
-      const file=allFiles[i], rel=file.rel, dest=path.join(destPath,rel);
+      const act = R.filter(r=>r.active);
+      if (!act.length) break;
+      const file=allFiles[i], rel=file.rel;
+      const destFilesAbs = act.map(r => path.join(r.destPath, rel));
+      const onB = b => {
+        copiedBytes+=b;
+        const now=Date.now();
+        if (now-lastT>=150){ speedPush(copiedBytes-lastB,now-lastT); lastB=copiedBytes; lastT=now; }
+        const sp=avgSpd();
+        onProgress({ sourceName:source.name, currentFile:rel, phase:'copy',
+          destIndex:0, destName:destNames,
+          copiedFiles:R[0].copiedFiles, totalFiles, remainingFiles:totalFiles-i-1,
+          copiedBytes, totalBytes, progress:totalBytes>0?copiedBytes/totalBytes:0,
+          speed:sp, eta:sp>0?(totalBytes-copiedBytes)/sp:0,
+          errors:R.reduce((a,r)=>a+r.errors,0) });
+      };
       try {
-        fs.mkdirSync(path.dirname(dest),{recursive:true});
-        const onB = b => {
-          copiedBytes+=b;
-          const now=Date.now();
-          if (now-lastT>=150){ speedPush(copiedBytes-lastB,now-lastT); lastB=copiedBytes; lastT=now; }
-          const sp=avgSpd();
-          onProgress({ sourceName:source.name, currentFile:rel, phase:'copy',
-            copiedFiles, totalFiles, remainingFiles:totalFiles-i-1,
-            copiedBytes, totalBytes, progress:totalBytes>0?copiedBytes/totalBytes:0,
-            speed:sp, eta:sp>0?(totalBytes-copiedBytes)/sp:0, errors });
-        };
-        let srcHash=null;
-        if      (isPro)                srcHash = await copyAndHashPro(file.src,dest,onB,proHasher);
-        else if (options.mode==='slow') srcHash = await copyAndHash(file.src,dest,onB);
-        else                            await copyStrict(file.src,dest,onB);
-        copiedFiles++;
-        copied.push({rel,src:file.src,dest,size:file.size,mtimeMs:file.mtimeMs,srcHash});
-      } catch(e){ errors++; errorList.push({file:rel,error:e.message,phase:'copy'}); failedFiles.push(rel); }
+        if (onlyRel) for (const df of destFilesAbs) { try { fs.mkdirSync(path.dirname(df),{recursive:true}); } catch(_){} }
+        const { digest, failed } = await copyFanOut(file.src, destFilesAbs, onB, hasher);
+        const srcHash = digest == null ? null : String(digest);
+        let st=null; try { st=fs.statSync(file.src); } catch(_){}
+        for (let k=0; k<act.length; k++) {
+          const r = act[k], df = destFilesAbs[k], err = failed[k];
+          if (err) {
+            r.errors++; r.errorList.push({file:rel,error:err.message,phase:'copy'}); r.failedFiles.push(rel);
+          } else {
+            if (st) { try { fs.chmodSync(df,st.mode); fs.utimesSync(df,st.atime,st.mtime); } catch(_){} }
+            // SECURE/PRO: commit to the physical medium before verify reads it back
+            if (isPro || isSecure) await fsyncFile(df);
+            r.copiedFiles++;
+            r.copied.push({rel,src:file.src,dest:df,size:file.size,mtimeMs:file.mtimeMs,srcHash});
+          }
+        }
+      } catch(e){
+        // Source read failure — the file failed for every active destination
+        for (const r of act) { r.errors++; r.errorList.push({file:rel,error:e.message,phase:'copy'}); r.failedFiles.push(rel); }
+      }
     }
   }
+  tCopyEnd = Date.now(); tV1End = tCopyEnd; tV2End = tCopyEnd;
 
-  // ── PHASE 2 — VERIFY everything (blue bar) ──────────────────────────────
-  // PRO double-read: after verifying destinations (2a), re-read the SOURCES (2b).
-  // Doing 2a first fills the OS cache with destination data, evicting the source
-  // pages — so 2b's read hits the card itself (effective when data > RAM, i.e. real
-  // offloads). Detects cards that return different bytes on re-read.
-  const proDouble = isPro && options.proDoubleRead === true;
-  tCopyEnd = Date.now(); tV1End = tCopyEnd; tV2End = tCopyEnd;  // defaults if no verify
+  // ── PHASE 2 — VERIFY each destination (blue), then optional source pass ─
   if (!cancelCopy && (options.mode==='normal' || options.mode==='slow' || isPro)) {
-    currentPhase='verify';
     spd.length=0;
-    const onePass = copied.reduce((a,c)=>a+c.size,0);
-    const verifyTotalBytes = onePass * (proDouble ? 2 : 1);
-    const totalSteps = copied.length * (proDouble ? 2 : 1);
+    // Unique source files copied OK to at least one destination (for the PRO
+    // double-read pass, which now reads the source ONCE — not once per dest).
+    const srcByRel = new Map();
+    for (const r of R) for (const c of r.copied) if (!srcByRel.has(c.rel)) srcByRel.set(c.rel, c);
+    const destPassTotal = R.reduce((a,r)=>a + r.copied.reduce((x,c)=>x+c.size,0), 0);
+    const srcPassTotal  = proDouble ? [...srcByRel.values()].reduce((a,c)=>a+c.size,0) : 0;
+    const verifyTotalBytes = destPassTotal + srcPassTotal;
+    const totalSteps = R.reduce((a,r)=>a+r.copied.length,0) + (proDouble ? srcByRel.size : 0);
     let verifiedBytes=0, verifiedFiles=0, lastB=0, lastT=Date.now();
-    let passBytes=0;  // per-pass byte counter (resets each pass → per-pass 0→100%)
-    const emit=(cur,pass)=>{
+    let passBytes=0, passTotal=destPassTotal;
+    const emit=(cur,pass,di,dn)=>{
       const now=Date.now();
       if (now-lastT>=120){ speedPush(verifiedBytes-lastB,now-lastT); lastB=verifiedBytes; lastT=now; }
       const sp=avgSpd();
       onProgress({ sourceName:source.name, currentFile:cur, phase:'verify',
+        destIndex:di, destName:dn,
         copiedFiles:verifiedFiles, totalFiles:totalSteps, remainingFiles:totalSteps-verifiedFiles,
         copiedBytes:verifiedBytes, totalBytes:verifyTotalBytes||1,
         progress:verifyTotalBytes>0?verifiedBytes/verifyTotalBytes:1,
-        passProgress: onePass>0 ? passBytes/onePass : 1,
-        speed:sp, eta:sp>0?(verifyTotalBytes-verifiedBytes)/sp:0, errors, pass });
+        passProgress: passTotal>0 ? passBytes/passTotal : 1,
+        speed:sp, eta:sp>0?(verifyTotalBytes-verifiedBytes)/sp:0,
+        errors:R.reduce((a,r)=>a+r.errors,0), pass });
     };
 
-    // 2a — verify destinations against the fingerprint taken during copy
-    for (let j=0; j<copied.length; j++) {
-      if (cancelCopy) break;
-      const c=copied[j]; let okv=false;
-      try {
-        if (isPro) {
-          if (await hashPro(c.dest,proHasher) !== c.srcHash) throw new Error('checksum mismatch');
-        } else if (options.mode==='slow') {
-          if (await hash(c.dest) !== c.srcHash) throw new Error('xxHash mismatch');
-        } else {
-          if (fs.statSync(c.src).size !== fs.statSync(c.dest).size) throw new Error('Size mismatch');
+    // 2a — verify every destination against the fingerprint taken during copy
+    for (const r of R) {
+      for (const c of r.copied) {
+        if (cancelCopy) break;
+        let okv=false;
+        try {
+          if (isPro || isSecure) {
+            if (await hashPro(c.dest,hasher) !== c.srcHash) throw new Error(isPro?'checksum mismatch':'xxHash mismatch');
+          } else {
+            if (fs.statSync(c.src).size !== fs.statSync(c.dest).size) throw new Error('Size mismatch');
+          }
+          okv=true;
+        } catch(e){ r.errors++; r.errorList.push({file:c.rel,error:e.message,phase:'verify'}); r.failedFiles.push(c.rel); }
+        c._writeOk = okv;
+        if (okv && !proDouble) {
+          r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000) });
+          if (isPro || isSecure) r.cksumEntries.push({ rel:c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
         }
-        okv=true;
-      } catch(e){ errors++; errorList.push({file:c.rel,error:e.message,phase:'verify'}); failedFiles.push(c.rel); }
-      c._writeOk = okv;
-      // Finalize now unless a source re-read is pending (2b decides in that case)
-      if (okv && !proDouble) {
-        copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000) });
-        if (isPro || isSecure) cksumEntries.push({ rel:c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
+        verifiedBytes+=c.size; passBytes+=c.size; verifiedFiles++;
+        emit(c.rel,'dest',r.di,r.name);
       }
-      verifiedBytes+=c.size; passBytes+=c.size; verifiedFiles++; emit(c.rel,'dest');
+      if (cancelCopy) break;
     }
     tV1End = Date.now(); tV2End = tV1End;
 
-    // 2b — PRO double-read: re-read sources to catch a failing/unstable card
+    // 2b — PRO double-read: re-read the SOURCE (once, whatever the number of
+    // destinations) to catch a failing/unstable card.
     if (proDouble && !cancelCopy) {
-      passBytes=0;
-      for (let j=0; j<copied.length; j++) {
+      passBytes=0; passTotal=srcPassTotal;
+      for (const c of srcByRel.values()) {
         if (cancelCopy) break;
-        const c=copied[j];
-        if (!c._writeOk) continue; // write already failed → handled as a normal error
-        let stable=false;
-        try { stable = (await hashPro(c.src, proHasher) === c.srcHash); }
-        catch(e){ stable=false; }
-        if (stable) {
-          copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000) });
-          cksumEntries.push({ rel:c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
-        } else {
-          errors++;
-          errorList.push({ file:c.rel, error:'source read unstable', phase:'source' });
-          unstableFiles.push(c.rel);
+        // Only meaningful if at least one destination wrote this file OK
+        const holders = R.filter(r => r.copied.some(x => x.rel===c.rel && x._writeOk));
+        if (holders.length) {
+          let stable=false;
+          try { stable = (await hashPro(c.src, hasher) === c.srcHash); }
+          catch(e){ stable=false; }
+          for (const r of holders) {
+            if (stable) {
+              r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000) });
+              r.cksumEntries.push({ rel:c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
+            } else {
+              r.errors++;
+              r.errorList.push({ file:c.rel, error:'source read unstable', phase:'source' });
+              r.unstableFiles.push(c.rel);
+            }
+          }
         }
-        verifiedBytes+=c.size; passBytes+=c.size; verifiedFiles++; emit(c.rel,'source');
+        verifiedBytes+=c.size; passBytes+=c.size; verifiedFiles++;
+        emit(c.rel,'source',0,destNames);
       }
       tV2End = Date.now();
     }
 
-    // Write fingerprints at the destination folder root (SECURE & PRO).
-    // Defaults preserve prior behaviour: writeChecksum/cksumList default ON, cksumMhl default OFF.
-    const wantCk = !cancelCopy && !options.fixedDestPath && options.writeChecksum !== false
-                   && (isPro || isSecure) && cksumEntries.length;
-    if (wantCk && options.cksumList !== false) writeChecksumList(destPath, cksumAlgo, cksumEntries);
-    if (wantCk && isPro && options.cksumMhl === true && (proAlgo==='xxh64'||proAlgo==='md5'))
-      writeMHL(destPath, proAlgo, cksumEntries, { startMs:t0 });
+    // Fingerprint sidecars at each destination folder root (SECURE & PRO)
+    for (const r of R) {
+      const wantCk = !cancelCopy && !options.fixedDestPath && options.writeChecksum !== false
+                     && (isPro || isSecure) && r.cksumEntries.length;
+      if (wantCk && options.cksumList !== false) {
+        const ckName = writeChecksumList(r.destPath, cksumAlgo, r.cksumEntries);
+        if (!ckName) r.errorList.push({ file:'(checksum list)', error:'could not be written to destination', phase:'sidecar' });
+      }
+      if (wantCk && isPro && options.cksumMhl === true && (proAlgo==='xxh64'||proAlgo==='md5')) {
+        const mhlName = writeMHL(r.destPath, proAlgo, r.cksumEntries, { startMs:t0 });
+        if (!mhlName) r.errorList.push({ file:'(MHL manifest)', error:'could not be written to destination', phase:'sidecar' });
+      }
+    }
   } else {
     // FAST mode — no verification; every copied file is recorded for the sentinel
-    for (const c of copied) copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000) });
+    for (const r of R) for (const c of r.copied)
+      r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000) });
   }
 
-  return { success:!cancelCopy&&!errors, canceled:cancelCopy,
-    sourceName:source.name, sourcePath:source.path, destPath,
-    totalFiles, copiedFiles, totalBytes, copiedBytes, errors, errorList,
-    failedFiles, unstableFiles, mode:options.mode, proAlgo: isPro?proAlgo:null,
+  return R.map(r => ({
+    success: !cancelCopy && !r.errors, canceled: cancelCopy,
+    sourceName: source.name, sourcePath: source.path, destPath: r.destPath,
+    totalFiles, copiedFiles: r.copiedFiles, totalBytes, copiedBytes,
+    errors: r.errors, errorList: r.errorList,
+    failedFiles: r.failedFiles, unstableFiles: r.unstableFiles,
+    mode: options.mode, proAlgo: isPro ? proAlgo : null,
     copyMs: tCopyEnd-t0, verify1Ms: tV1End-tCopyEnd, verify2Ms: tV2End-tV1End,
-    duration:Date.now()-t0,
-    _copiedForSentinel: copiedForSentinel };
+    duration: Date.now()-t0,
+    _copiedForSentinel: r.copiedForSentinel,
+  }));
 }
 
-// Copy a file and compute its source xxHash in the SAME read pass (SECURE mode),
-// so the verify phase only needs to re-read the destination.
-function copyAndHash(src,dest,onBytes) {
-  return new Promise(async (res,rej)=>{
-    let h; try { h=(await getXXHash()).create64(); } catch(e){ return rej(e); }
-    const rs=fs.createReadStream(src,{highWaterMark:8*1024*1024});
-    const ws=fs.createWriteStream(dest);
-    rs.on('data',c=>{ try{h.update(c);}catch(_){} onBytes(c.length); });
-    rs.on('error',rej); ws.on('error',rej);
-    ws.on('finish',()=>{
-      try{const s=fs.statSync(src);fs.chmodSync(dest,s.mode);fs.utimesSync(dest,s.atime,s.mtime);}catch(_){}
-      res(h.digest().toString(16));
-    });
-    rs.pipe(ws);
-  });
-}
-
-function copyStrict(src,dest,onBytes) {
-  return new Promise((res,rej)=>{
-    const rs=fs.createReadStream(src,{highWaterMark:8*1024*1024});
-    const ws=fs.createWriteStream(dest);
-    rs.on('data',c=>onBytes(c.length)); rs.on('error',rej); ws.on('error',rej);
-    ws.on('finish',()=>{
-      try{const s=fs.statSync(src);fs.chmodSync(dest,s.mode);fs.utimesSync(dest,s.atime,s.mtime);}catch(_){}
-      res();
-    });
-    rs.pipe(ws);
-  });
-}
-
-// XXH64 fingerprint of a file.
-//  - Small files (<= 8 MB): single buffered read + one update(). Removes the per-file
-//    stream setup/teardown that dominates on card structures with thousands of tiny files
-//    (Sony XDROOT XML/BIM/SMI, thumbnails…). Same algorithm/seed → identical digests.
-//  - Large files: stream with a bounded buffer so RAM stays flat.
-// Identical behaviour on macOS and Windows; no concurrency, so it stays predictable on
-// modest machines and mechanical/external destination drives.
-const HASH_SMALL_LIMIT = 8 * 1024 * 1024;
-async function hash(fp){
-  const xxh = await getXXHash();
-  let size = Infinity;
-  try { size = fs.statSync(fp).size; } catch(_) {}
-  if (size <= HASH_SMALL_LIMIT) {
-    const buf = await fs.promises.readFile(fp);
-    const h = xxh.create64();
-    h.update(buf);
-    return h.digest().toString(16);
-  }
-  return new Promise((res,rej)=>{
-    const h = xxh.create64();
-    const s = fs.createReadStream(fp, { highWaterMark: 4*1024*1024 });
-    s.on('data', d => h.update(d));
-    s.on('end', () => res(h.digest().toString(16)));
-    s.on('error', rej);
-  });
-}
 
 function buildFolderName(tpl, src) {
   const n=new Date(), p=x=>String(x).padStart(2,'0');
@@ -937,7 +1024,7 @@ function buildFolderName(tpl, src) {
     .replaceAll('{DD}',  p(n.getDate()))
     .replaceAll('{HH}',  p(n.getHours()))
     .replaceAll('{MIN}', p(n.getMinutes()))
-    .replaceAll('{SS}',  p(n.getMinutes()));
+    .replaceAll('{SS}',  p(n.getSeconds()));
 
   // Clean up orphan separators left by empty variables:
   // e.g. "001__card___260503" → "001_card_260503"
@@ -952,19 +1039,18 @@ function buildFolderName(tpl, src) {
 // ─── IPC: Check if counter already exists in any destination ─────────────────
 // Returns the first conflicting folder name found, or null if clear.
 ipcMain.handle('check-counter-collision', async (_, destPaths, counter) => {
-  const prefix = String(counter).padStart(3, '0');
-  // Also check without padding (e.g. "1_", "10_")
-  const rawNum = String(counter);
+  const cnum = parseInt(counter, 10);
+  if (!Number.isFinite(cnum)) return null;
 
   for (const destPath of destPaths) {
     try {
       const entries = fs.readdirSync(destPath, { withFileTypes: true });
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        const m = entry.name.match(/^(\d+)/);
+        const m = entry.name.match(/^(\d{1,4})(?:[_\-]|$)/);
         if (m) {
           const n = parseInt(m[1], 10);
-          if (n === counter) return entry.name; // collision found
+          if (n === cnum) return entry.name; // collision found
         }
       }
     } catch (_) {}
@@ -979,7 +1065,7 @@ function scanCounterInDests(destPaths) {
     try {
       for (const entry of fs.readdirSync(destPath, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
-        const m = entry.name.match(/^(\d+)/);
+        const m = entry.name.match(/^(\d{1,4})(?:[_\-]|$)/);
         if (m) {
           const n = parseInt(m[1], 10);
           if (n > maxNum) maxNum = n;
@@ -1033,7 +1119,8 @@ ipcMain.handle('ntfy-send', async (_, opts) => {
 ipcMain.handle('is-removable', async (_, p) => {
   try {
     if (process.platform === 'darwin') {
-      const out = execSync(`diskutil info ${JSON.stringify(p)}`, { encoding: 'utf8', timeout: 5000 });
+      const out = execFileSync('diskutil', ['info', p],
+        { encoding: 'utf8', timeout: 5000, stdio:['ignore','pipe','ignore'] });
       return /Removable Media:\s*Removable/i.test(out);
     }
     if (process.platform === 'win32') {
@@ -1091,7 +1178,7 @@ ipcMain.handle('folder-size', async (_, p) => {
 ipcMain.handle('eject-volume', async (_, volPath) => {
   try {
     if (process.platform === 'darwin') {
-      execSync(`diskutil eject ${JSON.stringify(volPath)}`, { timeout: 15000 });
+      execFileSync('diskutil', ['eject', volPath], { timeout: 15000, stdio:['ignore','pipe','ignore'] });
       return { ok: true };
     }
     if (process.platform === 'win32') {
