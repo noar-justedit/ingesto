@@ -65,6 +65,10 @@ const ingestoAPI = {
     ipcRenderer.on('finder-drop', (_, p, clientX) => cb(p, clientX));
     return () => ipcRenderer.removeAllListeners('finder-drop');
   },
+  onVolumesChanged: (cb) => {
+    ipcRenderer.on('volumes-changed', () => cb());
+    return () => ipcRenderer.removeAllListeners('volumes-changed');
+  },
   onUpdateAvailable: (cb) => {
     ipcRenderer.on('update-available', (_, d) => cb(d));
     return () => ipcRenderer.removeAllListeners('update-available');

@@ -371,6 +371,7 @@ if (process.platform === 'win32') {
 
 app.whenReady().then(() => {
   createWindow();
+  startVolumeWatch();
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
@@ -392,7 +393,34 @@ ipcMain.on('win-close', () => { if (mainWindow) mainWindow.close(); });
 ipcMain.handle('load-prefs', async () => loadPrefs());
 ipcMain.handle('save-prefs', async (_, p) => { savePrefs(p); return true; });
 
-// ─── IPC: Volumes — fast, non-blocking ──────────────────────────────────────
+// ─── Live volume detection — no manual refresh needed ───────────────────────
+// macOS: fs.watch('/Volumes') fires on mount/unmount, event-driven, near-instant.
+// Windows: no filesystem-level mount event exists for drive letters, so we poll
+// cheaply (existsSync per letter, no process spawned) and only run the full
+// (heavier) PowerShell-based scan when the actual set of letters changed.
+let _volWatchTimer = null;
+function startVolumeWatch() {
+  const notify = () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('volumes-changed'); };
+  const debounced = (() => { let t=null; return () => { clearTimeout(t); t=setTimeout(notify, 350); }; })();
+
+  if (process.platform === 'darwin') {
+    try {
+      fs.watch('/Volumes', { persistent: false }, () => debounced());
+    } catch (e) { console.error('Volume watch failed:', e.message); }
+  } else if (process.platform === 'win32') {
+    let lastLetters = null;
+    _volWatchTimer = setInterval(() => {
+      let cur = '';
+      for (let c = 65; c <= 90; c++) {
+        const l = String.fromCharCode(c);
+        try { if (fs.statSync(l + ':\\').isDirectory()) cur += l; } catch (_) {}
+      }
+      if (lastLetters !== null && cur !== lastLetters) notify();
+      lastLetters = cur;
+    }, 2000);
+  }
+}
+
 ipcMain.handle('get-volumes', async () => {
   // Run synchronously but only called once, in background after window shows
   return getMountedVolumes();
@@ -616,7 +644,7 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
   // but expose the verified file list publicly as fileList for the ingest report.
   const cleaned = allResults.map(r => {
     const { _copiedForSentinel, ...rest } = r || {};
-    rest.fileList = (_copiedForSentinel || []).map(f => ({ path: f.p, size: f.s, mtime: f.m }));
+    rest.fileList = (_copiedForSentinel || []).map(f => ({ path: f.d || f.p, size: f.s, mtime: f.m }));
     return rest;
   });
   mainWindow.webContents.send('copy-complete', cleaned);
@@ -773,6 +801,10 @@ async function performCopyMulti(source, destinations, options, onProgress) {
 
   // ── Scan the source ONCE ────────────────────────────────────────────────
   const onlyRel = options.onlyRel ? new Set(options.onlyRel.map(p => p.replace(/\\/g,'/'))) : null;
+  // File filter (optional): { extCat: {ext:'VIDEO'|'AUDIO'|'PICTURES'|'OTHERS'},
+  //                           copyEmpty: bool, reorganize: bool }
+  const FF = options.fileFilter && options.fileFilter.extCat ? options.fileFilter : null;
+  const ffReorg = !!(FF && FF.reorganize);
   const allFiles=[], allDirs=[];
   const SKIP = new Set(['.DS_Store','.Spotlight-V100','.Trashes','.fseventsd','.TemporaryItems']);
   const skipKeys = new Set(options.skipKeys || []);
@@ -794,13 +826,37 @@ async function performCopyMulti(source, destinations, options, onProgress) {
             const key = `${rel}|${s.size}|${Math.floor(s.mtimeMs/1000)}`;
             if (skipKeys.has(key)) continue;
           }
-          allFiles.push({src:full,size:s.size,mtimeMs:s.mtimeMs,rel});
+          let cat = null;
+          if (FF) {
+            const ext = path.extname(e.name).slice(1).toLowerCase();
+            cat = FF.extCat[ext] || null;
+            if (!cat) continue;                       // format not enabled → skipped
+            if (ffReorg && cat === 'OTHERS') continue; // Others never reorganized
+          }
+          allFiles.push({src:full,size:s.size,mtimeMs:s.mtimeMs,rel,cat});
           totalBytes+=s.size;
         }
       } catch(_) {}
     }
   })(source.path);
   totalFiles = allFiles.length;
+
+  // Destination-relative path per file. Normally identical to the source rel;
+  // with "Reorganize files on destination" every kept file is flattened into
+  // /VIDEO, /AUDIO or /PICTURES, with an _2/_3… suffix on basename collisions.
+  const usedNames = new Map();
+  for (const f of allFiles) {
+    if (!ffReorg) { f.destRel = f.rel; continue; }
+    const base = path.basename(f.rel);
+    const key = f.cat + '/' + base.toLowerCase();
+    const n = (usedNames.get(key) || 0) + 1;
+    usedNames.set(key, n);
+    if (n === 1) f.destRel = f.cat + '/' + base;
+    else {
+      const ext = path.extname(base);
+      f.destRel = f.cat + '/' + base.slice(0, base.length - ext.length) + '_' + n + ext;
+    }
+  }
 
   // ── Destination roots, folder tree, note file ───────────────────────────
   for (const r of R) {
@@ -829,7 +885,11 @@ async function performCopyMulti(source, destinations, options, onProgress) {
       catch (e) { console.error('Note file write failed:', e.message); }
     }
   }
-  if (!onlyRel) {
+  // Full source tree is pre-created only when copying everything, or when the
+  // filter is on WITH "Copy empty folders". Filter without that option: folders
+  // are created on demand per file, so dirs left empty by filtering never appear.
+  // Reorganize ignores the source tree entirely (/VIDEO etc. created per file).
+  if (!onlyRel && !ffReorg && (!FF || FF.copyEmpty)) {
     for (const d of allDirs) {
       const rel = path.relative(source.path, d);
       let st=null; try { st=fs.statSync(d); } catch(_){}
@@ -854,7 +914,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
       const act = R.filter(r=>r.active);
       if (!act.length) break;
       const file=allFiles[i], rel=file.rel;
-      const destFilesAbs = act.map(r => path.join(r.destPath, rel));
+      const destFilesAbs = act.map(r => path.join(r.destPath, file.destRel));
       const onB = b => {
         copiedBytes+=b;
         const now=Date.now();
@@ -868,7 +928,10 @@ async function performCopyMulti(source, destinations, options, onProgress) {
           errors:R.reduce((a,r)=>a+r.errors,0) });
       };
       try {
-        if (onlyRel) for (const df of destFilesAbs) { try { fs.mkdirSync(path.dirname(df),{recursive:true}); } catch(_){} }
+        // On-demand parent dir: retry runs (onlyRel), filtered copies without
+        // "Copy empty folders", and reorganize (/VIDEO etc.) all skip the
+        // upfront tree creation, so make sure each file's parent exists.
+        if (onlyRel || ffReorg || (FF && !FF.copyEmpty)) for (const df of destFilesAbs) { try { fs.mkdirSync(path.dirname(df),{recursive:true}); } catch(_){} }
         const { digest, failed } = await copyFanOut(file.src, destFilesAbs, onB, hasher);
         const srcHash = digest == null ? null : String(digest);
         let st=null; try { st=fs.statSync(file.src); } catch(_){}
@@ -881,7 +944,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
             // SECURE/PRO: commit to the physical medium before verify reads it back
             if (isPro || isSecure) await fsyncFile(df);
             r.copiedFiles++;
-            r.copied.push({rel,src:file.src,dest:df,size:file.size,mtimeMs:file.mtimeMs,srcHash});
+            r.copied.push({rel,destRel:file.destRel,src:file.src,dest:df,size:file.size,mtimeMs:file.mtimeMs,srcHash});
           }
         }
       } catch(e){
@@ -934,8 +997,8 @@ async function performCopyMulti(source, destinations, options, onProgress) {
         } catch(e){ r.errors++; r.errorList.push({file:c.rel,error:e.message,phase:'verify'}); r.failedFiles.push(c.rel); }
         c._writeOk = okv;
         if (okv && !proDouble) {
-          r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000) });
-          if (isPro || isSecure) r.cksumEntries.push({ rel:c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
+          r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000), ...(c.destRel&&c.destRel!==c.rel?{d:c.destRel}:{}) });
+          if (isPro || isSecure) r.cksumEntries.push({ rel:c.destRel||c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
         }
         verifiedBytes+=c.size; passBytes+=c.size; verifiedFiles++;
         emit(c.rel,'dest',r.di,r.name);
@@ -958,8 +1021,8 @@ async function performCopyMulti(source, destinations, options, onProgress) {
           catch(e){ stable=false; }
           for (const r of holders) {
             if (stable) {
-              r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000) });
-              r.cksumEntries.push({ rel:c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
+              r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000), ...(c.destRel&&c.destRel!==c.rel?{d:c.destRel}:{}) });
+              r.cksumEntries.push({ rel:c.destRel||c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
             } else {
               r.errors++;
               r.errorList.push({ file:c.rel, error:'source read unstable', phase:'source' });
@@ -989,7 +1052,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
   } else {
     // FAST mode — no verification; every copied file is recorded for the sentinel
     for (const r of R) for (const c of r.copied)
-      r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000) });
+      r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000), ...(c.destRel&&c.destRel!==c.rel?{d:c.destRel}:{}) });
   }
 
   return R.map(r => ({

@@ -142,9 +142,30 @@ cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:
 flex-shrink:0;transition:color .15s;}
 .info-btn svg{width:16px;height:16px;}
 .info-btn:hover{color:var(--text);}
-#modes-info-ov,#sentinel-info-ov,#pro-warn-ov,#update-ov,#doubleread-info-ov,#report-info-ov,#cksum-info-ov,#settings-ov,#verify-progress-ov,#verify-result-ov,#counter-info-ov{display:none;position:fixed;inset:0;z-index:1200;background:rgba(5,6,8,.55);
+#modes-info-ov,#sentinel-info-ov,#pro-warn-ov,#update-ov,#doubleread-info-ov,#report-info-ov,#cksum-info-ov,#settings-ov,#verify-progress-ov,#verify-result-ov,#counter-info-ov,#filefilter-info-ov{display:none;position:fixed;inset:0;z-index:1200;background:rgba(5,6,8,.55);
 backdrop-filter:blur(16px) saturate(120%);-webkit-backdrop-filter:blur(16px) saturate(120%);align-items:center;justify-content:center;}
-#modes-info-ov.open,#sentinel-info-ov.open,#pro-warn-ov.open,#update-ov.open,#doubleread-info-ov.open,#report-info-ov.open,#cksum-info-ov.open,#settings-ov.open,#verify-progress-ov.open,#verify-result-ov.open,#counter-info-ov.open{display:flex;}
+#modes-info-ov.open,#sentinel-info-ov.open,#pro-warn-ov.open,#update-ov.open,#doubleread-info-ov.open,#report-info-ov.open,#cksum-info-ov.open,#settings-ov.open,#verify-progress-ov.open,#verify-result-ov.open,#counter-info-ov.open,#filefilter-info-ov.open{display:flex;}
+/* File filter modal internals */
+.ff-cat{display:flex;align-items:center;gap:9px;padding:6px 0 2px;}
+.ff-cat .switch{width:32px;height:19px;}
+.ff-cat .slider::before{width:13px;height:13px;}
+.ff-cat input:checked + .slider::before{transform:translateX(13px);}
+.ff-cat-name{font-size:11px;font-weight:700;letter-spacing:.05em;}
+.ff-fmts{display:flex;flex-direction:column;margin:0 0 4px 42px;}
+.ff-fmt{display:flex;align-items:center;gap:9px;padding:2px 0;}
+.ff-fmt .switch{width:28px;height:16px;}
+.ff-fmt .slider::before{width:10px;height:10px;}
+.ff-fmt input:checked + .slider::before{transform:translateX(12px);}
+.ff-fmt-name{font-size:12px;color:var(--text);letter-spacing:.03em;}
+.ff-opts{border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;flex-direction:column;gap:8px;}
+.ff-opt{display:flex;align-items:center;gap:9px;}
+.ff-opt .switch{width:32px;height:19px;}
+.ff-opt .slider::before{width:13px;height:13px;}
+.ff-opt input:checked + .slider::before{transform:translateX(13px);}
+.ff-opt-name{font-size:12px;color:var(--text);}
+.switch .slider.ff-mixed{background:var(--bg3);border-color:var(--border2);}
+.switch .slider.ff-mixed::before{background:var(--text3);transform:translateX(7px);}
+.ff-list{max-height:52vh;overflow-y:auto;padding-right:6px;}
 /* PRO algo selector (visible only when PRO active) */
 .pro-algo{margin-top:9px;}
 .pa-label{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
@@ -838,6 +859,11 @@ value="1" oninput="onCounterInput()">
 <button class="counter-reset" id="counter-auto-btn" onclick="resetCounterOverride()" data-tip="Rescans the destination and picks the next free number">Auto</button>
 </div>
 </div>
+<div class="cc-sw-grp" style="padding:6px 12px 10px;flex-shrink:0;">
+<label class="switch"><input type="checkbox" id="filefilter-toggle" onchange="onFileFilterToggle(this)"><span class="slider"></span></label>
+<div class="cc-label" style="margin:0;"><span class="sw-txt">File Filter</span>
+<button class="info-btn" onclick="showFileFilterInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
+</div>
 </div>
 <div style="flex:0"></div>
 <div id="footer"><div class="fc"><span id="footer-ver">v2.0.0</span> - <a onclick="openJE()">github</a></div></div>
@@ -1095,6 +1121,27 @@ Save
 </div>
 
 <button class="mi-close" onclick="hideModesInfo()">Got it</button>
+</div>
+</div>
+
+<div id="filefilter-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideFileFilterInfo()">
+<div class="mi-card">
+<div class="mi-h">File filter</div>
+<div class="mi-sub">Only enabled formats are copied — everything else on the card is skipped. The filter switch resets at every launch; your format choices are saved.</div>
+<div class="ff-list" id="ff-list"></div>
+<div class="ff-opts">
+<div class="ff-opt">
+<label class="switch"><input type="checkbox" id="ff-empty" onchange="onFilterOpt('copyEmptyFolders',this.checked)"><span class="slider"></span></label>
+<span class="ff-opt-name">Copy empty folders</span>
+<button class="info-btn" data-tip="Keep folders that end up empty after filtering"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
+</div>
+<div class="ff-opt">
+<label class="switch"><input type="checkbox" id="ff-reorg" onchange="onFilterOpt('reorganizeFiles',this.checked)"><span class="slider"></span></label>
+<span class="ff-opt-name">Reorganize files on destination</span>
+<button class="info-btn" data-tip="Groups copied files into /VIDEO, /AUDIO, /PICTURES — Others are never copied in this mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
+</div>
+</div>
+<button class="mi-close" onclick="hideFileFilterInfo()">Got it</button>
 </div>
 </div>
 
@@ -1417,6 +1464,12 @@ const S = {
   dragVol:null,
   dragTokId:null,
   presets:[null,null,null,null],
+  // File filter — main switch is session-only (always OFF at launch);
+  // per-format choices and the two options persist across sessions.
+  fileFilter:false,
+  fileFilterFormats:null,      // { ext:bool } — null until first activation
+  copyEmptyFolders:false,
+  reorganizeFiles:false,
   activePreset:-1,
   ctxSlot:-1,
   writeSentinel:false,      // item 24 — OFF by default: nothing is written on the card until the user opts in
@@ -1482,6 +1535,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }
   const prefs=await window.ingesto.loadPrefs();
   if(Array.isArray(prefs.presets)) S.presets=prefs.presets.slice(0,4).concat(Array(Math.max(0,4-prefs.presets.length)).fill(null));
+  if(prefs.fileFilterFormats && typeof prefs.fileFilterFormats==='object') S.fileFilterFormats=prefs.fileFilterFormats;
+  S.copyEmptyFolders = prefs.copyEmptyFolders === true;
+  S.reorganizeFiles  = prefs.reorganizeFiles  === true;
   if(prefs.counter){
     S.counter=prefs.counter;
     S.counterOverride=!!prefs.counterOverride;
@@ -1546,6 +1602,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     const fv=document.getElementById('footer-ver'); if(fv) fv.textContent='v'+v;
   });
   window.ingesto.onFinderDrop(onFinderDrop);
+  window.ingesto.onVolumesChanged(onVolumesChanged);
   window.ingesto.onUpdateAvailable(showUpdateNotice);
 
   // Native HTML5 drop from Finder
@@ -1558,17 +1615,20 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     e.preventDefault();
     if(S.dragVol) return;
     _lastMouseX = e.clientX;
-    // Mac: use .files[i].path (works natively)
+    // file.path was removed in Electron 32+ — webUtils.getPathForFile (exposed
+    // by the preload as getPathForFile) is the supported way to resolve the
+    // filesystem path of a dropped File on every platform.
     const files = e.dataTransfer ? e.dataTransfer.files : [];
     for(let i=0;i<files.length;i++){
-      const fp = files[i].path || '';
+      const fp = window.ingesto.getPathForFile(files[i]) || files[i].path || '';
       if(fp){ onFinderDrop(fp, e.clientX); return; }
     }
-    // Mac fallback: .items API
+    // Fallback: .items API
     for(const item of e.dataTransfer.items||[]){
       if(item.kind==='file'){
         const f=item.getAsFile();
-        if(f&&f.path){ onFinderDrop(f.path, e.clientX); return; }
+        const fp=f ? (window.ingesto.getPathForFile(f) || f.path || '') : '';
+        if(fp){ onFinderDrop(fp, e.clientX); return; }
       }
     }
   });
@@ -1615,6 +1675,9 @@ function persistPrefs(){
     writeChecksum:S.writeChecksum, cksumList:S.cksumList, cksumMhl:S.cksumMhl,
     ntfyEnabled:S.ntfyEnabled, ntfyServer:S.ntfyServer, ntfyTopic:S.ntfyTopic,
     hookCommand:S.hookCommand,
+    fileFilterFormats:S.fileFilterFormats,
+    copyEmptyFolders:S.copyEmptyFolders,
+    reorganizeFiles:S.reorganizeFiles,
     destPaths:S.dests.map(d=>({path:d.path,name:d.name})),
   });
 }
@@ -1643,6 +1706,16 @@ async function onFinderDrop(filePath, clientX, forceZone){
 // ═══════════════════════════════════════════════════════
 // Volumes
 // ═══════════════════════════════════════════════════════
+// Fired by the main process the instant a volume mounts/unmounts (macOS: fs.watch
+// on /Volumes; Windows: cheap drive-letter polling). No manual refresh needed —
+// mirrors what apps like Photo Mechanic / OffShoot do. Skipped mid-copy: an ingest
+// is already hammering the disk, no need to add a volume scan on top of it: the
+// next mount/unmount event (or the periodic Windows poll) will catch up once it ends.
+function onVolumesChanged(){
+  if (S.copying) return;
+  loadVolumes(true);
+}
+
 async function loadVolumes(propose=false){
   const btn=document.getElementById('refresh-btn');
   const lbl=btn?btn.querySelector('.rfr-lbl'):null;
@@ -2741,7 +2814,7 @@ async function startCopy(){
     await window.ingesto.startCopy({
       sources,
       destinations: S.dests,
-      options: { mode: S.mode, proAlgo: S.proAlgo, proDoubleRead: S.proDoubleRead, folderTemplate: buildTplStr(), writeSentinel: S.writeSentinel, writeChecksum: S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl }
+      options: { mode: S.mode, proAlgo: S.proAlgo, proDoubleRead: S.proDoubleRead, folderTemplate: buildTplStr(), writeSentinel: S.writeSentinel, writeChecksum: S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl, fileFilter: buildFileFilterOptions() }
     });
   } else {
     // Sequential per-source so each can pass its own skipKeys
@@ -2757,6 +2830,7 @@ async function startCopy(){
           skipKeys: s._skipKeys || [],
           writeSentinel: S.writeSentinel,
           writeChecksum: S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl,
+          fileFilter: buildFileFilterOptions(),
         }
       });
     }
@@ -3069,6 +3143,75 @@ function showSentinelInfo(){ document.getElementById('sentinel-info-ov').classLi
 function hideSentinelInfo(){ document.getElementById('sentinel-info-ov').classList.remove('open'); }
 function showCounterInfo(){ document.getElementById('counter-info-ov').classList.add('open'); }
 function hideCounterInfo(){ document.getElementById('counter-info-ov').classList.remove('open'); }
+
+// ═══════════════════════════════════════════════════════
+// File filter
+// ═══════════════════════════════════════════════════════
+const FILTER_CATS = {
+  VIDEO:    { color:'var(--blue)',  exts:['mov','mp4','mxf','avi','mkv','webm','r3d','braw','arri','exr'] },
+  AUDIO:    { color:'var(--pro)',   exts:['wav','aiff','m4a','mp3'] },
+  PICTURES: { color:'var(--orange, #f2a33e)', exts:['jpg','jpeg','png','tiff','tif','bmp','gif','psd','ai','eps','ico','svg','dng','raw','cr2','nef','arw','raf','rw2','orf'] },
+  OTHERS:   { color:'var(--text3)', exts:['xml','thm','cpi','rtf','rmd','bnp','inp','int','db','dat','fcpxml','aaf','srt'] },
+};
+function filterDefaults(){
+  const f={};
+  for (const [cat,def] of Object.entries(FILTER_CATS))
+    for (const e of def.exts) f[e] = (cat!=='OTHERS');
+  return f;
+}
+function onFileFilterToggle(el){
+  S.fileFilter = el.checked;                    // session-only, never persisted
+  if (S.fileFilter && !S.fileFilterFormats){    // first activation: defaults
+    S.fileFilterFormats = filterDefaults();
+    persistPrefs();
+  }
+}
+function showFileFilterInfo(){
+  if (!S.fileFilterFormats) S.fileFilterFormats = filterDefaults();
+  renderFilterList();
+  document.getElementById('ff-empty').checked = S.copyEmptyFolders;
+  document.getElementById('ff-reorg').checked = S.reorganizeFiles;
+  document.getElementById('filefilter-info-ov').classList.add('open');
+}
+function hideFileFilterInfo(){ document.getElementById('filefilter-info-ov').classList.remove('open'); }
+function renderFilterList(){
+  const box=document.getElementById('ff-list');
+  const F=S.fileFilterFormats;
+  let h='';
+  for (const [cat,def] of Object.entries(FILTER_CATS)){
+    const states=def.exts.map(e=>!!F[e]);
+    const allOn=states.every(Boolean), allOff=states.every(s=>!s);
+    h+=`<div class="ff-cat">`+
+       `<label class="switch"><input type="checkbox" ${allOn?'checked':''} onchange="toggleFilterCat('${cat}',this.checked)">`+
+       `<span class="slider${(!allOn&&!allOff)?' ff-mixed':''}"></span></label>`+
+       `<span class="ff-cat-name" style="color:${def.color};">${cat}</span></div>`;
+    h+=`<div class="ff-fmts">`;
+    for (const e of def.exts){
+      h+=`<div class="ff-fmt"><label class="switch"><input type="checkbox" ${F[e]?'checked':''} onchange="toggleFilterExt('${e}',this.checked)"><span class="slider"></span></label>`+
+         `<span class="ff-fmt-name">${e.toUpperCase()}</span></div>`;
+    }
+    h+=`</div>`;
+  }
+  box.innerHTML=h;
+}
+function toggleFilterExt(ext,on){
+  S.fileFilterFormats[ext]=on;
+  persistPrefs(); renderFilterList();
+}
+function toggleFilterCat(cat,on){
+  for (const e of FILTER_CATS[cat].exts) S.fileFilterFormats[e]=on;
+  persistPrefs(); renderFilterList();
+}
+function onFilterOpt(key,on){ S[key]=on; persistPrefs(); }
+// Builds the option object passed to the copy engine; null when filter is off
+function buildFileFilterOptions(){
+  if (!S.fileFilter || !S.fileFilterFormats) return null;
+  const extCat={};
+  for (const [cat,def] of Object.entries(FILTER_CATS))
+    for (const e of def.exts)
+      if (S.fileFilterFormats[e]) extCat[e]=cat;
+  return { extCat, copyEmpty:S.copyEmptyFolders, reorganize:S.reorganizeFiles };
+}
 function showDoubleReadInfo(){ document.getElementById('doubleread-info-ov').classList.add('open'); }
 function hideDoubleReadInfo(){ document.getElementById('doubleread-info-ov').classList.remove('open'); }
 function showReportInfo(){ document.getElementById('report-info-ov').classList.add('open'); }
