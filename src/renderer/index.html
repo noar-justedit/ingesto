@@ -142,9 +142,9 @@ cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:
 flex-shrink:0;transition:color .15s;}
 .info-btn svg{width:16px;height:16px;}
 .info-btn:hover{color:var(--text);}
-#modes-info-ov,#sentinel-info-ov,#pro-warn-ov,#update-ov,#doubleread-info-ov,#report-info-ov,#cksum-info-ov,#settings-ov,#verify-progress-ov,#verify-result-ov,#counter-info-ov,#filefilter-info-ov{display:none;position:fixed;inset:0;z-index:1200;background:rgba(5,6,8,.55);
+#modes-info-ov,#pro-warn-ov,#update-ov,#settings-ov,#verify-progress-ov,#verify-result-ov,#counter-info-ov{display:none;position:fixed;inset:0;z-index:1200;background:rgba(5,6,8,.55);
 backdrop-filter:blur(16px) saturate(120%);-webkit-backdrop-filter:blur(16px) saturate(120%);align-items:center;justify-content:center;}
-#modes-info-ov.open,#sentinel-info-ov.open,#pro-warn-ov.open,#update-ov.open,#doubleread-info-ov.open,#report-info-ov.open,#cksum-info-ov.open,#settings-ov.open,#verify-progress-ov.open,#verify-result-ov.open,#counter-info-ov.open,#filefilter-info-ov.open{display:flex;}
+#modes-info-ov.open,#pro-warn-ov.open,#update-ov.open,#settings-ov.open,#verify-progress-ov.open,#verify-result-ov.open,#counter-info-ov.open{display:flex;}
 /* File filter modal internals */
 .ff-cat{display:flex;align-items:center;gap:9px;padding:6px 0 2px;}
 .ff-cat .switch{width:32px;height:19px;}
@@ -777,8 +777,19 @@ margin:0 auto 14px;border:1px solid transparent;}
 /* Settings */
 .gear-btn{display:inline-flex;align-items:center;justify-content:center;padding:5px;border-radius:7px;border:1.5px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;-webkit-app-region:no-drag;transition:all .15s;}
 .gear-btn:hover{border-color:var(--text3);color:var(--text);}
-.set-section{margin:6px 0 4px;}
-.set-sec-title{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;}
+.set-section{margin:6px 0 4px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.set-section:last-of-type{border-bottom:none;}
+.set-hd{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.set-sec-title{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text);}
+.set-desc{font-size:13px;color:var(--text3);line-height:1.4;margin:0 0 8px 48px;}
+.set-details{margin-left:48px;display:none;}
+.set-details.on{display:block;}
+.set-subrow{display:flex;align-items:center;gap:9px;padding:3px 0;}
+.set-subrow .switch{width:30px;height:17px;}
+.set-subrow .slider::before{width:11px;height:11px;}
+.set-subrow input:checked + .slider::before{transform:translateX(13px);}
+.set-sub-lbl{font-size:13px;color:var(--text);}
+.set-sub-hint{font-size:12px;color:var(--text3);}
 .set-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
 .set-lbl{font-size:14px;color:var(--text);}
 .set-field{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
@@ -859,11 +870,6 @@ value="1" oninput="onCounterInput()">
 <button class="counter-reset" id="counter-auto-btn" onclick="resetCounterOverride()" data-tip="Rescans the destination and picks the next free number">Auto</button>
 </div>
 </div>
-<div class="cc-sw-grp" style="padding:6px 12px 10px;flex-shrink:0;">
-<label class="switch"><input type="checkbox" id="filefilter-toggle" onchange="onFileFilterToggle(this)"><span class="slider"></span></label>
-<div class="cc-label" style="margin:0;"><span class="sw-txt">File Filter</span>
-<button class="info-btn" onclick="showFileFilterInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
-</div>
 </div>
 <div style="flex:0"></div>
 <div id="footer"><div class="fc"><span id="footer-ver">v2.0.0</span> - <a onclick="openJE()">github</a></div></div>
@@ -920,31 +926,7 @@ value="1" oninput="onCounterInput()">
 </div>
 </div>
 </div>
-<div class="cc-group cc-track">
-<div class="cc-track-hd">
-<div class="cc-sw-grp">
-<label class="switch"><input type="checkbox" id="sentinel-toggle" onchange="onSentinelToggle(this)"><span class="slider"></span></label>
-<div class="cc-label" style="margin:0;">Card Tracking
-<button class="info-btn" onclick="showSentinelInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
-</div>
-<div class="cc-sw-grp" id="cksum-grp" style="display:none;">
-<label class="switch"><input type="checkbox" id="cksum-toggle" checked onchange="onChecksumToggle(this)"><span class="slider"></span></label>
-<div class="cc-label" style="margin:0;"><span class="sw-txt">Write Checksum</span>
-<button class="info-btn" onclick="showChecksumInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
-</div>
-<div class="cc-sw-grp" id="report-grp">
-<label class="switch"><input type="checkbox" id="report-toggle" onchange="onReportToggle(this)"><span class="slider"></span></label>
-<div class="cc-label" style="margin:0;"><span class="sw-txt">Ingest Report</span>
-<button class="info-btn" onclick="showReportInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
-<button class="view-report-btn" onclick="openReport()" title="Open the report">VIEW</button>
-</div>
-<div class="cc-sw-grp" id="dr-group" style="display:none;">
-<label class="switch"><input type="checkbox" id="pro-dr-toggle" onchange="setProDouble(this.checked)"><span class="slider"></span></label>
-<div class="cc-label" style="margin:0;">Double Source Read
-<button class="info-btn" onclick="showDoubleReadInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
-</div>
-</div>
-</div>
+
 </div>
 <div id="bottombar">
 <div class="pb-track-top"><div class="pb-fill" id="pb-fill" style="width:0%"></div></div>
@@ -1124,26 +1106,7 @@ Save
 </div>
 </div>
 
-<div id="filefilter-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideFileFilterInfo()">
-<div class="mi-card">
-<div class="mi-h">File filter</div>
-<div class="mi-sub">Only enabled formats are copied — everything else on the card is skipped. The filter switch resets at every launch; your format choices are saved.</div>
-<div class="ff-list" id="ff-list"></div>
-<div class="ff-opts">
-<div class="ff-opt">
-<label class="switch"><input type="checkbox" id="ff-empty" onchange="onFilterOpt('copyEmptyFolders',this.checked)"><span class="slider"></span></label>
-<span class="ff-opt-name">Copy empty folders</span>
-<button class="info-btn" data-tip="Keep folders that end up empty after filtering"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
-</div>
-<div class="ff-opt">
-<label class="switch"><input type="checkbox" id="ff-reorg" onchange="onFilterOpt('reorganizeFiles',this.checked)"><span class="slider"></span></label>
-<span class="ff-opt-name">Reorganize files on destination</span>
-<button class="info-btn" data-tip="Groups copied files into /VIDEO, /AUDIO, /PICTURES — Others are never copied in this mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
-</div>
-</div>
-<button class="mi-close" onclick="hideFileFilterInfo()">Got it</button>
-</div>
-</div>
+
 
 <div id="counter-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideCounterInfo()">
 <div class="mi-card">
@@ -1159,91 +1122,13 @@ Save
 </div>
 </div>
 
-<div id="sentinel-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideSentinelInfo()">
-<div class="mi-card">
-<div class="mi-h">Auto-detect unformatted card</div>
-<div class="mi-sub">Knowing whether a card has already been ingested.</div>
-<div class="mi-row" style="border-top:none;">
-<div class="mi-body"><b>When ON</b>, INGESTO writes a small log file (<b>.ingesto.json</b>) on the source card right after copying. It records which files were copied, so the next time you insert the card INGESTO can tell you it has already been ingested — handy to avoid a double copy or to catch a card that wasn't reformatted. This requires write access to the card.</div>
-</div>
-<div class="mi-row">
-<div class="mi-body"><b>When OFF (default)</b>, INGESTO never writes anything on your source cards — not even a temporary check file. The card is only ever read.</div>
-</div>
-<button class="mi-close" onclick="hideSentinelInfo()">Got it</button>
-</div>
-</div>
 
-<div id="doubleread-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideDoubleReadInfo()">
-<div class="mi-card">
-<div class="mi-h">Double source read</div>
-<div class="mi-sub">Detect a card that's starting to fail.</div>
-<div class="mi-row" style="border-top:none;">
-<div class="mi-body"><b>When ON (PRO only)</b>, after checking the copies INGESTO reads the <b>source a second time</b> and confirms it still returns the same data. A card that gives different bytes on re-read is dying — those files are flagged as <b>suspect</b> and left out of the checksum list. Hard read errors are always caught.</div>
-</div>
-<div class="mi-row">
-<div class="mi-body"><b>Limit to know:</b> the second read only reaches the card if its data no longer sits in the OS RAM cache. That's the case on real offloads (footage larger than your RAM), but <b>not guaranteed on a small test copy on a high-RAM machine</b>. It roughly doubles verify time.</div>
-</div>
-<button class="mi-close" onclick="hideDoubleReadInfo()">Got it</button>
-</div>
-</div>
 
-<div id="report-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideReportInfo()">
-<div class="mi-card">
-<div class="mi-h">Ingest Report</div>
-<div class="mi-sub">A running log of every card, written to the destination.</div>
-<div class="mi-row" style="border-top:none;">
-<div class="mi-body">When ON, INGESTO writes a self-contained <b>INGESTO_report.html</b> at the root of each destination and adds a line after every ingest: <b>#, date, card, operator, camera, mode, files, size, result, note</b>. Open it any time with <b>View</b>; it opens in your browser and has an <b>Export PDF</b> button (clean printable version).</div>
-</div>
-<div class="mi-row">
-<div class="mi-body">The file <b>lives in the destination and carries its own data</b>, so if you quit mid-project and relaunch on the same destination, the log is picked up and continued. It also captures ingests made in <b>Shooter mode</b>. It's a log of events — re-ingesting a card adds a new line.</div>
-</div>
-<div class="mi-row">
-<div class="mi-body" style="width:100%;">
-<div style="font-weight:600;color:#fff;margin-bottom:10px;">Formats written to each destination</div>
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-<label class="switch"><input type="checkbox" id="rf-html" checked onchange="onReportFmt()"><span class="slider"></span></label>
-<span><b>HTML</b> <span style="opacity:.6;">— to read and print (INGESTO_report.html)</span></span>
-</div>
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-<label class="switch"><input type="checkbox" id="rf-csv" onchange="onReportFmt()"><span class="slider"></span></label>
-<span><b>CSV</b> <span style="opacity:.6;">— for spreadsheets / databases</span></span>
-</div>
-<div style="display:flex;align-items:center;gap:10px;">
-<label class="switch"><input type="checkbox" id="rf-json" onchange="onReportFmt()"><span class="slider"></span></label>
-<span><b>JSON</b> <span style="opacity:.6;">— for scripts and other tools</span></span>
-</div>
-</div>
-</div>
-<button class="mi-close" onclick="hideReportInfo()">Got it</button>
-</div>
-</div>
 
-<div id="cksum-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideChecksumInfo()">
-<div class="mi-card">
-<div class="mi-h">Checksum</div>
-<div class="mi-sub">Fingerprints written to each destination for later re-verification.</div>
-<div class="mi-row" style="border-top:none;">
-<div class="mi-body">Available in <b>SECURE</b> and <b>PRO</b>. INGESTO writes the per-file fingerprints it already computed during the ingest, so another tool can re-verify the copies later, on another machine or months down the line.</div>
-</div>
-<div class="mi-row">
-<div class="mi-body" style="width:100%;">
-<div style="font-weight:600;color:#fff;margin-bottom:10px;">Formats written</div>
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-<label class="switch"><input type="checkbox" id="cf-list" checked onchange="onChecksumFmt()"><span class="slider"></span></label>
-<span><b>Checksum list</b> <span style="opacity:.6;">— TeraCopy-style .xxh/.md5, re-checkable in TeraCopy (SECURE &amp; PRO)</span></span>
-</div>
-<div style="display:flex;align-items:center;gap:10px;" id="cf-mhl-row">
-<label class="switch"><input type="checkbox" id="cf-mhl" onchange="onChecksumFmt()"><span class="slider"></span></label>
-<span><b>MHL</b> <span style="opacity:.6;">— classic .mhl manifest read by Silverstack, YoYotta, OffShoot (PRO only)</span></span>
-</div>
-</div>
-</div>
-<div class="mi-row" id="cf-mhl-note">
-<div class="mi-body"><b>About MHL:</b> written only when the PRO checksum algorithm is <b>MD5</b> or <b>xxHash64</b>. With xxHash128 (the PRO default) no MHL is produced. For a first test prefer <b>MD5</b>: the xxHash64 byte order in MHL can't be guaranteed against every tool and should be validated on a real ingest in Silverstack or YoYotta.</div>
-</div>
-<button class="mi-close" onclick="hideChecksumInfo()">Got it</button>
-</div>
-</div>
+
+
+
+
 
 <div id="pro-warn-ov" class="modes-info-ov-like" onclick="if(event.target===this)proWarnCancel()">
 <div class="mi-card">
@@ -1372,25 +1257,90 @@ Save
 </div>
 
 <div id="settings-ov" class="modes-info-ov-like" onclick="if(event.target===this)closeSettings()">
-<div class="mi-card" style="max-width:470px;">
+<div class="mi-card" style="max-width:520px;max-height:82vh;overflow-y:auto;">
 <div class="mi-h">Settings</div>
+
 <div class="set-section">
-<div class="set-sec-title">Phone notification (ntfy)</div>
-<div class="set-row">
-<label class="switch"><input type="checkbox" id="set-ntfy-en" onchange="onNtfyToggle(this)"><span class="slider"></span></label>
-<span class="set-lbl">Send a push to your phone when an ingest finishes</span>
+<div class="set-hd"><label class="switch"><input type="checkbox" id="sentinel-toggle" onchange="onSentinelToggle(this)"><span class="slider"></span></label><span class="set-sec-title">Card Tracking</span></div>
+<div class="set-desc">Writes a small tag on the source card to detect it wasn't reformatted between two ingests.</div>
 </div>
+
+<div class="set-section">
+<div class="set-hd"><label class="switch"><input type="checkbox" id="cksum-toggle" checked onchange="onChecksumToggle(this)"><span class="slider"></span></label><span class="set-sec-title">Write Checksum</span></div>
+<div class="set-desc">Writes the checksum list to the destination (SECURE and PRO mode only)</div>
+<div class="set-details" id="cksum-details">
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="cf-list" checked onchange="onChecksumFmt()"><span class="slider"></span></label><span class="set-sub-lbl">Checksum list</span><span class="set-sub-hint">— .xxh/.md5, re-checkable in TeraCopy</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="cf-mhl" onchange="onChecksumFmt()"><span class="slider"></span></label><span class="set-sub-lbl">MHL manifest</span><span class="set-sub-hint">— Silverstack, YoYotta, OffShoot (PRO, MD5 or xxHash64 only)</span></div>
+</div>
+</div>
+
+<div class="set-section">
+<div class="set-hd"><label class="switch"><input type="checkbox" id="pro-dr-toggle" onchange="setProDouble(this.checked)"><span class="slider"></span></label><span class="set-sec-title">Double Source Read</span></div>
+<div class="set-desc">Re-reads the source after copy to catch a failing card (PRO mode only)</div>
+</div>
+
+<div class="set-section">
+<div class="set-hd"><label class="switch"><input type="checkbox" id="report-toggle" onchange="onReportToggle(this)"><span class="slider"></span></label><span class="set-sec-title">Ingest Report</span><button class="view-report-btn" onclick="openReport()" title="Open the report">VIEW</button></div>
+<div class="set-desc">Writes an ingest report to the destination</div>
+<div class="set-details" id="report-details">
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="rf-html" checked onchange="onReportFmt()"><span class="slider"></span></label><span class="set-sub-lbl">HTML</span><span class="set-sub-hint">— to read and print</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="rf-csv" onchange="onReportFmt()"><span class="slider"></span></label><span class="set-sub-lbl">CSV</span><span class="set-sub-hint">— for spreadsheets</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="rf-json" onchange="onReportFmt()"><span class="slider"></span></label><span class="set-sub-lbl">JSON</span><span class="set-sub-hint">— for tools and scripts</span></div>
+</div>
+</div>
+
+<div class="set-section">
+<div class="set-hd"><label class="switch"><input type="checkbox" id="filefilter-toggle" onchange="onFileFilterToggle(this)"><span class="slider"></span></label><span class="set-sec-title">File Filter</span></div>
+<div class="set-desc">Filter which source file types get ingested — resets to off at every launch, format choices are saved</div>
+<div class="set-details" id="ff-details">
+<div class="ff-list" id="ff-list"></div>
+<div class="ff-opts">
+<div class="ff-opt"><label class="switch"><input type="checkbox" id="ff-empty" onchange="onFilterOpt('copyEmptyFolders',this.checked)"><span class="slider"></span></label><span class="ff-opt-name">Copy empty folders</span></div>
+<div class="ff-opt"><label class="switch"><input type="checkbox" id="ff-reorg" onchange="onFilterOpt('reorganizeFiles',this.checked)"><span class="slider"></span></label><span class="ff-opt-name">Reorganize files on destination — /VIDEO, /AUDIO, /PICTURES; Others never copied</span></div>
+</div>
+</div>
+</div>
+
+<div class="set-section">
+<div class="set-hd"><label class="switch"><input type="checkbox" id="set-ntfy-en" onchange="onNtfyToggle(this)"><span class="slider"></span></label><span class="set-sec-title">Phone Notifications (ntfy)</span></div>
+<div class="set-desc">Send a notification to your phone after ingest.</div>
+<div class="set-details" id="ntfy-details">
 <div class="set-field"><label>Server</label><input type="text" id="set-ntfy-server" placeholder="https://ntfy.sh" oninput="onNtfyField()"></div>
 <div class="set-field"><label>Topic</label><input type="text" id="set-ntfy-topic" placeholder="ingesto-yourname-9f3k" oninput="onNtfyField()"></div>
-<div class="set-hint">Install the <b>ntfy</b> app on your phone, subscribe to this exact topic, and you'll be notified when an ingest finishes — even away from the computer. Pick a long, hard-to-guess topic name (it acts as a password on the public server).</div>
+<div class="set-hint">Install the <b>ntfy</b> app on your phone and subscribe to this exact topic. Pick a long, hard-to-guess topic name (it acts as a password on the public server).</div>
 <button class="set-test" onclick="testNtfy()">Send test notification</button>
 <span class="set-test-res" id="set-ntfy-res"></span>
 </div>
-<div class="set-section">
-<div class="set-sec-title">Post-ingest command</div>
-<div class="set-field" style="align-items:flex-start;"><label style="padding-top:9px;">Command</label><input type="text" id="set-hook" placeholder="(disabled — leave empty)" oninput="onHookField()"></div>
-<div class="set-hint">Runs a shell command after each ingest (not when canceled). Leave empty to disable. Variables: <b>{destPath} · {card} · {count} · {bytes} · {result}</b> (quote them in your command, e.g. <b>"{destPath}"</b>). ⚠ This executes exactly what you type — only enter commands you trust.</div>
 </div>
+
+<div class="set-section">
+<div class="set-hd"><label class="switch"><input type="checkbox" id="set-hook-en" onchange="onHookToggle(this)"><span class="slider"></span></label><span class="set-sec-title">Post-Ingest Command</span></div>
+<div class="set-desc">Runs a shell command after ingest</div>
+<div class="set-details" id="hook-details">
+<div class="set-field" style="align-items:flex-start;"><label style="padding-top:9px;">Command</label><input type="text" id="set-hook" placeholder="(command to run)" oninput="onHookField()"></div>
+<div class="set-hint">Runs after each ingest (not when canceled). Variables: <b>{destPath} · {card} · {count} · {bytes} · {result}</b> (quote them, e.g. <b>"{destPath}"</b>). ⚠ This executes exactly what you type — only enter commands you trust.</div>
+</div>
+</div>
+
+<div class="set-section">
+<div class="set-sec-title" style="margin-bottom:4px;">Settings File</div>
+<div class="set-desc">Share ingesto settings with another machine / user.</div>
+<div class="set-details" style="display:block;">
+<div class="set-hint" style="margin:4px 0 6px;">Included in export / applied on import:</div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="sx-tpl" checked onchange="onExportInc()"><span class="slider"></span></label><span class="set-sub-lbl">Current naming template</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="sx-presets" checked onchange="onExportInc()"><span class="slider"></span></label><span class="set-sub-lbl">Naming template presets</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="sx-mode" checked onchange="onExportInc()"><span class="slider"></span></label><span class="set-sub-lbl">Copy mode</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="sx-track" checked onchange="onExportInc()"><span class="slider"></span></label><span class="set-sub-lbl">Card tracking</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="sx-cksum" checked onchange="onExportInc()"><span class="slider"></span></label><span class="set-sub-lbl">Write checksum (incl. settings)</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="sx-report" checked onchange="onExportInc()"><span class="slider"></span></label><span class="set-sub-lbl">Ingest report (incl. settings)</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="sx-filter" checked onchange="onExportInc()"><span class="slider"></span></label><span class="set-sub-lbl">File filter (incl. settings)</span></div>
+<div style="display:flex;gap:8px;margin-top:10px;">
+<button class="set-test" onclick="exportSettingsFile()">Export settings…</button>
+<button class="set-test" onclick="importSettingsFile()">Import settings…</button>
+</div>
+</div>
+</div>
+
 <button class="mi-close" onclick="closeSettings()">Done</button>
 </div>
 </div>
@@ -1448,6 +1398,7 @@ const S = {
   writeChecksum:true,
   cksumList:true, cksumMhl:false,
   ntfyEnabled:false, ntfyServer:'https://ntfy.sh', ntfyTopic:'',
+  hookEnabled:false, exportInclude:null,
   hookCommand:'',
   mode:'slow',
   proAlgo:'xxh128',
@@ -1535,7 +1486,14 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }
   const prefs=await window.ingesto.loadPrefs();
   if(Array.isArray(prefs.presets)) S.presets=prefs.presets.slice(0,4).concat(Array(Math.max(0,4-prefs.presets.length)).fill(null));
-  if(prefs.fileFilterFormats && typeof prefs.fileFilterFormats==='object') S.fileFilterFormats=prefs.fileFilterFormats;
+  if(prefs.fileFilterFormats && typeof prefs.fileFilterFormats==='object'){
+    S.fileFilterFormats=prefs.fileFilterFormats;
+    // Formats added since the prefs were saved get their category default
+    // (stale keys from removed formats are simply ignored downstream).
+    for (const [cat,def] of Object.entries(FILTER_CATS))
+      for (const e of def.exts)
+        if (!(e in S.fileFilterFormats)) S.fileFilterFormats[e] = (cat!=='OTHERS');
+  }
   S.copyEmptyFolders = prefs.copyEmptyFolders === true;
   S.reorganizeFiles  = prefs.reorganizeFiles  === true;
   if(prefs.counter){
@@ -1572,13 +1530,21 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   initMaster('report-toggle', (S.reportHtml||S.reportCsv||S.reportJson), v=>S.writeReport=v, ()=>S.writeReport);
   initMaster('cksum-toggle', (S.cksumList||S.cksumMhl), v=>S.writeChecksum=v, ()=>S.writeChecksum);
   if(typeof prefs.ntfyEnabled==='boolean') S.ntfyEnabled=prefs.ntfyEnabled;
+  // hookEnabled didn't exist before 2.0.5 — a non-empty command used to mean "active"
+  S.hookEnabled = typeof prefs.hookEnabled==='boolean' ? prefs.hookEnabled : !!(prefs.hookCommand||'').trim();
+  if (prefs.exportInclude && typeof prefs.exportInclude==='object') S.exportInclude=prefs.exportInclude;
   if(typeof prefs.ntfyServer==='string' && prefs.ntfyServer) S.ntfyServer=prefs.ntfyServer;
   if(typeof prefs.ntfyTopic==='string') S.ntfyTopic=prefs.ntfyTopic;
   { const e=document.getElementById('set-ntfy-en'); if(e) e.checked=S.ntfyEnabled;
     const sv=document.getElementById('set-ntfy-server'); if(sv) sv.value=S.ntfyServer;
     const tp=document.getElementById('set-ntfy-topic'); if(tp) tp.value=S.ntfyTopic; }
   if(typeof prefs.hookCommand==='string') S.hookCommand=prefs.hookCommand;
-  { const hk=document.getElementById('set-hook'); if(hk) hk.value=S.hookCommand; }
+  { const hk=document.getElementById('set-hook'); if(hk) hk.value=S.hookCommand;
+    const he=document.getElementById('set-hook-en'); if(he) he.checked=S.hookEnabled; }
+  if (S.exportInclude) for (const [id,key] of Object.entries(EXPORT_INC)) {
+    const el=document.getElementById(id); if(el && typeof S.exportInclude[key]==='boolean') el.checked=S.exportInclude[key];
+  }
+  updateSettingsDetails();
 
   // Restore persisted destinations (needed for KIOSK: admin sets them once)
   if(Array.isArray(prefs.destPaths)){
@@ -1674,6 +1640,7 @@ function persistPrefs(){
     reportHtml:S.reportHtml, reportCsv:S.reportCsv, reportJson:S.reportJson,
     writeChecksum:S.writeChecksum, cksumList:S.cksumList, cksumMhl:S.cksumMhl,
     ntfyEnabled:S.ntfyEnabled, ntfyServer:S.ntfyServer, ntfyTopic:S.ntfyTopic,
+    hookEnabled:S.hookEnabled, exportInclude:S.exportInclude,
     hookCommand:S.hookCommand,
     fileFilterFormats:S.fileFilterFormats,
     copyEmptyFolders:S.copyEmptyFolders,
@@ -3139,8 +3106,6 @@ function onSentinelToggle(el){
 }
 
 // Item 24 — card tracking info modal
-function showSentinelInfo(){ document.getElementById('sentinel-info-ov').classList.add('open'); }
-function hideSentinelInfo(){ document.getElementById('sentinel-info-ov').classList.remove('open'); }
 function showCounterInfo(){ document.getElementById('counter-info-ov').classList.add('open'); }
 function hideCounterInfo(){ document.getElementById('counter-info-ov').classList.remove('open'); }
 
@@ -3148,10 +3113,12 @@ function hideCounterInfo(){ document.getElementById('counter-info-ov').classList
 // File filter
 // ═══════════════════════════════════════════════════════
 const FILTER_CATS = {
-  VIDEO:    { color:'var(--blue)',  exts:['mov','mp4','mxf','avi','mkv','webm','r3d','braw','arri','exr'] },
-  AUDIO:    { color:'var(--pro)',   exts:['wav','aiff','m4a','mp3'] },
-  PICTURES: { color:'var(--orange, #f2a33e)', exts:['jpg','jpeg','png','tiff','tif','bmp','gif','psd','ai','eps','ico','svg','dng','raw','cr2','nef','arw','raf','rw2','orf'] },
-  OTHERS:   { color:'var(--text3)', exts:['xml','thm','cpi','rtf','rmd','bnp','inp','int','db','dat','fcpxml','aaf','srt'] },
+  // Extensions actually generated by DJI, Canon, Nikon, Panasonic, Fujifilm,
+  // Blackmagic, RED, ARRI, Phantom (and Sony) cameras — not a generic media list.
+  VIDEO:    { color:'var(--blue)',  exts:['mov','mp4','mxf','mts','m2ts','braw','r3d','ari','crm','nev','cine'] },
+  AUDIO:    { color:'var(--pro)',   exts:['wav','m4a','mp3'] },
+  PICTURES: { color:'var(--orange, #f2a33e)', exts:['jpg','jpeg','heic','hif','tif','tiff','dng','cr2','cr3','nef','raf','rw2','arw'] },
+  OTHERS:   { color:'var(--text3)', exts:['xml','thm','cpi','bdm','mpl','rmd','lrf','srt','bnp','inp','int','db','dat'] },
 };
 function filterDefaults(){
   const f={};
@@ -3165,15 +3132,9 @@ function onFileFilterToggle(el){
     S.fileFilterFormats = filterDefaults();
     persistPrefs();
   }
+  if (S.fileFilter) renderFilterList();
+  updateSettingsDetails();
 }
-function showFileFilterInfo(){
-  if (!S.fileFilterFormats) S.fileFilterFormats = filterDefaults();
-  renderFilterList();
-  document.getElementById('ff-empty').checked = S.copyEmptyFolders;
-  document.getElementById('ff-reorg').checked = S.reorganizeFiles;
-  document.getElementById('filefilter-info-ov').classList.add('open');
-}
-function hideFileFilterInfo(){ document.getElementById('filefilter-info-ov').classList.remove('open'); }
 function renderFilterList(){
   const box=document.getElementById('ff-list');
   const F=S.fileFilterFormats;
@@ -3212,10 +3173,6 @@ function buildFileFilterOptions(){
       if (S.fileFilterFormats[e]) extCat[e]=cat;
   return { extCat, copyEmpty:S.copyEmptyFolders, reorganize:S.reorganizeFiles };
 }
-function showDoubleReadInfo(){ document.getElementById('doubleread-info-ov').classList.add('open'); }
-function hideDoubleReadInfo(){ document.getElementById('doubleread-info-ov').classList.remove('open'); }
-function showReportInfo(){ document.getElementById('report-info-ov').classList.add('open'); }
-function hideReportInfo(){ document.getElementById('report-info-ov').classList.remove('open'); }
 function revealPath(p){ try{ window.ingesto.revealPath(p); }catch(_){} }
 
 // ══════════════════════════ INGEST REPORT ══════════════════════════
@@ -3227,6 +3184,7 @@ function onReportToggle(el){
     const h=document.getElementById('rf-html'); if(h) h.checked=true;
   }
   persistPrefs();
+  updateSettingsDetails();
 }
 function onReportFmt(){
   const wasAny=S.reportHtml||S.reportCsv||S.reportJson;
@@ -3236,8 +3194,6 @@ function onReportFmt(){
   syncMaster('report-toggle', (S.reportHtml||S.reportCsv||S.reportJson), wasAny, v=>S.writeReport=v);
   persistPrefs();
 }
-function showChecksumInfo(){ document.getElementById('cksum-info-ov').classList.add('open'); }
-function hideChecksumInfo(){ document.getElementById('cksum-info-ov').classList.remove('open'); }
 function onChecksumToggle(el){
   S.writeChecksum=el.checked;
   // Re-enabling the master with no format selected → turn on the default (Checksum list)
@@ -3246,6 +3202,7 @@ function onChecksumToggle(el){
     const l=document.getElementById('cf-list'); if(l) l.checked=true;
   }
   persistPrefs();
+  updateSettingsDetails();
 }
 function onChecksumFmt(){
   const wasAny=S.cksumList||S.cksumMhl;
@@ -3271,11 +3228,125 @@ function initMaster(masterId, anyFormat, setFlag, getFlag){
   else { t.checked=getFlag(); }
 }
 // ── Settings panel + ntfy notification ──
-function openSettings(){ document.getElementById('settings-ov').classList.add('open'); }
+function openSettings(){
+  updateSettingsDetails();
+  if (S.fileFilter && S.fileFilterFormats) renderFilterList();
+  document.getElementById('settings-ov').classList.add('open');
+}
 function closeSettings(){ document.getElementById('settings-ov').classList.remove('open'); }
-function onNtfyToggle(el){ S.ntfyEnabled=el.checked; persistPrefs(); }
+
+// Show a section's details only while its master switch is on
+function updateSettingsDetails(){
+  const map = {
+    'cksum-details':  S.writeChecksum,
+    'report-details': S.writeReport,
+    'ff-details':     S.fileFilter,
+    'ntfy-details':   S.ntfyEnabled,
+    'hook-details':   S.hookEnabled,
+  };
+  for (const [id,on] of Object.entries(map)){
+    const el=document.getElementById(id);
+    if (el) el.classList.toggle('on', !!on);
+  }
+  const ffEmpty=document.getElementById('ff-empty'); if(ffEmpty) ffEmpty.checked=S.copyEmptyFolders;
+  const ffReorg=document.getElementById('ff-reorg'); if(ffReorg) ffReorg.checked=S.reorganizeFiles;
+}
+function onNtfyToggle(el){ S.ntfyEnabled=el.checked; persistPrefs(); updateSettingsDetails(); }
+function onHookToggle(el){ S.hookEnabled=el.checked; persistPrefs(); updateSettingsDetails(); }
 function onHookField(){ S.hookCommand=(document.getElementById('set-hook').value||'').trim(); persistPrefs(); }
+
+// ── Settings file export / import ─────────────────────────────────────────
+// Shares the ingest setup between machines. Deliberately excluded: source and
+// destination paths, the post-ingest hook, notifications, kiosk PIN, and
+// operator/camera/notes — machine- or person-specific, and the hook is a shell
+// command (importing one from a shared file would be a code-execution vector).
+const EXPORT_INC = { 'sx-tpl':'namingTemplate','sx-presets':'namingPresets','sx-mode':'copyMode',
+  'sx-track':'cardTracking','sx-cksum':'writeChecksum','sx-report':'ingestReport','sx-filter':'fileFilter' };
+function onExportInc(){
+  S.exportInclude = {};
+  for (const [id,key] of Object.entries(EXPORT_INC))
+    S.exportInclude[key] = !!document.getElementById(id)?.checked;
+  persistPrefs();
+}
+function getExportInclude(){
+  const inc={};
+  for (const [id,key] of Object.entries(EXPORT_INC))
+    inc[key] = !!document.getElementById(id)?.checked;
+  return inc;
+}
+async function exportSettingsFile(){
+  const inc = getExportInclude();
+  const d = { ingestoSettingsVersion:1, exported:new Date().toISOString(), include:inc };
+  if (inc.namingTemplate) d.tokens = S.tokens.map(t=>({type:t.type,key:t.key}));
+  if (inc.namingPresets)  d.presets = S.presets;
+  if (inc.copyMode)       { d.mode=S.mode; d.proAlgo=S.proAlgo; d.proDoubleRead=S.proDoubleRead; }
+  if (inc.cardTracking)   d.writeSentinel = S.writeSentinel;
+  if (inc.writeChecksum)  { d.writeChecksum=S.writeChecksum; d.cksumList=S.cksumList; d.cksumMhl=S.cksumMhl; }
+  if (inc.ingestReport)   { d.writeReport=S.writeReport; d.reportHtml=S.reportHtml; d.reportCsv=S.reportCsv; d.reportJson=S.reportJson; }
+  if (inc.fileFilter)     { d.fileFilterFormats=S.fileFilterFormats; d.copyEmptyFolders=S.copyEmptyFolders; d.reorganizeFiles=S.reorganizeFiles; }
+  try{
+    const r = await window.ingesto.exportSettings(d);
+    if (r && r.ok) showToast('Settings exported.', 'ok');
+    else if (r && r.error) showToast('Export failed: '+r.error, 'warn');
+  }catch(_){ showToast('Export failed.', 'warn'); }
+}
+async function importSettingsFile(){
+  let r=null;
+  try{ r = await window.ingesto.importSettings(); }catch(_){}
+  if (!r || !r.ok) { if (r && r.error) showToast('Import failed: '+r.error, 'warn'); return; }
+  const d = r.data;
+  if (!d || d.ingestoSettingsVersion !== 1 || !d.include){ showToast('Not a valid INGESTO settings file.', 'warn'); return; }
+  const inc = d.include;
+  // The file's own include map is authoritative — it says what it contains.
+  if (inc.namingTemplate && Array.isArray(d.tokens)){
+    S.tokens = d.tokens.map(t=>({type:t.type==='var'?'var':'text', key:String(t.key||''), id:tokId++}));
+    renderTemplate(); syncRaw();
+  }
+  if (inc.namingPresets && Array.isArray(d.presets)){
+    S.presets = d.presets.slice(0,4).concat(Array(Math.max(0,4-d.presets.length)).fill(null))
+      .map(p => (p && p.name) ? { name:String(p.name), tokens:(p.tokens||[]).map(t=>({type:t.type,key:t.key})) } : null);
+    renderPresets();
+  }
+  if (inc.copyMode){
+    if (['fast','normal','slow','pro'].includes(d.mode)) setMode(d.mode);
+    if (['xxh64','xxh128','md5'].includes(d.proAlgo)) S.proAlgo=d.proAlgo;
+    S.proDoubleRead = d.proDoubleRead === true;
+    const dr=document.getElementById('pro-dr-toggle'); if(dr) dr.checked=S.proDoubleRead;
+  }
+  if (inc.cardTracking){
+    S.writeSentinel = d.writeSentinel === true;
+    const t=document.getElementById('sentinel-toggle'); if(t) t.checked=S.writeSentinel;
+  }
+  if (inc.writeChecksum){
+    S.writeChecksum = d.writeChecksum !== false;
+    S.cksumList = d.cksumList !== false;
+    S.cksumMhl  = d.cksumMhl === true;
+    const a=document.getElementById('cksum-toggle'); if(a) a.checked=S.writeChecksum;
+    const b=document.getElementById('cf-list'); if(b) b.checked=S.cksumList;
+    const c=document.getElementById('cf-mhl');  if(c) c.checked=S.cksumMhl;
+  }
+  if (inc.ingestReport){
+    S.writeReport = d.writeReport === true;
+    S.reportHtml = d.reportHtml !== false;
+    S.reportCsv  = d.reportCsv === true;
+    S.reportJson = d.reportJson === true;
+    const a=document.getElementById('report-toggle'); if(a) a.checked=S.writeReport;
+    const b=document.getElementById('rf-html'); if(b) b.checked=S.reportHtml;
+    const c=document.getElementById('rf-csv');  if(c) c.checked=S.reportCsv;
+    const e=document.getElementById('rf-json'); if(e) e.checked=S.reportJson;
+  }
+  if (inc.fileFilter){
+    if (d.fileFilterFormats && typeof d.fileFilterFormats==='object') S.fileFilterFormats=d.fileFilterFormats;
+    S.copyEmptyFolders = d.copyEmptyFolders === true;
+    S.reorganizeFiles  = d.reorganizeFiles === true;
+    if (S.fileFilter) renderFilterList();
+  }
+  persistPrefs();
+  updateSettingsDetails();
+  showToast('Settings imported — all included categories applied.', 'ok');
+}
 function runPostHook(R){
+  if(!S.hookEnabled) return;
   const cmd=(S.hookCommand||'').trim(); if(!cmd) return;
   if(R.length>0 && R.every(r=>r.canceled)) return;   // skip on cancel
   // Card names come from volume labels — attacker-controllable. Strip shell

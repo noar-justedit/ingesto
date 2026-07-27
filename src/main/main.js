@@ -488,6 +488,17 @@ function getMountedVolumes() {
       if (parts?.length >= 4) { totalSize=parseInt(parts[1])*1024; freeSize=parseInt(parts[3])*1024; }
     } catch (_) {}
 
+    // Skip phantom volumes: macOS occasionally surfaces an internal, unlabeled
+    // helper mount (snapshot / sealed system volume) under /Volumes, displayed
+    // under its raw UUID since it has no real name. df reports it either with
+    // zero capacity or with zero free space (sealed read-only snapshot). A real
+    // card or drive is never named by a raw UUID *and* byte-for-byte full, so
+    // requiring both keeps genuine media safe while hiding the artifact.
+    if ((totalSize === 0 || freeSize === 0) &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(name)) {
+      continue;
+    }
+
     let camera = null;
     if (!isSystem && !isNetwork) { try { camera = detectCamera(fullPath) || null; } catch (_) {} }
     volumes.push({ name, path: fullPath, isSystem, isNetwork, fsType,
@@ -568,6 +579,31 @@ ipcMain.handle('browse-folder', async () => {
 });
 
 // ─── IPC: Export / import template presets (item 9) ──────────────────────────
+ipcMain.handle('export-settings', async (_, data) => {
+  const r = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export INGESTO settings',
+    defaultPath: 'ingesto_settings.json',
+    filters: [{ name: 'INGESTO settings', extensions: ['json'] }],
+  });
+  if (r.canceled || !r.filePath) return { ok: false };
+  try {
+    fs.writeFileSync(r.filePath, JSON.stringify(data, null, 2), 'utf8');
+    return { ok: true, path: r.filePath };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+ipcMain.handle('import-settings', async () => {
+  const r = await dialog.showOpenDialog(mainWindow, {
+    title: 'Import INGESTO settings',
+    properties: ['openFile'],
+    filters: [{ name: 'INGESTO settings', extensions: ['json'] }],
+  });
+  if (r.canceled || !r.filePaths || !r.filePaths.length) return { ok: false };
+  try {
+    const data = JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8'));
+    return { ok: true, data };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
 ipcMain.handle('export-presets', async (_, data) => {
   const r = await dialog.showSaveDialog(mainWindow, {
     title: 'Export template presets',
