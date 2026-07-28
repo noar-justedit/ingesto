@@ -77,6 +77,7 @@ function findModelInText(txt, modelMap) {
 
 // Sony XAVC/XDCAM raw model strings → ingesto short names
 const SONY_MODEL_MAP = {
+  'ILME-FX5B': 'FX5',  'ILME-FX5':  'FX5',
   'ILME-FX2':  'FX2',
   'ILME-FX6V': 'FX6', 'ILME-FX6':  'FX6',
   'ILME-FX3':  'FX3',
@@ -87,8 +88,9 @@ const SONY_MODEL_MAP = {
   'PXW-FX9':   'FX9',
   'PXW-FR7':   'FR7',
   'MPC-3610':  'Venice',
-  'MPC-3628':  'Venice2',
-  'ILX-LR1':   'Burano',
+  'MPC-3628':  'Venice2',   // Venice 2 — 8.6K sensor block
+  'MPC-3626':  'Venice2',   // Venice 2 — 6K sensor block
+  'MPC-2610':  'Burano',
   'ILCE-7S':   'A7S',
   'ILCE-7SM2': 'A7S2',
   'ILCE-7SM3': 'A7S3',
@@ -188,11 +190,30 @@ const NIKON_MODEL_MAP = {
   'NIKON Z 7II':  'Z7II',
 };
 
-// Fujifilm
+// Fujifilm — raw EXIF model strings as written by the cameras. findModelInText
+// tries longest-first, so "X-T50" matches before "X-T5", "X100VI" before "X100V",
+// "GFX100S II" before "GFX100S", "X-H2S" before "X-H2".
 const FUJI_MODEL_MAP = {
-  'X-H2S':     'XH2S',
-  'X-H2':      'XH2',
-  'GFX100 II': 'GFX100II',
+  'X-H2S':      'XH2S',
+  'X-H2':       'XH2',
+  'X-T50':      'XT50',
+  'X-T5':       'XT5',
+  'X-T4':       'XT4',
+  'X-T30 II':   'XT30II',
+  'X-T30':      'XT30',
+  'X-T3':       'XT3',
+  'X-S20':      'XS20',
+  'X-S10':      'XS10',
+  'X-M5':       'XM5',
+  'X-E5':       'XE5',
+  'X-E4':       'XE4',
+  'X-Pro3':     'XPro3',
+  'X100VI':     'X100VI',
+  'X100V':      'X100V',
+  'GFX100S II': 'GFX100SII',
+  'GFX100S':    'GFX100S',
+  'GFX100 II':  'GFX100II',
+  'GFX50S II':  'GFX50SII',
 };
 
 // Phantom (Vision Research)
@@ -660,7 +681,7 @@ function detectGenericDCIM(root) {
   const dcimDir = path.join(root, 'DCIM');
   const subs = listFiles(dcimDir);
   for (const sub of subs) {
-    const files = listFiles(path.join(dcimDir, sub), n => /\.(jpe?g|mov|mp4|mts|m2ts|nef|raf|cr3|crm|dng)$/i.test(n));
+    const files = listFiles(path.join(dcimDir, sub), n => /\.(jpe?g|heic|hif|mov|mp4|mts|m2ts|nef|raf|cr3|cr2|crm|rw2|arw|dng)$/i.test(n));
     if (!files.length) continue;
     const head = readHead(path.join(dcimDir, sub, files[0]), 128 * 1024);
     if (!head) continue;

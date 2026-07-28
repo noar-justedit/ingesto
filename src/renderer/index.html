@@ -39,7 +39,7 @@
 /* typographie */
 --font:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;
 --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,monospace;
---font-logo:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
+--font-logo:'Poppins',-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
 --font-display:'Poppins',-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;
 }
 @font-face{
@@ -63,7 +63,7 @@ height:52px;-webkit-app-region:drag;flex-shrink:0;
 display:flex;align-items:center;padding:0 18px 0 80px;
 border-bottom:1px solid var(--border);z-index:100;gap:10px;
 }
-.t-logo{font-family:var(--font-logo);font-size:24px;font-weight:normal;letter-spacing:.02em;text-transform:lowercase;-webkit-app-region:no-drag;display:flex;align-items:center;gap:0;}
+.t-logo{font-family:var(--font-logo);font-size:24px;font-weight:700;letter-spacing:.02em;text-transform:lowercase;-webkit-app-region:no-drag;display:flex;align-items:center;gap:0;}
 .t-logo .t-name{display:inline-block;color:var(--text);}
 .t-logo > span{color:var(--green);}
 .t-spacer{flex:1;}
@@ -242,15 +242,9 @@ text-transform:uppercase;margin-bottom:9px;display:flex;align-items:center;gap:7
 .modes-row{display:flex;gap:10px;}
 .modes-row .mbtn{flex:1;margin-bottom:0;min-width:0;}
 .modes-row .minfo{overflow:hidden;}
-.cc-track{}
-.cc-track-hd{display:flex;align-items:center;gap:18px;flex-wrap:wrap;max-width:560px;}
-.cc-sw-grp{display:flex;align-items:center;gap:10px;}
-.cc-track-hd .cc-label{margin:0;}
 .cc-label.cc-label-neutral{color:var(--text3);font-size:14px;font-weight:600;letter-spacing:.12em;}
-.cc-track-hd .switch{flex-shrink:0;}
 .view-report-btn{padding:3px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;}
 .view-report-btn:hover{border-color:var(--blue);color:var(--blue);}
-.cc-track-desc{font-size:13px;color:var(--text3);line-height:1.35;margin-top:9px;}
 .mbtn{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;background:var(--bg2);
 border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;font-family:var(--font);
 color:var(--text);transition:all .15s;}
@@ -519,7 +513,7 @@ display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px;
 .vc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
 padding:12px 10px 9px;cursor:grab;transition:all .2s;
 display:flex;flex-direction:column;align-items:center;gap:7px;min-height:120px;position:relative;}
-body.win32 .vc{cursor:pointer;}
+body.win32 .vc, body.linux .vc{cursor:pointer;}
 .vc:hover{border-color:var(--border2);background:var(--bg3);transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.4);}
 .vc:active{transform:scale(.96);cursor:grabbing;}
 .vc.dragging{opacity:.3;}
@@ -562,7 +556,7 @@ font-size:17px;font-weight:800;font-family:var(--mono);color:var(--text);}
 background:transparent;color:var(--text2);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;}
 .reveal-btn:hover{border-color:var(--blue);color:var(--blue);}
 .pb-fill{height:100%;background:linear-gradient(90deg,var(--pb-color,var(--green)),var(--pb-color2,#00ffaa));
-transition:width .5s ease;box-shadow:0 0 8px var(--green-g);}
+transition:width .5s ease;box-shadow:0 0 8px var(--pb-glow,var(--green-g));}
 .pb-stats{display:flex;gap:8px;margin-top:12px;}
 .sbox{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);padding:6px 8px;min-width:0;position:relative;overflow:hidden;}
 .sbox-spd{overflow:hidden;}
@@ -664,7 +658,7 @@ border-radius: 4px;
 
 /* ── Windows window controls ──────────────────────────────── */
 .win-controls { display:none; -webkit-app-region:no-drag; margin-left:auto; flex-shrink:0; height:100%; }
-body.win32 .win-controls { display:flex; }
+body.win32 .win-controls, body.linux .win-controls { display:flex; }
 .win-btn {
   width:46px; height:100%; border:none; background:transparent;
   color:var(--text2); font-size:15px; cursor:pointer;
@@ -1473,8 +1467,10 @@ document.addEventListener('mouseout', e => {
 });
 
 window.addEventListener('DOMContentLoaded', async ()=>{
-  if(window.ingesto.platform==='win32'){
-    document.body.classList.add('win32');
+  if(window.ingesto.platform==='win32' || window.ingesto.platform==='linux'){
+    // Linux: same custom window controls as Windows — titleBarStyle:'hidden'
+    // removes the system buttons there too, and nothing replaces them natively.
+    document.body.classList.add(window.ingesto.platform==='win32' ? 'win32' : 'linux');
     // Update maximize button when state changes
     window.ingesto.onMaximizeChange(isMax=>{
       const btn=document.getElementById('btn-max');
@@ -1993,11 +1989,6 @@ function setMode(m,persist=true){
   S.mode=m;
   ['fast','normal','slow','pro'].forEach(id=>document.getElementById(`mode-${id}`)?.classList.toggle('on',id===m));
   const pa=document.getElementById('pro-algo'); if(pa) pa.style.display = (m==='pro')?'block':'none';
-  const dr=document.getElementById('dr-group'); if(dr) dr.style.display = (m==='pro')?'flex':'none';
-  const ck=document.getElementById('cksum-grp'); if(ck) ck.style.display = (m==='slow'||m==='pro')?'flex':'none';
-  // MHL is PRO-only (SECURE writes an xxHash64 checksum list, never MD5/MHL): hide the option outside PRO.
-  { const r=document.getElementById('cf-mhl-row');  if(r) r.style.display = (m==='pro')?'flex':'none';
-    const n=document.getElementById('cf-mhl-note'); if(n) n.style.display = (m==='pro')?'':'none'; }
   if(persist)persistPrefs();
 }
 function setProAlgo(a,persist=true){
@@ -2518,7 +2509,6 @@ function syncDefaultsToSources(){
 function showCounterWarning(existingFolder){
   // Show inline warning near the counter field
   const inp = document.getElementById('counter-input');
-  const status = document.getElementById('counter-status');
   if(inp){
     inp.style.borderColor='var(--red)';
     inp.style.color='var(--red)';
@@ -2527,11 +2517,6 @@ function showCounterWarning(existingFolder){
       inp.style.color='';
       renderCounter();
     }, 3000);
-  }
-  if(status){
-    status.textContent=`⚠ exists!`;
-    status.style.color='var(--red)';
-    setTimeout(()=>{ status.textContent=S.counterOverride?'manual':'auto'; status.style.color=''; }, 3000);
   }
   // Also show a toast at bottom
   showToast(`⚠ Counter ${String(S.counter).padStart(3,'0')} already exists in destination.
@@ -2893,20 +2878,26 @@ function onProgress(d){
   }
   const globalFrac = idx>=0 ? (idx+localFrac)/N : d.progress;
 
-  const pbInner=document.querySelector('.pb-inner');
+  // Colors are set on #bottombar: the top fill bar (.pb-track-top) is a
+  // SIBLING of .pb-inner, so variables set on .pb-inner never reached it —
+  // the general bar stayed green through every phase while the ring changed.
+  const pbRoot=document.getElementById('bottombar');
   const fill=document.getElementById('pb-fill');
   fill.style.width=`${(globalFrac*100).toFixed(1)}%`;
   if(d.phase==='verify'){
     if(d.pass==='source'){
-      pbInner.style.setProperty('--pb-color','var(--pro)');
-      pbInner.style.setProperty('--pb-color2','#d0aaff');
+      pbRoot.style.setProperty('--pb-color','var(--pro)');
+      pbRoot.style.setProperty('--pb-color2','#d0aaff');
+      pbRoot.style.setProperty('--pb-glow','rgba(168,128,255,.45)');
     } else {
-      pbInner.style.setProperty('--pb-color','var(--blue)');
-      pbInner.style.setProperty('--pb-color2','#7bc8ff');
+      pbRoot.style.setProperty('--pb-color','var(--blue)');
+      pbRoot.style.setProperty('--pb-color2','#7bc8ff');
+      pbRoot.style.setProperty('--pb-glow','rgba(77,144,240,.45)');
     }
   } else {
-    pbInner.style.setProperty('--pb-color','var(--green)');
-    pbInner.style.setProperty('--pb-color2','#00ffaa');
+    pbRoot.style.setProperty('--pb-color','var(--green)');
+    pbRoot.style.setProperty('--pb-color2','#00ffaa');
+    pbRoot.style.setProperty('--pb-glow','var(--green-g)');
   }
   document.getElementById('pb-pct').textContent=`${(globalFrac*100).toFixed(0)}%`;
   { const RING_C=194.8; const r=document.getElementById('pb-pct-ring-fill'); if(r) r.style.strokeDashoffset=(RING_C*(1-globalFrac)).toFixed(1); }

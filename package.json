@@ -1,6 +1,6 @@
 {
   "name": "ingesto",
-  "version": "2.0.5",
+  "version": "2.1.0",
   "description": "Professional camera media ingest application",
   "main": "src/main/main.js",
   "author": "Just Edit <contact@just-edit.fr>",
@@ -21,7 +21,8 @@
     "pack": "electron-builder --dir",
     "build:universal": "electron-builder --config electron-builder.yml --mac",
     "build:win": "electron-builder --config electron-builder.yml --win --x64",
-    "build:all": "electron-builder --config electron-builder.yml --mac --arm64 && electron-builder --config electron-builder.yml --win --x64"
+    "build:all": "electron-builder --config electron-builder.yml --mac --arm64 && electron-builder --config electron-builder.yml --win --x64",
+    "build:linux": "electron-builder --config electron-builder.yml --linux"
   },
   "devDependencies": {
     "electron": "^34.0.0",

@@ -377,9 +377,6 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 
 // ─── IPC: Preload drop (Windows drag & drop fix) ────────────────────────────
-ipcMain.on('preload-drop', (_, { path: filePath, clientX }) => {
-  mainWindow.webContents.send('finder-drop', filePath, clientX);
-});
 
 // ─── IPC: Window controls (Windows only) ────────────────────────────────────
 ipcMain.on('win-minimize', () => { if (mainWindow) mainWindow.minimize(); });
@@ -407,6 +404,24 @@ function startVolumeWatch() {
     try {
       fs.watch('/Volumes', { persistent: false }, () => debounced());
     } catch (e) { console.error('Volume watch failed:', e.message); }
+  } else if (process.platform === 'linux') {
+    // Automount roots: /media/$USER (Debian/Ubuntu/Pop) or /run/media/$USER
+    // (Fedora/Arch). The user subdirectory may not exist until the first card
+    // is mounted, so we watch the parents and (re-)attach child watchers on
+    // every event. fs.watch is not recursive on Linux.
+    const user = require('os').userInfo().username;
+    const roots = ['/media', '/run/media', '/media/' + user, '/run/media/' + user];
+    const watched = new Set();
+    const tryWatch = (d) => {
+      if (watched.has(d)) return;
+      try {
+        if (!fs.existsSync(d)) return;
+        fs.watch(d, { persistent: false }, () => { debounced(); setTimeout(attachAll, 400); });
+        watched.add(d);
+      } catch (_) {}
+    };
+    const attachAll = () => roots.forEach(tryWatch);
+    attachAll();
   } else if (process.platform === 'win32') {
     let lastLetters = null;
     _volWatchTimer = setInterval(() => {
@@ -429,6 +444,7 @@ ipcMain.handle('get-volumes', async () => {
 function getMountedVolumes() {
   const volumes = [];
   if (process.platform === 'win32') return getMountedVolumesWin();
+  if (process.platform === 'linux') return getMountedVolumesLinux();
   if (process.platform !== 'darwin') return volumes;
 
   // Network detection
@@ -505,6 +521,74 @@ function getMountedVolumes() {
       totalSize, freeSize, usedSize: totalSize-freeSize, camera });
     // Note: NO iconBase64 — icons are now rendered as SVG in renderer (zero disk I/O)
   }
+  return volumes;
+}
+
+// ─── Linux volume scan (Pop!_OS, Ubuntu, and udisks2-based distros) ────────
+// Block devices come from lsblk (util-linux, present everywhere); desktop
+// automount puts removable media under /media/$USER (Debian/Ubuntu family)
+// or /run/media/$USER (Fedora/Arch family) — both are covered. Network
+// mounts (SMB/NFS/SSHFS) come from /proc/mounts. Returned objects carry the
+// exact same fields as the macOS and Windows scanners.
+function getMountedVolumesLinux() {
+  const volumes = [];
+  const seen = new Set();
+  let tree = null;
+  try {
+    const out = execFileSync('lsblk',
+      ['-J', '-b', '-o', 'NAME,MOUNTPOINT,SIZE,FSAVAIL,RM,LABEL,TYPE'],
+      { encoding: 'utf8', timeout: 4000, stdio: ['ignore', 'pipe', 'ignore'] });
+    tree = JSON.parse(out);
+  } catch (_) {}
+
+  const walk = (nodes) => {
+    for (const n of (nodes || [])) {
+      const mp = n.mountpoint;
+      if (mp && !seen.has(mp)) {
+        const total = Number(n.size) || 0;
+        const free  = Number(n.fsavail) || 0;
+        if (mp === '/') {
+          seen.add(mp);
+          volumes.push({
+            name: 'System', path: '/', isSystem: true, isNetwork: false, fsType: 'system',
+            totalSize: total, freeSize: free, usedSize: total - free, camera: null,
+          });
+        } else if (/^\/(media|run\/media)\//.test(mp)) {
+          seen.add(mp);
+          const name = (n.label || '').trim() || path.basename(mp);
+          let camera = null;
+          try { camera = detectCamera(mp) || null; } catch (_) {}
+          volumes.push({
+            name, path: mp, isSystem: false, isNetwork: false, fsType: 'usb',
+            totalSize: total, freeSize: free, usedSize: total - free, camera,
+          });
+        }
+      }
+      walk(n.children);
+    }
+  };
+  if (tree) walk(tree.blockdevices);
+
+  // Network mounts — /proc/mounts, octal-escaped spaces decoded
+  try {
+    for (const line of fs.readFileSync('/proc/mounts', 'utf8').split('\n')) {
+      const parts = line.split(' ');
+      const src = parts[0], mpRaw = parts[1], fstype = parts[2] || '';
+      if (!mpRaw || !/^(cifs|smb3|nfs4?|fuse\.sshfs)$/.test(fstype)) continue;
+      const mp = mpRaw.replace(/\\040/g, ' ');
+      if (seen.has(mp)) continue;
+      seen.add(mp);
+      let totalSize = 0, freeSize = 0;
+      try {
+        const st = fs.statfsSync(mp);
+        totalSize = st.blocks * st.bsize; freeSize = st.bavail * st.bsize;
+      } catch (_) {}
+      volumes.push({
+        name: path.basename(mp) || src, path: mp, isSystem: false, isNetwork: true,
+        fsType: 'network', totalSize, freeSize, usedSize: totalSize - freeSize, camera: null,
+      });
+    }
+  } catch (_) {}
   return volumes;
 }
 
@@ -1228,6 +1312,24 @@ ipcMain.handle('is-removable', async (_, p) => {
       const out = execSync(`powershell -NoProfile -Command "(Get-CimInstance Win32_LogicalDisk -Filter \\"DeviceID='${m[1]}:'\\").DriveType"`, { encoding: 'utf8', timeout: 5000 });
       return out.trim() === '2';  // 2 = Removable Disk
     }
+    if (process.platform === 'linux') {
+      // A mount under the desktop automount roots is removable media by
+      // definition; the sysfs 'removable' flag confirms it when readable
+      // (SD readers over USB report 1; some internal readers report 0,
+      // which is why the mountpoint heuristic comes first).
+      if (/^\/(media|run\/media)\//.test(String(p))) return true;
+      try {
+        const dev = execFileSync('findmnt', ['-n', '-o', 'SOURCE', p],
+          { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+        const base = path.basename(dev);
+        for (const rel of [base + '/removable', base + '/../removable']) {
+          try {
+            return fs.readFileSync(path.join('/sys/class/block', rel), 'utf8').trim() === '1';
+          } catch (_) {}
+        }
+      } catch (_) {}
+      return false;
+    }
     return false;
   } catch (_) { return false; }
 });
@@ -1285,6 +1387,17 @@ ipcMain.handle('eject-volume', async (_, volPath) => {
       if (!m) return { ok: false, error: 'no drive letter' };
       // Best-effort on Windows — may fail silently depending on config
       execSync(`powershell -NoProfile -Command "(New-Object -comObject Shell.Application).Namespace(17).ParseName('${m[1]}:').InvokeVerb('Eject')"`, { timeout: 15000 });
+      return { ok: true };
+    }
+    if (process.platform === 'linux') {
+      // Resolve the block device behind the mountpoint, then let udisks2
+      // unmount it — polkit grants this to the desktop session without sudo,
+      // exactly like the file manager's own eject button.
+      const dev = execFileSync('findmnt', ['-n', '-o', 'SOURCE', volPath],
+        { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+      if (!dev) return { ok: false, error: 'device not found' };
+      execFileSync('udisksctl', ['unmount', '--block-device', dev],
+        { timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'] });
       return { ok: true };
     }
     return { ok: false, error: 'unsupported platform' };
