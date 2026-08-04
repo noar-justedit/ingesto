@@ -974,12 +974,12 @@ ondragover="onDZ(event,'dst')" ondragleave="offDZ(event,'dst')" ondrop="dropDZ(e
 ondragover="tokContainerOver(event)" ondrop="tokContainerDrop(event)"></div>
 <div class="tpl-sub-label" style="margin-top:10px;">Type here your custom template</div>
 <input class="tpl-raw" id="tpl-raw" type="text"
-placeholder="{counter}_{cardname}_{cameraman}_{camera}_{YY}{MM}{DD}_{HH}{MIN}"
+placeholder="{counter}_{cardname}_{operator}_{camera}_{YY}{MM}{DD}_{HH}{MIN}"
 oninput="onRawInput()" onfocus="rawFocused=true" onblur="rawFocused=false">
 <div class="tpl-chips">
 <button class="chip" onclick="addTok('var','counter')">counter</button>
 <button class="chip" onclick="addTok('var','cardname')">card name</button>
-<button class="chip" onclick="addTok('var','cameraman')">operator</button>
+<button class="chip" onclick="addTok('var','operator')">operator</button>
 <button class="chip" onclick="addTok('var','camera')">camera</button>
 <button class="chip" onclick="addTok('var','YY')">YY</button>
 <button class="chip" onclick="addTok('var','MM')">MM</button>
@@ -1424,11 +1424,18 @@ const S = {
 let tokId=0, rawFocused=false;
 const mkTok=(type,key)=>({type,key,id:tokId++});
 
+// Legacy → canonical template variable names. The field is labelled "Operator"
+// everywhere else, but old saved templates used {cameraman}; display and
+// serialise such tokens as {operator} so the UI reads consistently. Both names
+// still resolve at build time (see buildFolderName), so nothing breaks.
+const VAR_CANON = { cameraman: 'operator' };
+const canonKey  = k => VAR_CANON[k] || k;
+
 function defaultTokens(){
   return[
     mkTok('var','counter'),mkTok('sep','_'),
     mkTok('var','cardname'),mkTok('sep','_'),
-    mkTok('var','cameraman'),mkTok('sep','_'),
+    mkTok('var','operator'),mkTok('sep','_'),
     mkTok('var','camera'),mkTok('sep','_'),
     mkTok('var','YY'),mkTok('var','MM'),mkTok('var','DD'),mkTok('sep','_'),
     mkTok('var','HH'),mkTok('var','MIN'),
@@ -2045,7 +2052,7 @@ function renderTemplate(){
   const box=document.getElementById('tpl-box');
   box.innerHTML=S.tokens.map(t=>{
     const cls=t.type==='sep'?'tok tok-sep':'tok tok-var';
-    const lbl=t.type==='var'?`{${t.key}}`:t.key;
+    const lbl=t.type==='var'?`{${canonKey(t.key)}}`:t.key;
     return`<div class="${cls}" draggable="true" data-id="${t.id}"
         ondragstart="tokStart(event,${t.id})"
         ondragover="tokOver2(event,${t.id})"
@@ -2092,7 +2099,7 @@ function tokDrop(e,tid){
 }
 
 function buildTplStr(){
-  return S.tokens.map(t=>t.type==='var'?`{${t.key}}`:t.key).join('');
+  return S.tokens.map(t=>t.type==='var'?`{${canonKey(t.key)}}`:t.key).join('');
 }
 
 // Sync raw input from tokens
@@ -2126,7 +2133,7 @@ function onRawInput(){
   const box=document.getElementById('tpl-box');
   box.innerHTML=S.tokens.map(t=>{
     const cls=t.type==='sep'?'tok tok-sep':'tok tok-var';
-    const lbl=t.type==='var'?`{${t.key}}`:t.key;
+    const lbl=t.type==='var'?`{${canonKey(t.key)}}`:t.key;
     return`<div class="${cls}" draggable="true" data-id="${t.id}"
         ondragstart="tokStart(event,${t.id})"
         ondragover="tokOver2(event,${t.id})"
@@ -2153,7 +2160,7 @@ function updatePreview(){
   const cnt=String(S.counter||1).padStart(3,'0');
   const r=buildTplStr()
     .replaceAll('{counter}',cnt).replaceAll('{cardname}','A001')
-    .replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
+    .replaceAll('{operator}',cam).replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
     .replaceAll('{YY}',String(now.getFullYear()).slice(-2))
     .replaceAll('{MM}',p(now.getMonth()+1)).replaceAll('{DD}',p(now.getDate()))
     .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes())).replaceAll('{SS}',p(now.getSeconds()));
@@ -2169,7 +2176,7 @@ function previewForSource(src, i){
   const cnt = String((S.counter||1)+i).padStart(3,'0');
   const r = buildTplStr()
     .replaceAll('{counter}',cnt).replaceAll('{cardname}',src.name||'A001')
-    .replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
+    .replaceAll('{operator}',cam).replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
     .replaceAll('{YY}',String(now.getFullYear()).slice(-2))
     .replaceAll('{MM}',p(now.getMonth()+1)).replaceAll('{DD}',p(now.getDate()))
     .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes())).replaceAll('{SS}',p(now.getSeconds()));

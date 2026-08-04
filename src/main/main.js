@@ -1200,7 +1200,8 @@ function buildFolderName(tpl, src) {
   let result = tpl
     .replaceAll('{counter}',   src.counter          || '001')
     .replaceAll('{cardname}',  src.name             || 'CARD')
-    .replaceAll('{cameraman}', cameraman)
+    .replaceAll('{operator}',  cameraman)   // canonical name
+    .replaceAll('{cameraman}', cameraman)   // legacy alias — keeps old saved templates working
     .replaceAll('{camera}',    camera)
     .replaceAll('{YY}',  String(n.getFullYear()).slice(-2))
     .replaceAll('{MM}',  p(n.getMonth()+1))
