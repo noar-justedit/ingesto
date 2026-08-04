@@ -1756,7 +1756,11 @@ function renderVolumes(){
     const isSrc=srcIdx>=0, isDst=dstIdx>=0;
     const isHidden=S.hiddenVolumes.has(v.path);
     const tagH=isSrc?`<div class="vc-tag tag-src">SRC${srcIdx+1}</div>`:isDst?`<div class="vc-tag tag-dst">DST${dstIdx+1}</div>`:isHidden?'<div class="vc-tag tag-hidden">HIDDEN</div>':'';
-    const sp2=v.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    // &-escape FIRST: a volume name carrying an HTML-entity-encoded quote (e.g.
+    // &#39;) would otherwise survive the JS-string escapes below, then be decoded
+    // back to a real quote by the HTML parser — breaking out of the inline
+    // handler and executing arbitrary code. Escaping & closes that bypass.
+    const sp2=v.path.replace(/&/g,'&amp;').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     const camBrand = (v.camera?.brand||'').toUpperCase();
     const camSameAsBrand = v.camera?.model && v.camera.model.toLowerCase() === (v.camera.brand||'').toLowerCase();
     const camH = v.camera && v.camera.model
@@ -1968,7 +1972,7 @@ function renderZoneList(z){
   if(!arr.length){list.innerHTML='';return;}
   const tag=z==='src'?'SRC':'DST';
   list.innerHTML=arr.map((e,i)=>{
-    const sp=e.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const sp=e.path.replace(/&/g,'&amp;').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');  // &-escape first — see renderVolumes()
     const icon=z==='src'?`<div class="zi-icon">${getZoneIcon(z)}</div>`:'';
     return`<div class="zi zi-${z}">
       ${icon}
@@ -2434,7 +2438,7 @@ function renderSourceInfoCards(){
     const op      = src.operator || '';
     const cam     = src.camera   || '';
     const note    = src.note     || '';
-    const sp      = src.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const sp      = src.path.replace(/&/g,'&amp;').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');  // &-escape first — see renderVolumes()
     return `<div class="src-info-card${isOpen ? ' open' : ''}" id="sic-${i}">
       <div class="src-info-header" onclick="toggleSIC(${i})">
         <span class="src-info-chevron">▶</span>
@@ -2978,7 +2982,7 @@ function showSummary(R){
   rows.push(srow('Mode', modeTxt, 'font-size:14px'));
   if(er>0) rows.push(srow('Errors', er, 'color:var(--red)'));
   const destRows = R.map(r=>{
-    const jp=(r.destPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const jp=(r.destPath||'').replace(/&/g,'&amp;').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');  // &-escape first — see renderVolumes()
     return `<div class="srow" style="grid-column:1/-1;align-items:center">`+
       `<div class="sr-lbl">→ ${esc(r.sourceName)}</div>`+
       `<div class="sr-dest"><div class="sr-destpath">${esc(r.destPath)}</div>`+
