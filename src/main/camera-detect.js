@@ -159,6 +159,11 @@ const DJI_CODE_MAP = {
   // Handheld / stabilized
   'MC211':'Action2','AC002':'OsmoAction3','AC003':'OsmoAction4','AC004':'OsmoAction5Pro',
   'PP-101':'OsmoPocket3',
+  'PP-041':'OsmoPocket4P',   // confirmed from a real card's MISC/PP-041.db
+  'OP-041':'OsmoPocket4',    // NOT yet confirmed on a real card — inferred from
+                              // FCC ID 2ANDR-OP041 + the Pocket-series PP-xxx/OP-xxx
+                              // naming pattern. Re-verify against MISC/*.db when
+                              // a real Pocket 4 card is available.
 };
 // Prefix-matched codes where a counter varies (e.g. OW001, OW002 on Osmo Nano)
 const DJI_PREFIX_MAP = { 'OW':'OsmoNano' };
