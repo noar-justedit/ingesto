@@ -456,7 +456,17 @@ display:flex;align-items:center;gap:8px;transition:background .1s;color:var(--te
 .ctx-item.danger:hover{background:var(--red-d);}
 /* ── Launch ───────────────────────────────────── */
 #launch{padding:8px 12px 10px;flex-shrink:0;}
-#start-btn{width:100%;padding:15px;border-radius:var(--r);border:1px solid transparent;
+#launch-row{display:flex;gap:10px;}
+#pause-btn{flex:1;padding:15px;border-radius:var(--r);border:1px solid rgba(242,163,62,.5);
+font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:.08em;cursor:pointer;
+transition:box-shadow .25s ease,background .2s,transform .1s;display:flex;align-items:center;
+justify-content:center;gap:8px;text-transform:uppercase;background:#2b2410;color:var(--orange,#f2a33e);}
+#pause-btn:active{transform:translateY(1px);}
+#pause-btn.resume{background:#0f2c1d;border-color:rgba(53,201,139,.45);color:var(--green);}
+#pause-badge{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;
+background:#2b2410;border:1px solid rgba(242,163,62,.35);border-radius:8px;
+font-size:12px;font-weight:600;color:var(--orange,#f2a33e);letter-spacing:.03em;}
+#start-btn{flex:1;width:100%;padding:15px;border-radius:var(--r);border:1px solid transparent;
 font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:.08em;
 cursor:pointer;transition:box-shadow .25s ease,background .2s,transform .1s;display:flex;align-items:center;
 justify-content:center;gap:8px;text-transform:uppercase;}
@@ -997,10 +1007,20 @@ oninput="onRawInput()" onfocus="rawFocused=true" onblur="rawFocused=false">
 <div class="memory-list presets-section" id="presets-row"></div>
 </div>
 <div id="launch">
+<div id="launch-row">
+<button id="pause-btn" style="display:none;" onclick="onPauseBtn()">
+<svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="1.5" width="3.4" height="11" rx="1"/><rect x="8.6" y="1.5" width="3.4" height="11" rx="1"/></svg>
+Pause
+</button>
 <button id="start-btn" disabled onclick="onStartBtn()">
 <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5l9 5.5-9 5.5V1.5z"/></svg>
 Start Ingest
 </button>
+</div>
+<div id="pause-badge" style="display:none;">
+<svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="1.5" width="3.4" height="11" rx="1"/><rect x="8.6" y="1.5" width="3.4" height="11" rx="1"/></svg>
+<span id="pause-badge-txt"></span>
+</div>
 </div>
 </div>
 </div>
@@ -1405,7 +1425,7 @@ const S = {
   counter:1,           // next counter value (auto or overridden)
   counterOverride:false, // true = user set a manual value
   counterMax:0,          // highest counter found in destinations
-  copying:false,
+  copying:false, paused:false,
   dragVol:null,
   dragTokId:null,
   presets:[null,null,null,null],
@@ -1565,6 +1585,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   });
   window.ingesto.onFinderDrop(onFinderDrop);
   window.ingesto.onVolumesChanged(onVolumesChanged);
+  window.ingesto.onPauseHeld(onPauseHeld);
   window.ingesto.onUpdateAvailable(showUpdateNotice);
 
   // Native HTML5 drop from Finder
@@ -2689,15 +2710,46 @@ function showToast(msg, type='info', duration=4000){
 // Launch
 // ═══════════════════════════════════════════════════════
 function onStartBtn(){ if(S.copying) doCancelCopy(); else startCopy(); }
+const PAUSE_SVG='<svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="1.5" width="3.4" height="11" rx="1"/><rect x="8.6" y="1.5" width="3.4" height="11" rx="1"/></svg>';
+const PLAY_SVG='<svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5l9 5.5-9 5.5V1.5z"/></svg>';
+function onPauseBtn(){
+  if(!S.copying) return;
+  if(!S.paused){
+    S.paused=true;
+    window.ingesto.pauseCopy();
+    // The in-flight file finishes first — the 'pause-held' event flips the
+    // badge to "Paused" once the engine is actually holding.
+    setPauseBadge('Pausing — finishing current file…');
+  } else {
+    S.paused=false;
+    window.ingesto.resumeCopy();
+    setPauseBadge(null);
+  }
+  updateBtn();
+}
+function onPauseHeld(){ if(S.paused) setPauseBadge('Paused — ingest will resume where it left off'); }
+function setPauseBadge(txt){
+  const b=document.getElementById('pause-badge');
+  const t=document.getElementById('pause-badge-txt');
+  if(txt){ t.textContent=txt; b.style.display='flex'; }
+  else b.style.display='none';
+}
 function updateBtn(){
   const b=document.getElementById('start-btn');
+  const p=document.getElementById('pause-btn');
   if(S.copying){
     b.disabled=false; b.classList.add('danger');
     b.innerHTML='<svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor"><rect x="2.5" y="2.5" width="9" height="9" rx="1.5"/></svg> Cancel Ingest';
+    p.style.display='flex';
+    if(S.paused){ p.classList.add('resume'); p.innerHTML=PLAY_SVG+' Resume'; }
+    else { p.classList.remove('resume'); p.innerHTML=PAUSE_SVG+' Pause'; }
   } else {
     b.classList.remove('danger');
     b.disabled=!(S.sources.length>0&&S.dests.length>0);
     b.innerHTML='<svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5l9 5.5-9 5.5V1.5z"/></svg> Start Ingest';
+    p.style.display='none';
+    S.paused=false;
+    setPauseBadge(null);
   }
 }
 

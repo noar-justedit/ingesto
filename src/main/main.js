@@ -285,6 +285,9 @@ ipcMain.handle('cancel-verify', async () => { cancelVerify = true; return true; 
 
 let mainWindow;
 let cancelCopy = false;
+let pauseCopy = false;     // pause between files — never mid-file (see pauseGate)
+let activeCopyCount = 0;   // guards against quitting mid-ingest — see 'before-quit' below
+let forceQuit = false;     // set once the user confirms quitting despite an active ingest
 let cancelVerify = false;
 
 // ─── Preferences ────────────────────────────────────────────────────────────
@@ -333,6 +336,27 @@ function createWindow() {
   mainWindow.on('maximize',   () => mainWindow.webContents.send('win-maximized'));
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('win-unmaximized'));
 
+  // Guards the window's own close (✕ button, Alt+F4, window-manager close) —
+  // the main path on Windows/Linux, where it fires *before* 'before-quit' and
+  // destroys the window first. Without this, an ingest could die silently:
+  // mainWindow.webContents.send() would throw on a destroyed window mid-copy.
+  // Setting forceQuit here also means 'before-quit' below won't double-prompt.
+  mainWindow.on('close', (e) => {
+    if (forceQuit || activeCopyCount === 0) return;
+    e.preventDefault();
+    dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      buttons: ['Quit Anyway', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Ingest in progress',
+      message: 'An ingest is currently running.',
+      detail: 'Closing now will stop the copy immediately. Files being written at that moment may be left incomplete on the destination.',
+    }).then(({ response }) => {
+      if (response === 0) { forceQuit = true; app.quit(); }
+    });
+  });
+
   // ── Handle Finder drag & drop ───────────────────────────────────────────
   // When user drags a folder/volume from Finder onto the app window,
   // Electron fires 'will-navigate' with a file:// URL — intercept it.
@@ -373,6 +397,25 @@ app.whenReady().then(() => {
   createWindow();
   startVolumeWatch();
 });
+// Guard against quitting mid-ingest (Cmd+Q, Dock > Quit, app menu, Alt+F4…).
+// activeCopyCount is set by the main process itself around the actual file
+// I/O, so this can't be fooled by a renderer that's out of sync.
+app.on('before-quit', (e) => {
+  if (forceQuit || activeCopyCount === 0) return;
+  e.preventDefault();
+  dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    buttons: ['Quit Anyway', 'Cancel'],
+    defaultId: 1,
+    cancelId: 1,
+    title: 'Ingest in progress',
+    message: 'An ingest is currently running.',
+    detail: 'Quitting now will stop the copy immediately. Files being written at that moment may be left incomplete on the destination.',
+  }).then(({ response }) => {
+    if (response === 0) { forceQuit = true; app.quit(); }
+  });
+});
+
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 
@@ -728,6 +771,9 @@ ipcMain.handle('resolve-path', async (_, p) => {
 // ─── IPC: Start copy — multi destinations, parallel ──────────────────────────
 ipcMain.handle('start-copy', async (event, { sources, destinations, options }) => {
   cancelCopy = false;
+  pauseCopy = false;
+  activeCopyCount++;
+  try {
   const allResults = [];
   for (const source of sources) {
     if (cancelCopy) break;
@@ -769,13 +815,19 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
   });
   mainWindow.webContents.send('copy-complete', cleaned);
   return cleaned;
+  } finally { activeCopyCount--; }
 });
 
-ipcMain.handle('cancel-copy', async () => { cancelCopy = true; return true; });
+ipcMain.handle('cancel-copy', async () => { cancelCopy = true; pauseCopy = false; return true; });
+ipcMain.handle('pause-copy',  async () => { pauseCopy = true;  return true; });
+ipcMain.handle('resume-copy', async () => { pauseCopy = false; return true; });
 
 // ─── Re-copy only the files that failed verification, into the SAME folder ───
 ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath, mode, proAlgo, proDoubleRead, files, destIndex, destName }) => {
   cancelCopy = false;
+  pauseCopy = false;
+  activeCopyCount++;
+  try {
   const source = { name: sourceName, path: sourcePath };
   const results = await performCopyMulti(
     source, [{ path: '', name: destName || '' }],
@@ -785,6 +837,7 @@ ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath
   const { _copiedForSentinel, ...rest } = results[0] || {};   // not re-writing the sentinel on a retry
   rest.fileList = (_copiedForSentinel || []).map(f => ({ path: f.p, size: f.s, mtime: f.m }));
   return rest;
+  } finally { activeCopyCount--; }
 });
 
 // ─── Copy engine — read the source ONCE, write to every destination ─────────
@@ -890,6 +943,15 @@ function copyFanOut(src, destFiles, onBytes, hasher) {
       reject(err);
     });
   });
+}
+
+// Holds the engine between two files while paused. Announces to the renderer
+// when the hold actually takes effect (the in-flight file finishes first), so
+// the UI can switch from "Pausing…" to "Paused". Cancel breaks the hold.
+async function pauseGate(win) {
+  if (!pauseCopy || cancelCopy) return;
+  try { win.webContents.send('pause-held'); } catch (_) {}
+  while (pauseCopy && !cancelCopy) await new Promise(r => setTimeout(r, 200));
 }
 
 // Copy one source to every destination. Returns one result object PER
@@ -1031,6 +1093,8 @@ async function performCopyMulti(source, destinations, options, onProgress) {
   { let lastB=0, lastT=Date.now();
     for (let i=0; i<allFiles.length; i++) {
       if (cancelCopy) break;
+      await pauseGate(mainWindow);
+      if (cancelCopy) break;
       const act = R.filter(r=>r.active);
       if (!act.length) break;
       const file=allFiles[i], rel=file.rel;
@@ -1106,6 +1170,8 @@ async function performCopyMulti(source, destinations, options, onProgress) {
     for (const r of R) {
       for (const c of r.copied) {
         if (cancelCopy) break;
+        await pauseGate(mainWindow);
+        if (cancelCopy) break;
         let okv=false;
         try {
           if (isPro || isSecure) {
@@ -1132,6 +1198,8 @@ async function performCopyMulti(source, destinations, options, onProgress) {
     if (proDouble && !cancelCopy) {
       passBytes=0; passTotal=srcPassTotal;
       for (const c of srcByRel.values()) {
+        if (cancelCopy) break;
+        await pauseGate(mainWindow);
         if (cancelCopy) break;
         // Only meaningful if at least one destination wrote this file OK
         const holders = R.filter(r => r.copied.some(x => x.rel===c.rel && x._writeOk));

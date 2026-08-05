@@ -1,6 +1,6 @@
 {
   "name": "ingesto",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Professional camera media ingest application",
   "main": "src/main/main.js",
   "author": "Just Edit <contact@just-edit.fr>",

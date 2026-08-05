@@ -22,6 +22,12 @@ const ingestoAPI = {
   browseFolder:         ()              => ipcRenderer.invoke('browse-folder'),
   exportPresets:        (data)          => ipcRenderer.invoke('export-presets', data),
   importPresets:        ()              => ipcRenderer.invoke('import-presets'),
+  pauseCopy:            ()              => ipcRenderer.invoke('pause-copy'),
+  resumeCopy:           ()              => ipcRenderer.invoke('resume-copy'),
+  onPauseHeld: (cb) => {
+    ipcRenderer.on('pause-held', () => cb());
+    return () => ipcRenderer.removeAllListeners('pause-held');
+  },
   exportSettings:       (data)          => ipcRenderer.invoke('export-settings', data),
   importSettings:       ()              => ipcRenderer.invoke('import-settings'),
   resolvePath:          (p)             => ipcRenderer.invoke('resolve-path', p),
