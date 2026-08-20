@@ -70,7 +70,7 @@ function checkForUpdate() {
 }
 
 const { detectCamera }                 = require('./camera-detect');
-const { inspectCard, appendIngest, listAllFiles } = require('./sentinel');
+const { inspectCard, appendIngest, listAllFiles, isAppleDoubleFile } = require('./sentinel');
 
 // All fingerprints (SECURE xxHash64, PRO xxHash64/128/MD5, Verify) go through
 // hash-wasm — a single library, pure WASM, no native binary. INGESTO ≤ 2.0.2
@@ -165,13 +165,17 @@ function writeMHL(destPath, algo, entries, meta){
 // ── Verify Folder: read back an existing checksum list or MHL and re-check ──
 const VERIFY_SKIP = new Set(['.DS_Store','.Spotlight-V100','.Trashes','.fseventsd','.TemporaryItems']);
 
+function isIgnoredMetadataFile(name) {
+  return VERIFY_SKIP.has(name) || isAppleDoubleFile(name);
+}
+
 // Recursively list every file under root as {abs, rel} (rel uses forward slashes).
 function scanDirFiles(root) {
   const out = [];
   (function walk(dir) {
     let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch(_) { return; }
     for (const e of entries) {
-      if (VERIFY_SKIP.has(e.name)) continue;
+      if (isIgnoredMetadataFile(e.name)) continue;
       const full = path.join(dir, e.name);
       if (e.isDirectory()) walk(full);
       else out.push({ abs: full, rel: path.relative(root, full).replace(/\\/g, '/') });
@@ -995,7 +999,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
     let entries; try { entries=fs.readdirSync(dir,{withFileTypes:true}); } catch(_){return;}
     if (!entries.length) { allDirs.push(dir); return; }
     for (const e of entries) {
-      if (SKIP.has(e.name)) continue;
+      if (SKIP.has(e.name) || isAppleDoubleFile(e.name)) continue;
       if (e.name === SENTINEL_FILENAME && dir === source.path) continue;
       const full = path.join(dir, e.name);
       try {

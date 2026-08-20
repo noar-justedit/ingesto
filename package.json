@@ -14,6 +14,7 @@
     "url": "https://github.com/noar-justedit/ingesto/issues"
   },
   "scripts": {
+    "test": "node --test",
     "start": "electron .",
     "dev": "electron . --dev",
     "build": "electron-builder --config electron-builder.yml --mac --arm64",
