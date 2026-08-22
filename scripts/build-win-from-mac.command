@@ -6,7 +6,10 @@
 # the window open so you can read the result.
 #
 cd "$(dirname "$0")"
-./build-win-from-mac.sh
+# Web-uploaded files often lose their executable flag; restore it and run the
+# build through bash so it works regardless.
+chmod +x ./build-win-from-mac.sh ./*.sh 2>/dev/null
+bash ./build-win-from-mac.sh
 status=$?
 echo
 if [ $status -eq 0 ]; then

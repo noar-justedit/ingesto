@@ -6,7 +6,10 @@
 # can read the result.
 #
 cd "$(dirname "$0")"
-./build-mac.sh
+# Web-uploaded files often lose their executable flag; restore it and run the
+# build through bash so it works regardless.
+chmod +x ./build-mac.sh ./*.sh 2>/dev/null
+bash ./build-mac.sh
 status=$?
 echo
 if [ $status -eq 0 ]; then

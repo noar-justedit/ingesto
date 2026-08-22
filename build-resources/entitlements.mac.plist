@@ -2,7 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- V8's JIT must be able to map executable memory under the hardened
+       runtime; without this, a signed/notarized build traps (SIGTRAP) inside
+       v8::Isolate::Initialize before any app code runs. Unsigned local builds
+       don't enforce the hardened runtime, which is why they never showed it. -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <!-- Lets the FFI helper (koffi) load libSystem for uncached read-back
+       verification under the hardened runtime. -->
+  <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
   <key>com.apple.security.files.user-selected.read-write</key>
   <true/>

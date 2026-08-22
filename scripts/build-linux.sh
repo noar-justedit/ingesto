@@ -32,19 +32,44 @@ PROJECT_DIR="$SCRIPT_DIR/.."
 cd "$PROJECT_DIR"
 
 # ── Prerequisites ─────────────────────────────────────────────────────────
+# Node 20.19+ is a hard requirement of the build tooling (electron-builder 26):
+# older Nodes crash mid-build with a cryptic "ERR_REQUIRE_ESM ... @noble/hashes"
+# error. Ubuntu/Pop!_OS's apt package is Node 18 — too old. We recommend 22 LTS.
+node_ok() {
+  command -v node >/dev/null 2>&1 && \
+  node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>20||(a===20&&b>=19)?0:1)'
+}
+node_too_old() {
+  echo "✗ Node.js ${1:-is missing} — this build needs Node 20.19 or newer (22 LTS recommended)."
+  echo "  The version from 'apt install nodejs' is too old. Install a current one:"
+  echo ""
+  echo "  Option A — nvm (no sudo, recommended). Paste these three lines:"
+  echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash"
+  echo "    \\. \"\$HOME/.nvm/nvm.sh\""
+  echo "    nvm install 22"
+  echo ""
+  echo "  Option B — NodeSource (system-wide):"
+  echo "    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -"
+  echo "    sudo apt install -y nodejs"
+  echo ""
+  echo "  Then run this script again."
+  exit 1
+}
+# If the system Node is too old but nvm is installed (a freshly-installed nvm
+# isn't loaded until the terminal restarts), load it ourselves and use its
+# default — this alone un-sticks the classic "installed nvm, same error" trap.
+if ! node_ok && [ -s "$HOME/.nvm/nvm.sh" ]; then
+  echo "→ System Node is too old — loading nvm…"
+  export NVM_DIR="$HOME/.nvm"
+  # shellcheck disable=SC1091
+  \. "$NVM_DIR/nvm.sh" || true
+  nvm use --silent 22 >/dev/null 2>&1 || nvm use --silent node >/dev/null 2>&1 || true
+fi
 if ! command -v node >/dev/null 2>&1; then
-  echo "✗ Node.js is missing. Install it first:"
-  echo "    sudo apt install nodejs npm"
-  echo "  (Node 18 or newer is required — check with: node -v)"
-  exit 1
+  node_too_old "is not installed"
 fi
-NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-if [ "$NODE_MAJOR" -lt 18 ]; then
-  echo "✗ Node.js $(node -v) is too old — 18 or newer is required."
-  echo "  On Pop!_OS / Ubuntu the repo version is often outdated; install a"
-  echo "  current one from https://deb.nodesource.com or via nvm."
-  exit 1
-fi
+node_ok || node_too_old "$(node -v) is too old"
+echo "✓ Node.js $(node -v)"
 for TOOL in dpkg-deb fakeroot; do
   command -v "$TOOL" >/dev/null 2>&1 || MISSING="$MISSING $TOOL"
 done
@@ -94,8 +119,32 @@ fi
 echo "→ Installing dependencies"
 npm install
 
+# Start from a clean dist/, so a failed build cannot leave the previous
+# version's packages behind and have them listed as this build's output.
+rm -rf dist
+
 echo "→ Building AppImage + deb"
 npx electron-builder --linux AppImage deb
+
+# koffi's native binary is what lets ingesto bypass the OS cache during
+# verification. If packaging drops it, koffi reports "unavailable", verification
+# silently reads from memory instead of the medium, and NOTHING says so at
+# runtime. Refuse to claim success without it.
+for TRIPLET in linux_x64 musl_x64; do
+  if [ -z "$(find dist -path "*app.asar.unpacked/node_modules/koffi/build/koffi/$TRIPLET/koffi.node" 2>/dev/null | head -1)" ]; then
+    echo "✗ Packaging problem: the cache-control binary (koffi, $TRIPLET) is missing"
+    echo "  from the packaged app. Verification would silently stop reading the"
+    echo "  medium and read from memory instead. Check asarUnpack/files for linux"
+    echo "  in electron-builder.yml."
+    exit 1
+  fi
+done
+echo "✓ Cache-control binaries present (linux_x64, musl_x64)"
+
+if [ -z "$(ls -1 dist/*.AppImage dist/*.deb 2>/dev/null)" ]; then
+  echo "✗ No AppImage or .deb was produced — the build did not complete."
+  exit 1
+fi
 
 echo
 echo "Done. Packages are in dist/:"

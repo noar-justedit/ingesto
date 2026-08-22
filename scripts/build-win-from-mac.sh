@@ -23,6 +23,8 @@
 # ╚══════════════════════════════════════════════════════════════╝
 
 set -e
+# See build-mac.sh: pipefail is deliberately NOT set (a `grep -v` that filters
+# every line exits 1 on success). PIPESTATUS is used instead.
 
 RED='[0;31m'
 GREEN='[0;32m'
@@ -43,13 +45,51 @@ echo ""
 
 cd "$PROJECT_DIR"
 
+# ── Cache-control binary check ───────────────────────────────────────────────
+# koffi's native binary is what lets ingesto bypass the OS cache during
+# verification. If packaging drops it, koffi reports "unavailable", verification
+# silently stops hitting the medium and reads from memory instead, and NOTHING
+# says so at runtime. So the build refuses to claim success without it.
+check_koffi() {
+  triplet="$1"
+  found=$(find dist -path "*app.asar.unpacked/node_modules/koffi/build/koffi/${triplet}/koffi.node" 2>/dev/null | head -1 || true)
+  if [ -z "$found" ]; then
+    echo ""
+    echo -e "${RED}✗ Packaging problem: the cache-control binary (koffi, ${triplet}) is missing${NC}"
+    echo -e "  from the packaged app. Verification would silently stop reading the"
+    echo -e "  medium and read from memory instead. Check asarUnpack/files for this"
+    echo -e "  platform in electron-builder.yml."
+    read -p "Press Enter to exit..."; exit 1
+  fi
+  echo -e "${GREEN}✓ Cache-control binary present (${triplet})${NC}"
+}
+
 # ── 1. Node.js ──────────────────────────────────────────────────
 echo -e "${BLUE}[1/6]${NC} Checking Node.js…"
+# Launched from a .command through a non-interactive, non-login bash, which
+# never reads ~/.zshrc — where nvm lives. Load it ourselves or a Mac with
+# Node 22 under nvm is told "Node.js not found".
+node_ok() { command -v node >/dev/null 2>&1 && node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>20||(a===20&&b>=19)?0:1)' >/dev/null 2>&1; }
+if ! node_ok && [ -s "$HOME/.nvm/nvm.sh" ]; then
+  echo "  → Loading nvm…"
+  export NVM_DIR="$HOME/.nvm"
+  # shellcheck disable=SC1091
+  \. "$NVM_DIR/nvm.sh" || true
+  nvm use --silent 22 >/dev/null 2>&1 || nvm use --silent node >/dev/null 2>&1 || true
+fi
 if ! command -v node &>/dev/null; then
   echo -e "${RED}✗ Node.js not found. Install from https://nodejs.org${NC}"
   read -p "Press Enter to exit..."; exit 1
 fi
 echo -e "${GREEN}✓ Node.js $(node --version)${NC}"
+# electron-builder 26 (used since the Electron 43 upgrade) needs Node 20.19+;
+# older Nodes crash mid-build with a cryptic "ERR_REQUIRE_ESM @noble/hashes"
+# error. nodejs.org's current LTS (22) is fine.
+if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>20||(a===20&&b>=19)?0:1)'; then
+  echo -e "${RED}✗ Node.js $(node --version) is too old — 20.19 or newer is required (22 LTS recommended).${NC}"
+  echo "  → https://nodejs.org  (download the LTS version), then run this script again."
+  read -p "Press Enter to exit..."; exit 1
+fi
 
 # ── 2. npm ──────────────────────────────────────────────────────
 echo -e "${BLUE}[2/6]${NC} Checking npm…"
@@ -104,26 +144,48 @@ fi
 
 # ── 5. Dependencies ─────────────────────────────────────────────
 echo -e "${BLUE}[5/6]${NC} Installing dependencies…"
-npm install --silent 2>&1 | grep -v "^npm warn" || true
+set +e
+npm install --silent 2>&1 | grep -v "^npm warn"
+NPM_STATUS=${PIPESTATUS[0]}
+set -e
+if [ "$NPM_STATUS" -ne 0 ]; then
+  echo -e "${RED}✗ Installing dependencies failed. See error above.${NC}"
+  read -p "Press Enter to exit..."; exit 1
+fi
 echo -e "${GREEN}✓ Dependencies installed${NC}"
 
 # ── 6. Build ────────────────────────────────────────────────────
+# Clear previous artefacts first, so a failed build can never present the
+# previous version's installer as this build's output.
+rm -rf "$PROJECT_DIR/dist"
 echo -e "${BLUE}[6/6]${NC} Building ingesto for Windows (x64)…"
 echo ""
 echo -e "${YELLOW}  Note: electron-builder will download the Windows Electron binary"
 echo -e "  (~100 MB) on first run. This is normal.${NC}"
 echo ""
 
-npm run build:win 2>&1 | grep -v "^>" | tail -20 || {
+set +e
+npm run build:win 2>&1 | grep -v "^>" | tail -20
+BUILD_STATUS=${PIPESTATUS[0]}
+set -e
+if [ "$BUILD_STATUS" -ne 0 ]; then
   echo ""
   echo -e "${RED}✗ Build failed. Common causes:${NC}"
   echo -e "  • Network issue downloading Electron Windows binary"
   echo -e "  • Try: ${CYAN}ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npm run build:win${NC}"
   read -p "Press Enter to exit..."; exit 1
-}
+fi
 
 # ── Done ────────────────────────────────────────────────────────
-EXE_FILES=$(find dist -name "*.exe" 2>/dev/null)
+check_koffi win32_x64
+EXE_FILES=$(find dist -name "*.exe" 2>/dev/null || true)
+
+# No installer means no build, whatever electron-builder's exit code said.
+if [ -z "$EXE_FILES" ]; then
+  echo ""
+  echo -e "${RED}✗ No .exe found in dist/ — the build did not produce an installer.${NC}"
+  read -p "Press Enter to exit..."; exit 1
+fi
 
 echo ""
 echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -134,7 +196,7 @@ echo ""
 if [ -n "$EXE_FILES" ]; then
   echo -e "${BOLD}Windows installer created:${NC}"
   while IFS= read -r f; do
-    SIZE=$(du -sh "$f" 2>/dev/null | cut -f1)
+    SIZE=$(du -sh "$f" 2>/dev/null | cut -f1 || true)
     echo -e "  ${GREEN}→${NC} $f  (${SIZE})"
   done <<< "$EXE_FILES"
 fi

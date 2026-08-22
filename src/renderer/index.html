@@ -142,9 +142,9 @@ cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:
 flex-shrink:0;transition:color .15s;}
 .info-btn svg{width:16px;height:16px;}
 .info-btn:hover{color:var(--text);}
-#modes-info-ov,#pro-warn-ov,#update-ov,#settings-ov,#verify-progress-ov,#verify-result-ov,#counter-info-ov{display:none;position:fixed;inset:0;z-index:1200;background:rgba(5,6,8,.55);
+#modes-info-ov,#pro-warn-ov,#update-ov,#settings-ov,#verify-progress-ov,#verify-result-ov,#counter-info-ov,#dr-info-ov{display:none;position:fixed;inset:0;z-index:1200;background:rgba(5,6,8,.55);
 backdrop-filter:blur(16px) saturate(120%);-webkit-backdrop-filter:blur(16px) saturate(120%);align-items:center;justify-content:center;}
-#modes-info-ov.open,#pro-warn-ov.open,#update-ov.open,#settings-ov.open,#verify-progress-ov.open,#verify-result-ov.open,#counter-info-ov.open{display:flex;}
+#modes-info-ov.open,#pro-warn-ov.open,#update-ov.open,#settings-ov.open,#verify-progress-ov.open,#verify-result-ov.open,#counter-info-ov.open,#dr-info-ov.open{display:flex;}
 /* File filter modal internals */
 .ff-cat{display:flex;align-items:center;gap:9px;padding:6px 0 2px;}
 .ff-cat .switch{width:32px;height:19px;}
@@ -166,14 +166,23 @@ backdrop-filter:blur(16px) saturate(120%);-webkit-backdrop-filter:blur(16px) sat
 .switch .slider.ff-mixed{background:var(--bg3);border-color:var(--border2);}
 .switch .slider.ff-mixed::before{background:var(--text3);transform:translateX(7px);}
 .ff-list{max-height:52vh;overflow-y:auto;padding-right:6px;}
-/* PRO algo selector (visible only when PRO active) */
-.pro-algo{margin-top:9px;}
-.pa-label{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
-.pa-seg{display:flex;gap:6px;}
-.pa-opt{flex:1;min-width:0;padding:8px 4px;border-radius:7px;border:1px solid var(--border2);
-background:transparent;color:var(--text2);font-family:var(--font);font-size:13px;cursor:pointer;transition:all .12s;}
-.pa-opt:hover{color:var(--text);border-color:var(--pro);}
-.pa-opt.on{background:var(--pro-d);border-color:var(--pro);color:var(--pro);font-weight:700;}
+/* PRO options (visible only when PRO active) — all four switches on ONE line,
+   Settings-style (switch first, label to its right, same label size for all).
+   Double source read sits at the left, under the FAST card; the three violet
+   checksum switches are grouped at the right, under the PRO card. */
+.pro-algo{margin-top:11px;}
+.pa-line{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.pa-item{display:flex;align-items:center;gap:9px;flex:0 0 auto;}
+.pa-ck{display:flex;align-items:center;gap:20px;flex:0 0 auto;}
+.pa-cap{font-size:13px;color:var(--text3);letter-spacing:.01em;line-height:1.2;
+white-space:nowrap;transition:color .12s;}
+.pa-item.on .pa-cap{color:var(--pro);font-weight:700;}
+.pa-item-dr.on .pa-cap{color:var(--green);font-weight:700;}
+/* Violet variant — the PRO accent — instead of the app's usual green */
+.switch.sw-pro input:checked + .slider{background:var(--pro-d);border-color:rgba(168,128,255,.55);}
+.switch.sw-pro input:checked + .slider::before{background:var(--pro);}
+.pa-item .info-btn{width:14px;height:14px;margin-left:-3px;}
+.pa-item .info-btn svg{width:14px;height:14px;}
 .unstable-alert{margin:4px 0 12px;padding:12px 14px;border-radius:var(--rs);
 background:rgba(242,85,90,.12);border:1px solid rgba(242,85,90,.55);}
 .ua-h{color:var(--red);font-weight:700;font-size:15px;margin-bottom:4px;}
@@ -597,16 +606,26 @@ box-shadow:0 24px 80px rgba(0,0,0,.6);animation:popIn .25s ease;}
 .sum-ico.cancel{background:var(--orange-d);border-color:rgba(242,160,61,.3);color:var(--orange);}
 .sum-h1{font-size:22px;font-weight:700;}
 .sum-h2{font-size:15px;color:var(--text3);margin-top:2px;}
-.sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px;}
-.srow{background:var(--bg3);border-radius:var(--rs);padding:8px 10px;}
-.sr-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;}
-.sr-val{font-size:18px;font-weight:600;margin-top:3px;font-family:var(--mono);}
+/* 4 tiles per row: MODE·FILES·SIZE·SPEED then COPY·V1·V2·TOTAL */
+.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px;}
+.srow{background:var(--bg3);border-radius:var(--rs);padding:8px 10px;min-width:0;}
+.sr-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;}
+.sr-val{font-size:16px;font-weight:700;margin-top:3px;font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* MODE tile: mode name on top, algorithm as a smaller sub-line — nothing to truncate */
+.sr-mode{font-size:16px;font-weight:800;margin-top:3px;font-family:var(--mono);line-height:1.15;white-space:nowrap;}
+.sr-algo{font-size:11px;font-weight:600;font-family:var(--mono);opacity:.75;margin-top:1px;white-space:nowrap;}
+/* Action row: DONE (2/3) + EJECT SOURCE (1/3) */
+.sum-actions{display:flex;gap:10px;}
+.sum-actions #sum-close{flex:2;width:auto;}
+.sum-actions #sum-eject{flex:1;width:auto;margin-bottom:0;display:none;align-items:center;justify-content:center;gap:8px;}
+.sum-actions #sum-eject.on{display:flex;}
 .err-block{background:rgba(242,85,90,.06);border:1px solid rgba(242,85,90,.18);
 border-radius:var(--rs);padding:9px 11px;margin-bottom:12px;max-height:100px;overflow-y:auto;}
 .err-title{font-size:13px;font-weight:600;color:var(--red);margin-bottom:5px;}
 .err-item{font-size:13px;font-family:var(--mono);color:var(--text3);padding:2px 0;}
-#sum-close{width:100%;padding:10px;border-radius:var(--rs);border:1px solid var(--border2);
-background:var(--bg3);color:var(--text);font-family:var(--font);font-size:18px;font-weight:600;cursor:pointer;transition:all .15s;}
+/* DONE = green (the safe, expected exit) · EJECT SOURCE = red (physical action) */
+#sum-close{width:100%;padding:10px;border-radius:var(--rs);border:1px solid rgba(53,201,139,.5);
+background:var(--green-d);color:var(--green);font-family:var(--font);font-size:18px;font-weight:700;cursor:pointer;transition:all .15s;}
 .sum-close{width:100%;padding:10px;border-radius:var(--rs);border:1px solid var(--border2);
 background:var(--bg3);color:var(--text);font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px;}
 .sum-close:hover{background:var(--bg4);}
@@ -647,7 +666,12 @@ cursor:pointer;transition:all .15s;border:1px solid var(--border2);text-align:ce
 .ufc-fmore{font-size:14px;color:var(--text3);margin-top:5px;}
 .ufc-fmore a{color:var(--blue);text-decoration:none;}
 .ufc-fmore a:hover{text-decoration:underline;}
-#sum-close:hover{background:var(--bg4);}
+#sum-close:hover{background:var(--green-g);}
+#sum-eject{padding:12px;border-radius:var(--rs);border:1px solid rgba(242,85,90,.55);
+background:var(--red-d);color:var(--red);font-family:var(--font);font-size:13.5px;
+font-weight:800;letter-spacing:.04em;cursor:pointer;transition:all .15s;}
+#sum-eject:hover:not(:disabled){background:var(--red-g);}
+#sum-eject:disabled{opacity:.55;cursor:default;}
 .empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;
 justify-content:center;gap:8px;padding:40px;color:var(--text3);}
 .empty-ico{font-size:39px;opacity:.3;}
@@ -699,6 +723,10 @@ body.win32 .win-controls, body.linux .win-controls { display:flex; }
 .wvc-unload.wvc-src:hover,.wvc-unload.wvc-dst:hover{background:var(--bg4);}
 .wvc-hide{color:var(--text2);border-top:1px solid var(--border);margin-top:4px;padding-top:9px;}
 .wvc-hide:hover{background:var(--bg4);}
+.wvc-eject{color:var(--blue);border-top:1px solid var(--border);margin-top:4px;padding-top:9px;}
+.wvc-eject:hover{background:var(--bg4);}
+.wvc-item.wvc-disabled{opacity:.45;cursor:default;}
+.wvc-item.wvc-disabled:hover{background:none;}
 
 /* ══ KIOSK MODE ══ */
 #kiosk-ov{display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);
@@ -739,7 +767,8 @@ background:#0f2c1d;border:1px solid rgba(53,201,139,.45);color:var(--green);box-
 #kiosk-pin-ov{display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.8);align-items:center;justify-content:center;}
 #kiosk-pin-ov.on{display:flex;}
 .kp-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:26px;width:290px;text-align:center;}
-.kp-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;}
+.kp-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:7px;}
+.kp-sub{font-size:12px;color:var(--text3);line-height:1.45;margin:0 auto 15px;max-width:250px;}
 .kp-dots{display:flex;justify-content:center;gap:14px;margin-bottom:8px;}
 .kp-dots span{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--text3);}
 .kp-dots span.on{background:var(--blue);border-color:var(--blue);}
@@ -761,6 +790,9 @@ margin:0 auto 14px;border:1px solid transparent;}
 .kr-sub{font-size:14px;color:var(--text2);line-height:1.5;margin-bottom:22px;}
 .kr-card.ok .kr-title{color:var(--green);}
 .kr-card.fail .kr-title{color:var(--red);}
+/* A deliberate stop is neither success nor failure — neutral, not alarming. */
+.kr-card.stop .kr-icon{background:var(--bg4);border-color:var(--border2);color:var(--text2);}
+.kr-card.stop .kr-title{color:var(--text);}
 .kr-btn{width:100%;padding:14px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font);}
 .kr-btn:hover{border-color:var(--blue);}
 /* KIOSK running */
@@ -794,6 +826,8 @@ margin:0 auto 14px;border:1px solid transparent;}
 .set-subrow input:checked + .slider::before{transform:translateX(13px);}
 .set-sub-lbl{font-size:13px;color:var(--text);}
 .set-sub-hint{font-size:12px;color:var(--text3);}
+.set-sep{height:1px;background:var(--border);margin:9px 0 7px;}
+.set-subnote{font-size:11.5px;color:var(--text3);line-height:1.5;margin:5px 0 0 39px;}
 .set-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
 .set-lbl{font-size:14px;color:var(--text);}
 .set-field{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
@@ -801,6 +835,18 @@ margin:0 auto 14px;border:1px solid transparent;}
 .set-field input{flex:1;background:var(--bg2);border:1px solid #26262c;border-radius:var(--rs);padding:9px 11px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;}
 .set-field input:focus{border-color:var(--blue);}
 .set-hint{font-size:12px;color:var(--text3);line-height:1.5;margin:8px 0 14px;}
+/* ntfy: getting the app onto the phone. The QR is a fixed link to ntfy.sh —
+   the store links live there, so one code covers iPhone and Android. It is a
+   static SVG on purpose: nothing to compute, nothing that can fail to render. */
+.ntfy-setup{display:flex;gap:16px;align-items:center;background:var(--bg2);
+border:1px solid var(--border);border-radius:var(--r);padding:14px;margin:12px 0 14px;}
+.ntfy-qr{width:132px;height:132px;flex:0 0 auto;border-radius:8px;overflow:hidden;background:#fff;}
+.ntfy-qr svg{display:block;width:100%;height:100%;}
+.ntfy-steps{flex:1;min-width:0;}
+.ntfy-scan{font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px;}
+.ntfy-sub{font-size:12.5px;color:var(--text2);line-height:1.55;}
+.ntfy-link{color:var(--blue);text-decoration:none;font-weight:600;cursor:pointer;}
+.ntfy-link:hover{text-decoration:underline;}
 .set-test{padding:9px 14px;border-radius:var(--rs);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);}
 .set-test:hover{border-color:var(--blue);color:var(--blue);}
 .set-test-res{font-size:12px;margin-left:10px;}
@@ -922,11 +968,13 @@ value="1" oninput="onCounterInput()">
 </button>
 </div>
 <div id="pro-algo" class="pro-algo" style="display:none;">
-<div class="pa-label">Checksum algorithm</div>
-<div class="pa-seg">
-<button class="pa-opt" data-algo="xxh64" onclick="setProAlgo('xxh64')">xxHash64</button>
-<button class="pa-opt on" data-algo="xxh128" onclick="setProAlgo('xxh128')">xxHash128</button>
-<button class="pa-opt" data-algo="md5" onclick="setProAlgo('md5')">MD5</button>
+<div class="pa-line">
+<div class="pa-item pa-item-dr"><label class="switch"><input type="checkbox" id="pro-dr-toggle" onchange="setProDouble(this.checked)"><span class="slider"></span></label><span class="pa-cap">Double source read</span><button class="info-btn" onclick="showDrInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
+<div class="pa-ck">
+<div class="pa-item"><label class="switch sw-pro"><input type="checkbox" data-algo="xxh64" onchange="algoSwitch(this)"><span class="slider"></span></label><span class="pa-cap">xxHash64</span></div>
+<div class="pa-item on"><label class="switch sw-pro"><input type="checkbox" data-algo="xxh128" checked onchange="algoSwitch(this)"><span class="slider"></span></label><span class="pa-cap">xxHash128</span></div>
+<div class="pa-item"><label class="switch sw-pro"><input type="checkbox" data-algo="md5" onchange="algoSwitch(this)"><span class="slider"></span></label><span class="pa-cap">MD5</span></div>
+</div>
 </div>
 </div>
 </div>
@@ -984,12 +1032,12 @@ ondragover="onDZ(event,'dst')" ondragleave="offDZ(event,'dst')" ondrop="dropDZ(e
 ondragover="tokContainerOver(event)" ondrop="tokContainerDrop(event)"></div>
 <div class="tpl-sub-label" style="margin-top:10px;">Type here your custom template</div>
 <input class="tpl-raw" id="tpl-raw" type="text"
-placeholder="{counter}_{cardname}_{cameraman}_{camera}_{YY}{MM}{DD}_{HH}{MIN}"
+placeholder="{counter}_{cardname}_{operator}_{camera}_{YY}{MM}{DD}_{HH}{MIN}"
 oninput="onRawInput()" onfocus="rawFocused=true" onblur="rawFocused=false">
 <div class="tpl-chips">
 <button class="chip" onclick="addTok('var','counter')">counter</button>
 <button class="chip" onclick="addTok('var','cardname')">card name</button>
-<button class="chip" onclick="addTok('var','cameraman')">operator</button>
+<button class="chip" onclick="addTok('var','operator')">operator</button>
 <button class="chip" onclick="addTok('var','camera')">camera</button>
 <button class="chip" onclick="addTok('var','YY')">YY</button>
 <button class="chip" onclick="addTok('var','MM')">MM</button>
@@ -1025,7 +1073,6 @@ Start Ingest
 </div>
 </div>
 </div>
-</div>
 <div id="sum-ov">
 <div class="sum-card">
 <div class="sum-hd">
@@ -1033,14 +1080,17 @@ Start Ingest
 <div><div class="sum-h1" id="s-title">—</div><div class="sum-h2" id="s-sub">—</div></div>
 </div>
 <div class="sum-grid" id="s-grid"></div>
+<div id="s-coldverify" style="display:none"></div>
 <div id="s-unstable" style="display:none"></div>
 <div class="err-block" id="s-errs" style="display:none">
 <div class="err-title">⚠ Transfer Errors</div>
 <div id="s-errlist"></div>
 </div>
-<button id="sum-eject" onclick="ejectSources()" style="display:none;width:100%;margin-bottom:8px;padding:12px;border-radius:var(--rs);border:1px solid rgba(53,201,139,.5);background:rgba(53,201,139,.12);color:var(--green);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;">⏏ Eject source</button>
 <button id="sum-recopy" onclick="recopyFailed()" style="display:none;width:100%;margin-bottom:8px;padding:12px;border-radius:var(--rs);border:1px solid rgba(242,160,61,.5);background:rgba(242,160,61,.14);color:var(--orange);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;">↻ Re-copy failed files</button>
-<button id="sum-close" onclick="closeSummary()">Done</button>
+<div class="sum-actions">
+<button id="sum-close" onclick="closeSummary()">DONE</button>
+<button id="sum-eject" onclick="ejectSources()"></button>
+</div>
 </div>
 </div>
 <div id="save-name-overlay" style="
@@ -1122,6 +1172,19 @@ Save
 
 
 
+<div id="dr-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideDrInfo()">
+<div class="mi-card">
+<div class="mi-h">Double source read</div>
+<div class="mi-sub">An extra safety check for the card itself (PRO mode).</div>
+<div class="mi-row" style="border-top:none;">
+<div class="mi-body"><b>What it does.</b> Once the copy is finished and verified, ingesto reads the whole card a second time and compares it with what was read during the copy. If the card gives different answers the second time, the card itself is unreliable — something a single read can never reveal.</div>
+</div>
+<div class="mi-row">
+<div class="mi-body"><b>When to use it.</b> Whenever the card is about to be formatted, or the footage can't be reshot: it's your last chance to catch a failing card while the footage still exists. It adds roughly one extra full read of the card to the ingest time.</div>
+</div>
+<button class="mi-close" onclick="hideDrInfo()">Got it</button>
+</div>
+</div>
 <div id="counter-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideCounterInfo()">
 <div class="mi-card">
 <div class="mi-h">Counter</div>
@@ -1184,7 +1247,7 @@ Save
         <textarea id="k-note" class="k-input k-ta" placeholder="Shot description…"></textarea>
       </div>
       <button id="k-start" class="k-start" onclick="kioskStart()" disabled>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5l9 5.5-9 5.5V1.5z"/></svg>Start Ingest
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>Start Ingest
       </button>
       <div class="k-hint">Auto-ejects the card when verified · resets for the next shooter</div>
     </div>
@@ -1195,6 +1258,7 @@ Save
 <div id="kiosk-pin-ov">
   <div class="kp-card">
     <div class="kp-title" id="kp-title">Enter admin PIN</div>
+    <div class="kp-sub" id="kp-sub"></div>
     <div class="kp-dots" id="kp-dots"><span></span><span></span><span></span><span></span></div>
     <div class="kp-err" id="kp-err"></div>
     <div class="kp-pad">
@@ -1289,17 +1353,15 @@ Save
 </div>
 
 <div class="set-section">
-<div class="set-hd"><label class="switch"><input type="checkbox" id="pro-dr-toggle" onchange="setProDouble(this.checked)"><span class="slider"></span></label><span class="set-sec-title">Double Source Read</span></div>
-<div class="set-desc">Re-reads the source after copy to catch a failing card (PRO mode only)</div>
-</div>
-
-<div class="set-section">
 <div class="set-hd"><label class="switch"><input type="checkbox" id="report-toggle" onchange="onReportToggle(this)"><span class="slider"></span></label><span class="set-sec-title">Ingest Report</span><button class="view-report-btn" onclick="openReport()" title="Open the report">VIEW</button></div>
 <div class="set-desc">Writes an ingest report to the destination</div>
 <div class="set-details" id="report-details">
 <div class="set-subrow"><label class="switch"><input type="checkbox" id="rf-html" checked onchange="onReportFmt()"><span class="slider"></span></label><span class="set-sub-lbl">HTML</span><span class="set-sub-hint">— to read and print</span></div>
 <div class="set-subrow"><label class="switch"><input type="checkbox" id="rf-csv" onchange="onReportFmt()"><span class="slider"></span></label><span class="set-sub-lbl">CSV</span><span class="set-sub-hint">— for spreadsheets</span></div>
 <div class="set-subrow"><label class="switch"><input type="checkbox" id="rf-json" onchange="onReportFmt()"><span class="slider"></span></label><span class="set-sub-lbl">JSON</span><span class="set-sub-hint">— for tools and scripts</span></div>
+<div class="set-sep"></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="rf-full" checked onchange="onReportDetail(this)"><span class="slider"></span></label><span class="set-sub-lbl">Full report</span><span class="set-sub-hint">— list every ingested file</span></div>
+<div class="set-subnote" id="rf-full-note"></div>
 </div>
 </div>
 
@@ -1321,7 +1383,14 @@ Save
 <div class="set-details" id="ntfy-details">
 <div class="set-field"><label>Server</label><input type="text" id="set-ntfy-server" placeholder="https://ntfy.sh" oninput="onNtfyField()"></div>
 <div class="set-field"><label>Topic</label><input type="text" id="set-ntfy-topic" placeholder="ingesto-yourname-9f3k" oninput="onNtfyField()"></div>
-<div class="set-hint">Install the <b>ntfy</b> app on your phone and subscribe to this exact topic. Pick a long, hard-to-guess topic name (it acts as a password on the public server).</div>
+<div class="ntfy-setup">
+<div class="ntfy-qr"><svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 29 29" shape-rendering="crispEdges"><rect width="29" height="29" fill="#ffffff"/><path fill="#0c0c0e" d="M2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM10 2h1v1h-1zM12 2h1v1h-1zM14 2h1v1h-1zM15 2h1v1h-1zM16 2h1v1h-1zM17 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM23 2h1v1h-1zM24 2h1v1h-1zM25 2h1v1h-1zM26 2h1v1h-1zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM13 3h1v1h-1zM15 3h1v1h-1zM16 3h1v1h-1zM17 3h1v1h-1zM20 3h1v1h-1zM26 3h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM10 4h1v1h-1zM11 4h1v1h-1zM12 4h1v1h-1zM13 4h1v1h-1zM14 4h1v1h-1zM15 4h1v1h-1zM16 4h1v1h-1zM20 4h1v1h-1zM22 4h1v1h-1zM23 4h1v1h-1zM24 4h1v1h-1zM26 4h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM11 5h1v1h-1zM13 5h1v1h-1zM16 5h1v1h-1zM17 5h1v1h-1zM18 5h1v1h-1zM20 5h1v1h-1zM22 5h1v1h-1zM23 5h1v1h-1zM24 5h1v1h-1zM26 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM15 6h1v1h-1zM17 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM26 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM16 7h1v1h-1zM20 7h1v1h-1zM26 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM23 8h1v1h-1zM24 8h1v1h-1zM25 8h1v1h-1zM26 8h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM16 9h1v1h-1zM17 9h1v1h-1zM18 9h1v1h-1zM2 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM25 10h1v1h-1zM26 10h1v1h-1zM3 11h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM10 11h1v1h-1zM11 11h1v1h-1zM12 11h1v1h-1zM14 11h1v1h-1zM16 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM21 11h1v1h-1zM22 11h1v1h-1zM23 11h1v1h-1zM24 11h1v1h-1zM25 11h1v1h-1zM3 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM16 12h1v1h-1zM17 12h1v1h-1zM20 12h1v1h-1zM23 12h1v1h-1zM26 12h1v1h-1zM2 13h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM7 13h1v1h-1zM10 13h1v1h-1zM12 13h1v1h-1zM16 13h1v1h-1zM18 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM21 13h1v1h-1zM22 13h1v1h-1zM23 13h1v1h-1zM24 13h1v1h-1zM25 13h1v1h-1zM26 13h1v1h-1zM2 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM8 14h1v1h-1zM9 14h1v1h-1zM10 14h1v1h-1zM13 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM18 14h1v1h-1zM20 14h1v1h-1zM21 14h1v1h-1zM26 14h1v1h-1zM2 15h1v1h-1zM4 15h1v1h-1zM10 15h1v1h-1zM12 15h1v1h-1zM14 15h1v1h-1zM17 15h1v1h-1zM18 15h1v1h-1zM22 15h1v1h-1zM25 15h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM6 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM12 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM19 16h1v1h-1zM20 16h1v1h-1zM22 16h1v1h-1zM23 16h1v1h-1zM24 16h1v1h-1zM25 16h1v1h-1zM26 16h1v1h-1zM2 17h1v1h-1zM5 17h1v1h-1zM6 17h1v1h-1zM10 17h1v1h-1zM12 17h1v1h-1zM14 17h1v1h-1zM15 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM21 17h1v1h-1zM23 17h1v1h-1zM24 17h1v1h-1zM26 17h1v1h-1zM2 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM8 18h1v1h-1zM9 18h1v1h-1zM10 18h1v1h-1zM11 18h1v1h-1zM12 18h1v1h-1zM13 18h1v1h-1zM14 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM20 18h1v1h-1zM21 18h1v1h-1zM22 18h1v1h-1zM24 18h1v1h-1zM25 18h1v1h-1zM10 19h1v1h-1zM13 19h1v1h-1zM17 19h1v1h-1zM18 19h1v1h-1zM22 19h1v1h-1zM24 19h1v1h-1zM25 19h1v1h-1zM2 20h1v1h-1zM3 20h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM7 20h1v1h-1zM8 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM22 20h1v1h-1zM26 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM10 21h1v1h-1zM11 21h1v1h-1zM13 21h1v1h-1zM15 21h1v1h-1zM17 21h1v1h-1zM18 21h1v1h-1zM22 21h1v1h-1zM26 21h1v1h-1zM2 22h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM6 22h1v1h-1zM8 22h1v1h-1zM10 22h1v1h-1zM12 22h1v1h-1zM13 22h1v1h-1zM15 22h1v1h-1zM17 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1zM20 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM26 22h1v1h-1zM2 23h1v1h-1zM4 23h1v1h-1zM5 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM10 23h1v1h-1zM11 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM19 23h1v1h-1zM20 23h1v1h-1zM25 23h1v1h-1zM26 23h1v1h-1zM2 24h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM12 24h1v1h-1zM13 24h1v1h-1zM15 24h1v1h-1zM18 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1zM25 24h1v1h-1zM26 24h1v1h-1zM2 25h1v1h-1zM8 25h1v1h-1zM11 25h1v1h-1zM12 25h1v1h-1zM13 25h1v1h-1zM14 25h1v1h-1zM15 25h1v1h-1zM19 25h1v1h-1zM21 25h1v1h-1zM22 25h1v1h-1zM24 25h1v1h-1zM25 25h1v1h-1zM26 25h1v1h-1zM2 26h1v1h-1zM3 26h1v1h-1zM4 26h1v1h-1zM5 26h1v1h-1zM6 26h1v1h-1zM7 26h1v1h-1zM8 26h1v1h-1zM10 26h1v1h-1zM11 26h1v1h-1zM13 26h1v1h-1zM14 26h1v1h-1zM15 26h1v1h-1zM17 26h1v1h-1zM18 26h1v1h-1zM20 26h1v1h-1zM23 26h1v1h-1zM26 26h1v1h-1z"/></svg></div>
+<div class="ntfy-steps">
+<div class="ntfy-scan">Scan to install the ntfy app</div>
+<div class="ntfy-sub">Point your phone camera at the code &mdash; it opens <a class="ntfy-link" onclick="openNtfySite()">ntfy.sh</a>, where the free app is available for iPhone and Android.<br><br>
+Then open the app and subscribe to the topic above. Pick a long, hard-to-guess topic name: on the public server it is the only thing protecting your notifications.</div>
+</div>
+</div>
 <button class="set-test" onclick="testNtfy()">Send test notification</button>
 <span class="set-test-res" id="set-ntfy-res"></span>
 </div>
@@ -1408,7 +1477,7 @@ const S = {
   volumes:[], sources:[], dests:[],
   kioskMode:false, kioskPin:'',
   writeReport:true,
-  reportHtml:true, reportCsv:false, reportJson:false,
+  reportHtml:true, reportCsv:false, reportJson:false, reportFull:true,
   writeChecksum:true,
   cksumList:true, cksumMhl:false,
   ntfyEnabled:false, ntfyServer:'https://ntfy.sh', ntfyTopic:'',
@@ -1442,13 +1511,19 @@ const S = {
 };
 
 let tokId=0, rawFocused=false;
-const mkTok=(type,key)=>({type,key,id:tokId++});
+// {operator} is the canonical variable name; {cameraman} is its legacy alias.
+// Canonicalize at every token entry point (button, raw typing, saved prefs,
+// presets, imports) so old templates load, display and serialize as {operator}
+// while the engine keeps resolving both.
+const VAR_CANON={cameraman:'operator'};
+const canonKey=k=>VAR_CANON[k]||k;
+const mkTok=(type,key)=>({type,key:type==='var'?canonKey(key):key,id:tokId++});
 
 function defaultTokens(){
   return[
     mkTok('var','counter'),mkTok('sep','_'),
     mkTok('var','cardname'),mkTok('sep','_'),
-    mkTok('var','cameraman'),mkTok('sep','_'),
+    mkTok('var','operator'),mkTok('sep','_'),
     mkTok('var','camera'),mkTok('sep','_'),
     mkTok('var','YY'),mkTok('var','MM'),mkTok('var','DD'),mkTok('sep','_'),
     mkTok('var','HH'),mkTok('var','MIN'),
@@ -1501,7 +1576,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     });
   }
   const prefs=await window.ingesto.loadPrefs();
-  if(Array.isArray(prefs.presets)) S.presets=prefs.presets.slice(0,4).concat(Array(Math.max(0,4-prefs.presets.length)).fill(null));
+  if(Array.isArray(prefs.presets)) S.presets=normPresets(prefs.presets);
   if(prefs.fileFilterFormats && typeof prefs.fileFilterFormats==='object'){
     S.fileFilterFormats=prefs.fileFilterFormats;
     // Formats added since the prefs were saved get their category default
@@ -1517,11 +1592,13 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     S.counterOverride=!!prefs.counterOverride;
   }
   setMode(prefs.mode || S.mode, false);
-  if(prefs.proAlgo)   setProAlgo(prefs.proAlgo,false);
-  S.proDoubleRead=!!prefs.proDoubleRead; { const cb=document.getElementById('pro-dr-toggle'); if(cb) cb.checked=S.proDoubleRead; }
+  if(['xxh64','xxh128','md5'].includes(prefs.proAlgo)) setProAlgo(prefs.proAlgo,false);
+  S.proDoubleRead=!!prefs.proDoubleRead; { const cb=document.getElementById('pro-dr-toggle'); if(cb){ cb.checked=S.proDoubleRead; cb.closest('.pa-item')?.classList.toggle('on',S.proDoubleRead); } }
   S.proWarnDismissed=!!prefs.proWarnDismissed;
   S.updateDismissedVersion=prefs.updateDismissedVersion||'';
-  if(prefs.lastTemplate?.length){tokId=200;S.tokens=prefs.lastTemplate.map(t=>({...t,id:tokId++}));}
+  if(Array.isArray(prefs.lastTemplate) && prefs.lastTemplate.length){tokId=200;
+    S.tokens=prefs.lastTemplate.map(t=>({type:(t&&t.type==='var')?'var':'sep',
+      key:(t&&t.type==='var')?canonKey(String(t.key||'')):String((t&&t.key)||''),id:tokId++}));}
   if(prefs.cameraman) document.getElementById('meta-cam').value=prefs.cameraman;
   if(prefs.note)      { const n=document.getElementById('meta-note'); if(n) n.value=prefs.note; }
   if(prefs.camera)    document.getElementById('meta-model').value=prefs.camera;
@@ -1534,9 +1611,12 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   if(typeof prefs.reportHtml==='boolean') S.reportHtml=prefs.reportHtml;
   if(typeof prefs.reportCsv==='boolean') S.reportCsv=prefs.reportCsv;
   if(typeof prefs.reportJson==='boolean') S.reportJson=prefs.reportJson;
+  if(typeof prefs.reportFull==='boolean') S.reportFull=prefs.reportFull;
   { const a=document.getElementById('rf-html'); if(a) a.checked=S.reportHtml;
     const b=document.getElementById('rf-csv');  if(b) b.checked=S.reportCsv;
-    const c=document.getElementById('rf-json'); if(c) c.checked=S.reportJson; }
+    const c=document.getElementById('rf-json'); if(c) c.checked=S.reportJson;
+    const d=document.getElementById('rf-full'); if(d) d.checked=S.reportFull; }
+  updateReportDetailNote();
   if(typeof prefs.writeChecksum==='boolean') S.writeChecksum=prefs.writeChecksum;
   { const sw=document.getElementById('cksum-toggle'); if(sw) sw.checked=S.writeChecksum; }
   if(typeof prefs.cksumList==='boolean') S.cksumList=prefs.cksumList;
@@ -1557,6 +1637,14 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   if(typeof prefs.hookCommand==='string') S.hookCommand=prefs.hookCommand;
   { const hk=document.getElementById('set-hook'); if(hk) hk.value=S.hookCommand;
     const he=document.getElementById('set-hook-en'); if(he) he.checked=S.hookEnabled; }
+  // Kiosk must survive a restart, otherwise closing and reopening the app was a
+  // one-step way out of the locked mode (and it wiped the PIN).
+  // The kiosk PIN and the kiosk state are deliberately NOT restored. They used
+  // to be, and the app relaunched straight back into kiosk mode — so an operator
+  // who forgot the PIN was locked out for good, with no way back short of
+  // deleting the preferences file by hand. A kiosk session now lasts exactly as
+  // long as the app is open: quitting always gets you out, and entering kiosk
+  // again asks for a fresh PIN.
   if (S.exportInclude) for (const [id,key] of Object.entries(EXPORT_INC)) {
     const el=document.getElementById(id); if(el && typeof S.exportInclude[key]==='boolean') el.checked=S.exportInclude[key];
   }
@@ -1578,7 +1666,10 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   applyKioskMode();   // restore kiosk screen if it was active
 
   window.ingesto.onCopyProgress(onProgress);
-  window.ingesto.onCopyComplete(onComplete);
+  // Wrapper, not onComplete directly: during a sequential batch the per-card
+  // IPC 'copy-complete' events (including one that may arrive AFTER the loop
+  // ends) are swallowed here, and startCopy() calls onComplete once itself.
+  window.ingesto.onCopyComplete(R => { if(S._batchSuppress) return; onComplete(R); });
   window.ingesto.getVersion().then(v=>{
     S.appVersion=v;
     const fv=document.getElementById('footer-ver'); if(fv) fv.textContent='v'+v;
@@ -1591,11 +1682,16 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   // Native HTML5 drop from Finder
   // which fires when a file:// URL is dragged onto the window.
   // We only need dragover/drop on the document for internal volume card drags.
-  // For external drops, we must NOT call preventDefault on dragover at document level
-  // as that blocks the will-navigate event from firing.
+  // preventDefault on dragover is REQUIRED for the in-page 'drop' handler below
+  // to fire (this is the channel that actually handles Finder drops, via
+  // webUtils.getPathForFile). The main process's will-navigate file:// branch is
+  // only a dead-man fallback and must stay preventDefault'ed there regardless.
   document.addEventListener('dragover',e=>e.preventDefault());
   document.addEventListener('drop',e=>{
     e.preventDefault();
+    // Kiosk lockdown: a Finder drop could add an arbitrary DESTINATION (then
+    // persisted for every later ingest) without the admin PIN.
+    if(S.kioskMode) return;
     if(S.dragVol) return;
     _lastMouseX = e.clientX;
     // file.path was removed in Electron 32+ — webUtils.getPathForFile (exposed
@@ -1652,9 +1748,13 @@ function persistPrefs(){
     camera:document.getElementById('meta-model')?.value||'',
     note:document.getElementById('meta-note')?.value||'',
     activePreset:S.activePreset,
+    // kioskMode and kioskPin are intentionally absent — see the loader. A
+    // forgotten PIN must never outlive the session that set it.
+    kioskMode:false, kioskPin:'',
     writeSentinel:S.writeSentinel,
     writeReport:S.writeReport,
     reportHtml:S.reportHtml, reportCsv:S.reportCsv, reportJson:S.reportJson,
+    reportFull:S.reportFull,
     writeChecksum:S.writeChecksum, cksumList:S.cksumList, cksumMhl:S.cksumMhl,
     ntfyEnabled:S.ntfyEnabled, ntfyServer:S.ntfyServer, ntfyTopic:S.ntfyTopic,
     hookEnabled:S.hookEnabled, exportInclude:S.exportInclude,
@@ -1770,26 +1870,22 @@ function renderVolumes(){
     grid.innerHTML=`<div class="empty"><div class="empty-ico" style="opacity:1;color:var(--red);"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M8.35 2.69A10 10 0 0 1 21.3 15.65"/><path d="M19.08 19.08A10 10 0 1 1 4.92 4.92"/></svg></div><div class="empty-txt">No volumes found</div></div>`;
     return;
   }
-  grid.innerHTML=shown.map(v=>{
+  grid.innerHTML=shown.map((v,i)=>{
     const pct=v.totalSize>0?Math.min(100,v.usedSize/v.totalSize*100).toFixed(0):0;
     const srcIdx=S.sources.findIndex(x=>x.path===v.path);
     const dstIdx=S.dests.findIndex(x=>x.path===v.path);
     const isSrc=srcIdx>=0, isDst=dstIdx>=0;
     const isHidden=S.hiddenVolumes.has(v.path);
     const tagH=isSrc?`<div class="vc-tag tag-src">SRC${srcIdx+1}</div>`:isDst?`<div class="vc-tag tag-dst">DST${dstIdx+1}</div>`:isHidden?'<div class="vc-tag tag-hidden">HIDDEN</div>':'';
-    const sp2=v.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     const camBrand = (v.camera?.brand||'').toUpperCase();
     const camSameAsBrand = v.camera?.model && v.camera.model.toLowerCase() === (v.camera.brand||'').toLowerCase();
     const camH = v.camera && v.camera.model
       ? `<div class="vc-cam">${camSameAsBrand ? esc(camBrand) : `${esc(camBrand)} ${esc(v.camera.model)}`}</div>` : '';
-    // Drag-and-drop + right-click menu work identically on every platform (this is
-    // in-window HTML5 drag, no OS integration, so there's no Windows limitation).
-    // Windows additionally supports a left click opening the same menu, as a quicker
-    // alternative to dragging.
-    const winHandlers=window.ingesto.platform==='win32'
-      ? `draggable="true" ondragstart="startVolDrag(event,'${sp2}')" ondragend="endVolDrag(event)" onclick="winVolClick(event,'${sp2}')" oncontextmenu="winVolMenu(event,'${sp2}')"`
-      : `draggable="true" ondragstart="startVolDrag(event,'${sp2}')" ondragend="endVolDrag(event)" oncontextmenu="winVolMenu(event,'${sp2}')"`;
-    return`<div class="vc${isHidden?' vc-hidden':''}" ${winHandlers}>
+    // SECURITY: the volume path is NEVER interpolated into an inline handler
+    // (it comes from an attacker-controllable volume label). The card only
+    // carries an index; the real path is bound below via addEventListener, so a
+    // hostile name like `a');runHook(...)//` is just text, never code.
+    return`<div class="vc${isHidden?' vc-hidden':''}" draggable="true" data-vi="${i}">
       ${tagH}
       <div class="vc-icon">${getVolIcon(v, isSrc, isDst)}</div>
       <div class="vc-name">${esc(v.name)}</div>
@@ -1798,6 +1894,19 @@ function renderVolumes(){
       <div class="vc-bar"><div class="vc-fill" style="width:${pct}%"></div></div>
     </div>`;
   }).join('');
+
+  // Bind handlers with the path captured in a closure — no inline JS, no
+  // interpolation of untrusted strings into markup.
+  const isWin = window.ingesto.platform==='win32';
+  grid.querySelectorAll('.vc').forEach(el => {
+    const v = shown[parseInt(el.getAttribute('data-vi'),10)];
+    if (!v) return;
+    const p = v.path;
+    el.addEventListener('dragstart', e => startVolDrag(e, p));
+    el.addEventListener('dragend',   e => endVolDrag(e));
+    el.addEventListener('contextmenu', e => winVolMenu(e, p));
+    if (isWin) el.addEventListener('click', e => winVolClick(e, p));
+  });
 }
 
 function toggleFilter(t){
@@ -1877,12 +1986,70 @@ function winVolMenu(e,p){
     i3.onclick=()=>{ isHidden?unhideVolume(p):hideVolume(p); m.remove(); };
     m.appendChild(i3);
   }
+  // ── Eject ────────────────────────────────────────────────────────────────
+  // Offered for anything that isn't the system disk or a network share. The
+  // item is created immediately (the menu is built synchronously) and only
+  // enabled once the main process confirms the volume is really ejectable —
+  // an unmount attempt on a fixed internal disk would just fail confusingly.
+  if(!vol.isSystem && !vol.isNetwork){
+    const ej=document.createElement('div');
+    ej.className='wvc-item wvc-eject wvc-disabled';
+    ej.innerHTML=`<span style="display:inline-flex;align-items:center;gap:8px;">${ICO_EJECT}Checking…</span>`;
+    m.appendChild(ej);
+    window.ingesto.isRemovable(p).then(removable=>{
+      if(!m.isConnected) return;               // menu already dismissed
+      // An external drive that reports "not removable" is still ejectable on
+      // macOS, and a card that carries a camera structure obviously is.
+      const ejectable = removable || vol.fsType==='sdcard' || vol.fsType==='usb'
+                     || vol.fsType==='ssd' || vol.fsType==='external' || !!vol.camera;
+      if(!ejectable){ ej.remove(); return; }
+      ej.classList.remove('wvc-disabled');
+      ej.innerHTML=`<span style="display:inline-flex;align-items:center;gap:8px;">${ICO_EJECT}Eject</span>`;
+      ej.onclick=()=>{ m.remove(); ejectVolumeFromMenu(p, vol.name); };
+    }).catch(()=>{ if(m.isConnected) ej.remove(); });
+  }
   const mw=190, x=Math.min(e.clientX, window.innerWidth-mw-6), y=Math.min(e.clientY, window.innerHeight-130);
   m.style.cssText='position:fixed;left:'+x+'px;top:'+y+'px;z-index:3000;';
   document.body.appendChild(m);
   setTimeout(()=>document.addEventListener('click',function h(ev){
     if(!m.contains(ev.target)){ m.remove(); document.removeEventListener('click',h); }
   }),50);
+}
+
+const ICO_EJECT='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a1 1 0 0 1-.72-1.695l7.257-7.668a2 2 0 0 1 2.926 0l7.256 7.668A1 1 0 0 1 20 13z"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>';
+
+// Eject a volume straight from the volume list. Two hard rules:
+//  1. never during an ingest — pulling a source or destination mid-write is
+//     exactly how footage gets lost;
+//  2. if the volume is loaded as SOURCE or DESTINATION, drop it from that zone
+//     first, otherwise the app would keep pointing at a path that no longer
+//     exists (and a later Start would fail in confusing ways).
+async function ejectVolumeFromMenu(p, label){
+  if(S.copying){
+    showToast('An ingest is running — cannot eject while copying.','warn',4000);
+    return;
+  }
+  const name = label || p;
+  showToast(`Ejecting ${name}…`,'info',2000);
+  let res=null;
+  try{ res=await window.ingesto.ejectVolume(p); }catch(e){ res={ok:false,error:e&&e.message}; }
+  if(res && res.ok){
+    // Unload AFTER a confirmed eject: a failed attempt must not cost the user
+    // their source/destination assignment for nothing.
+    const wasSrc=S.sources.some(x=>x.path===p);
+    const wasDst=S.dests.some(x=>x.path===p);
+    if(wasSrc) removeFromZone('src',p);
+    if(wasDst) removeFromZone('dst',p);
+    S.hiddenVolumes.delete(p);
+    const unloaded = wasSrc && wasDst ? ' (unloaded from SOURCE and DESTINATION)'
+                   : wasSrc ? ' (unloaded from SOURCE)'
+                   : wasDst ? ' (unloaded from DESTINATION)' : '';
+    showToast(`${name} ejected — safe to remove.${unloaded}`,'ok',3500);
+  } else {
+    const why = (res && res.error) ? ` (${res.error})` : '';
+    showToast(`Could not eject ${name}${why}. A file may still be open — eject from Finder.`,'warn',5000);
+  }
+  loadVolumes();   // refresh the list either way
 }
 
 function winVolAdd(p,z){
@@ -1920,6 +2087,15 @@ function pathToName(p){
 function addToZone(z,entry){
   const arr=z==='src'?S.sources:S.dests;
   if(arr.find(x=>x.path===entry.path))return;
+  // Refuse the assignment straight away when it would make a volume both the
+  // source and the destination (or nest one inside the other).
+  { const other = z==='src' ? S.dests : S.sources;
+    const clash = other.find(o => pathContains(o.path, entry.path) || pathContains(entry.path, o.path));
+    if(clash){
+      showToast(`⚠ "${entry.name||entry.path}" is already used as ${z==='src'?'a DESTINATION':'a SOURCE'}.
+A card cannot be copied into itself.`, 'error');
+      return;
+    } }
   if(z==='src'){
     // Pre-fill per-card fields from global defaults
     entry.operator = document.getElementById('meta-cam')?.value   || '';
@@ -1927,6 +2103,13 @@ function addToZone(z,entry){
     entry.note     = document.getElementById('meta-note')?.value  || '';
     entry._open    = true;  // auto-expand so user sees the fields immediately
     entry._customised = false;
+    // Kiosk is single-card: a source accepted from the new-volume proposal
+    // (whose overlay sits above the kiosk screen) replaces the previous one and
+    // the kiosk panel is refreshed — otherwise the card loads invisibly while
+    // the screen still shows "Browse a card…".
+    if(S.kioskMode){
+      S.sources.length=0;
+    }
   }
   arr.push(entry);
   renderZoneList(z);
@@ -1934,6 +2117,10 @@ function addToZone(z,entry){
   updateBtn();
   if(z==='src'){ renderSourceInfoCards(); updateCopyInfoVisibility(); }
   if(z==='dst') scanCounter(false);
+  // Keep the kiosk panel in sync when a card is added while locked.
+  if(S.kioskMode && z==='src' && typeof renderKioskSource==='function'){
+    try{ renderKioskSource(); kioskUpdateStart(); }catch(_){}
+  }
   // ── New in 0.9.8: camera auto-detection + sentinel inspection ────────
   if (z === 'src') {
     onSourceAdded(entry).catch(err => console.error('onSourceAdded error:', err));
@@ -1969,11 +2156,23 @@ async function onSourceAdded(entry) {
     if (info.writable === false) {
       showToast(`⚠️ Card "${entry.name}" is write-protected — tracking log can't be written. Copy still works normally.`, 'warn', 6000);
     }
+    // A tracking log that exists but can no longer be read: say so, rather than
+    // silently treating the card as never ingested.
+    if (info.sentinelDamaged) {
+      showToast(`⚠️ Card "${entry.name}" has a tracking log INGESTO can't read — it can't tell you which files were already copied. The copy itself is unaffected.`, 'warn', 7000);
+    }
     // Already-ingested detection
     if (info.hasSentinel && info.counts.alreadyIngested > 0) {
       showUnformattedCardDialog(entry, info);
     }
   } catch (e) { console.error('inspectCard error:', e); }
+}
+// Index-based removal — used by rendered buttons so a volume PATH (which can
+// contain attacker-controlled characters) is never interpolated into markup.
+function removeZoneAt(z,i){
+  const arr = z==='src' ? S.sources : S.dests;
+  const e = arr[i];
+  if(e) removeFromZone(z, e.path);
 }
 function removeFromZone(z,p){
   if(z==='src') S.sources=S.sources.filter(x=>x.path!==p);
@@ -1989,7 +2188,6 @@ function renderZoneList(z){
   if(!arr.length){list.innerHTML='';return;}
   const tag=z==='src'?'SRC':'DST';
   list.innerHTML=arr.map((e,i)=>{
-    const sp=e.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     const icon=z==='src'?`<div class="zi-icon">${getZoneIcon(z)}</div>`:'';
     return`<div class="zi zi-${z}">
       ${icon}
@@ -1998,7 +2196,7 @@ function renderZoneList(z){
         <div class="zi-name">${esc(e.name)}</div>
         <div class="zi-path">${esc(e.path)}</div>
       </div>
-      <button class="zi-rm" onclick="removeFromZone('${z}','${sp}')">×</button>
+      <button class="zi-rm" onclick="removeZoneAt('${z}',${i})">×</button>
     </div>`;
   }).join('');
 }
@@ -2014,10 +2212,28 @@ function setMode(m,persist=true){
 }
 function setProAlgo(a,persist=true){
   S.proAlgo=a;
-  document.querySelectorAll('#pro-algo .pa-opt').forEach(b=>b.classList.toggle('on',b.dataset.algo===a));
+  // Switch rows behave as radios: reflect the active algo on every row.
+  document.querySelectorAll('#pro-algo .pa-line .pa-item').forEach(row=>{
+    const inp=row.querySelector('input[data-algo]');
+    if(!inp) return;
+    const on = inp.dataset.algo===a;
+    inp.checked=on;
+    row.classList.toggle('on',on);
+  });
   if(persist)persistPrefs();
 }
-function setProDouble(v){ S.proDoubleRead=!!v; persistPrefs(); }
+// Checksum switches are exclusive: turning one ON turns the others off, and the
+// active one cannot be turned OFF (there must always be exactly one algorithm).
+function algoSwitch(el){
+  if(!el.checked){ el.checked=true; return; }
+  setProAlgo(el.dataset.algo);
+}
+function setProDouble(v){
+  S.proDoubleRead=!!v;
+  const row=document.getElementById('pro-dr-toggle')?.closest('.pa-item');
+  if(row) row.classList.toggle('on',!!v);
+  persistPrefs();
+}
 // PRO button click — warn novices first (unless dismissed), then select.
 function onSelectPro(){
   if(S.proWarnDismissed){ setMode('pro'); return; }
@@ -2066,7 +2282,9 @@ function renderTemplate(){
   const box=document.getElementById('tpl-box');
   box.innerHTML=S.tokens.map(t=>{
     const cls=t.type==='sep'?'tok tok-sep':'tok tok-var';
-    const lbl=t.type==='var'?`{${t.key}}`:t.key;
+    // esc(): a token key can come from an imported settings/preset file or
+    // from restored prefs, so it is untrusted text going into innerHTML.
+    const lbl=esc(t.type==='var'?`{${t.key}}`:t.key);
     return`<div class="${cls}" draggable="true" data-id="${t.id}"
         ondragstart="tokStart(event,${t.id})"
         ondragover="tokOver2(event,${t.id})"
@@ -2134,7 +2352,7 @@ function onRawInput(){
       const lit=raw.slice(last,m.index);
       if(lit)parts.push({type:'sep',key:lit});
     }
-    parts.push({type:'var',key:m[1]});
+    parts.push({type:'var',key:canonKey(m[1])});
     last=m.index+m[0].length;
   }
   if(last<raw.length){
@@ -2147,7 +2365,9 @@ function onRawInput(){
   const box=document.getElementById('tpl-box');
   box.innerHTML=S.tokens.map(t=>{
     const cls=t.type==='sep'?'tok tok-sep':'tok tok-var';
-    const lbl=t.type==='var'?`{${t.key}}`:t.key;
+    // esc(): a token key can come from an imported settings/preset file or
+    // from restored prefs, so it is untrusted text going into innerHTML.
+    const lbl=esc(t.type==='var'?`{${t.key}}`:t.key);
     return`<div class="${cls}" draggable="true" data-id="${t.id}"
         ondragstart="tokStart(event,${t.id})"
         ondragover="tokOver2(event,${t.id})"
@@ -2174,7 +2394,7 @@ function updatePreview(){
   const cnt=String(S.counter||1).padStart(3,'0');
   const r=buildTplStr()
     .replaceAll('{counter}',cnt).replaceAll('{cardname}','A001')
-    .replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
+    .replaceAll('{operator}',cam).replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
     .replaceAll('{YY}',String(now.getFullYear()).slice(-2))
     .replaceAll('{MM}',p(now.getMonth()+1)).replaceAll('{DD}',p(now.getDate()))
     .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes())).replaceAll('{SS}',p(now.getSeconds()));
@@ -2190,7 +2410,7 @@ function previewForSource(src, i){
   const cnt = String((S.counter||1)+i).padStart(3,'0');
   const r = buildTplStr()
     .replaceAll('{counter}',cnt).replaceAll('{cardname}',src.name||'A001')
-    .replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
+    .replaceAll('{operator}',cam).replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
     .replaceAll('{YY}',String(now.getFullYear()).slice(-2))
     .replaceAll('{MM}',p(now.getMonth()+1)).replaceAll('{DD}',p(now.getDate()))
     .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes())).replaceAll('{SS}',p(now.getSeconds()));
@@ -2210,6 +2430,26 @@ document.addEventListener('input',e=>{
 // ═══════════════════════════════════════════════════════
 // 6-slot presets — compact, right-click context menu
 // ═══════════════════════════════════════════════════════
+// Coerce anything that claims to be a preset list into exactly 4 slots holding
+// either null or {name:string, tokens:array}. The prefs file, an imported
+// settings file and an imported presets file all land here: a hand-edited or
+// truncated file used to throw inside renderPresets during boot, which killed
+// the whole DOMContentLoaded handler — no volume list, no progress events, a
+// dead app with nothing on screen to explain it.
+function normPresets(arr){
+  const src = Array.isArray(arr) ? arr : [];
+  const out = [];
+  for (let i=0; i<4; i++){
+    const p = src[i];
+    out.push((p && typeof p==='object' && typeof p.name==='string')
+      ? { name: p.name,
+          tokens: (Array.isArray(p.tokens)?p.tokens:[]).map(t=>({
+            type: (t&&t.type==='var')?'var':'sep',
+            key: String((t&&t.key)||'') })) }
+      : null);
+  }
+  return out;
+}
 function renderPresets(){
   const list = document.getElementById('presets-row');
   list.innerHTML = S.presets.map((p, i) => {
@@ -2287,7 +2527,7 @@ function ctxDelete(e){
 function loadFromSlot(i){
   const p=S.presets[i];if(!p)return;
   tokId=300+i*50;
-  S.tokens=p.tokens.map(t=>({...t,id:tokId++}));
+  S.tokens=p.tokens.map(t=>({...t,key:t.type==='var'?canonKey(t.key):t.key,id:tokId++}));
   S.activePreset=i;
   renderTemplate();syncRaw();renderPresets();persistPrefs();
 }
@@ -2382,7 +2622,7 @@ async function scanCounter(applyResult=false){
       return;
     }
 
-    const {next, max} = await window.ingesto.scanDestCounterFull(S.dests.map(d=>d.path));
+    const {next, max} = await window.ingesto.scanDestCounterFull(S.dests.map(d=>d.path), buildTplStr());
     S.counterMax = max;
 
     // Apply the value if: explicitly requested OR not overridden
@@ -2455,14 +2695,13 @@ function renderSourceInfoCards(){
     const op      = src.operator || '';
     const cam     = src.camera   || '';
     const note    = src.note     || '';
-    const sp      = src.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     return `<div class="src-info-card${isOpen ? ' open' : ''}" id="sic-${i}">
       <div class="src-info-header" onclick="toggleSIC(${i})">
         <span class="src-info-chevron">▶</span>
         <span class="sic-num">SRC${i+1}</span>
         <div class="src-info-icon">${getZoneIcon('src')}</div>
         <span class="src-info-name">${esc(src.name)}</span>
-        <button class="sic-rm" onclick="event.stopPropagation();removeFromZone('src','${sp}')" title="Remove card">×</button>
+        <button class="sic-rm" onclick="event.stopPropagation();removeZoneAt('src',${i})" title="Remove card">×</button>
       </div>
       <div class="sic-sub">
         <div class="sic-preview" id="sicprev-${i}">${esc(previewForSource(src,i))}</div>
@@ -2710,8 +2949,11 @@ function showToast(msg, type='info', duration=4000){
 // Launch
 // ═══════════════════════════════════════════════════════
 function onStartBtn(){ if(S.copying) doCancelCopy(); else startCopy(); }
-const PAUSE_SVG='<svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="1.5" width="3.4" height="11" rx="1"/><rect x="8.6" y="1.5" width="3.4" height="11" rx="1"/></svg>';
-const PLAY_SVG='<svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5l9 5.5-9 5.5V1.5z"/></svg>';
+// Transport icons — official lucide.dev shapes (play / pause / square / eject)
+const PAUSE_SVG='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/></svg>';
+const PLAY_SVG='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>';
+const STOP_SVG='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>';
+const EJECT_SVG='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a1 1 0 0 1-.72-1.695l7.257-7.668a2 2 0 0 1 2.926 0l7.256 7.668A1 1 0 0 1 20 13z"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>';
 function onPauseBtn(){
   if(!S.copying) return;
   if(!S.paused){
@@ -2739,22 +2981,121 @@ function updateBtn(){
   const p=document.getElementById('pause-btn');
   if(S.copying){
     b.disabled=false; b.classList.add('danger');
-    b.innerHTML='<svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor"><rect x="2.5" y="2.5" width="9" height="9" rx="1.5"/></svg> Cancel Ingest';
+    b.innerHTML=STOP_SVG+' Cancel';
     p.style.display='flex';
     if(S.paused){ p.classList.add('resume'); p.innerHTML=PLAY_SVG+' Resume'; }
     else { p.classList.remove('resume'); p.innerHTML=PAUSE_SVG+' Pause'; }
   } else {
     b.classList.remove('danger');
     b.disabled=!(S.sources.length>0&&S.dests.length>0);
-    b.innerHTML='<svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5l9 5.5-9 5.5V1.5z"/></svg> Start Ingest';
+    b.innerHTML=PLAY_SVG+' Start Ingest';
     p.style.display='none';
     S.paused=false;
     setPauseBadge(null);
   }
 }
 
+// ── Pre-flight guards ────────────────────────────────────────────────────
+// Mirrors the checks the copy engine now enforces, so the user gets a clear
+// reason BEFORE the ingest starts instead of a green run that copied nothing
+// or overwrote a previous card.
+
+// Same cleanup the engine applies in buildFolderName().
+function folderNameFromTemplate(src, i){
+  const now=new Date(),p=x=>String(x).padStart(2,'0');
+  const cam = (src.operator || document.getElementById('meta-cam')?.value   || '').trim();
+  const mdl = (src.camera   || document.getElementById('meta-model')?.value || '').trim();
+  const cnt = String((S.counter||1)+i).padStart(3,'0');
+  return buildTplStr()
+    .replaceAll('{counter}',cnt).replaceAll('{cardname}',src.name||'CARD')
+    .replaceAll('{operator}',cam).replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
+    .replaceAll('{YY}',String(now.getFullYear()).slice(-2))
+    .replaceAll('{MM}',p(now.getMonth()+1)).replaceAll('{DD}',p(now.getDate()))
+    .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes()))
+    .replaceAll('{SS}',p(now.getSeconds()))
+    .replace(/[_\-]+/g, m=>m[0])
+    .replace(/^[_\-]+|[_\-]+$/g,'')
+    .replace(/[<>:"|?*\/\\]/g,'_');
+}
+function isSafeFolderName(n){
+  const s=String(n||'').trim();
+  return !!s && s!=='.' && s!=='..' && !/[\/\\]/.test(s) && s.length<=200;
+}
+// Path-containment test, case-insensitive except on Linux.
+function pathContains(parent, child){
+  const norm=p=>{
+    // Resolve "." and ".." segments so "/Volumes/CARD/../CARD" is caught here,
+    // like the main-process path.resolve version — not only later at run time.
+    let r=String(p||'').replace(/\\/g,'/');
+    const abs=r.startsWith('/');
+    const out=[];
+    for(const seg of r.split('/')){
+      if(seg===''||seg==='.') continue;
+      if(seg==='..'){ if(out.length&&out[out.length-1]!=='..') out.pop(); else if(!abs) out.push('..'); }
+      else out.push(seg);
+    }
+    r=(abs?'/':'')+out.join('/');
+    r=r.replace(/\/+$/,'')||(abs?'/':'');
+    if(window.ingesto.platform!=='linux') r=r.toLowerCase();
+    return r;
+  };
+  const a=norm(parent), b=norm(child);
+  if(!a||!b) return false;
+  return a===b || b.startsWith(a==='/'?'/':a+'/');
+}
+// Returns an error message, or null when everything is fine.
+function preflightIngest(){
+  // 1. Folder-name template
+  for(let i=0;i<S.sources.length;i++){
+    const name=folderNameFromTemplate(S.sources[i], i);
+    if(!isSafeFolderName(name)){
+      return { title:'Invalid folder name',
+        body:`The folder-name template produces ${name?`"<b>${esc(name)}</b>"`:'<b>an empty name</b>'} for card `+
+             `"${esc(S.sources[i].name||S.sources[i].path)}". The ingest would be written straight into the `+
+             `destination root, where the next card would silently overwrite it. Add at least one variable `+
+             `to the template — {counter} and {cardname} are the safe minimum.` };
+    }
+  }
+  // 2. A destination that IS the source card, or lives inside it
+  for(const s of S.sources) for(const d of S.dests){
+    if(pathContains(s.path,d.path) || pathContains(d.path,s.path)){
+      return { title:'Source and destination overlap',
+        body:`Destination "<b>${esc(d.name||d.path)}</b>" is the same as — or inside — the source card `+
+             `"<b>${esc(s.name||s.path)}</b>". The card would be copied into itself, then flagged as `+
+             `ingested and offered for ejection. Remove one of the two.` };
+    }
+  }
+  // 3. File filter on, every format unchecked
+  const ff=buildFileFilterOptions();
+  if(ff && Object.keys(ff.extCat).length===0){
+    return { title:'File filter selects nothing',
+      body:'The file filter is enabled but no format is checked, so <b>not a single file</b> would be copied — '+
+           'and the ingest would still report success. Check at least one format, or turn the filter off.' };
+  }
+  return null;
+}
+function showBlockingError(title, bodyHtml){
+  const old=document.getElementById('preflight-ov'); if(old) old.remove();
+  const ov=document.createElement('div');
+  ov.id='preflight-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:6000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML=`<div class="mi-card" style="max-width:460px;">`+
+    `<div class="mi-h" style="color:var(--red)">⚠ ${esc(title)}</div>`+
+    `<div class="mi-row" style="border-top:none;"><div class="mi-body">${bodyHtml}</div></div>`+
+    `<div class="vp-actions"><button class="vp-use" id="pf-ok">Got it</button></div></div>`;
+  document.body.appendChild(ov);
+  const done=()=>ov.remove();
+  ov.querySelector('#pf-ok').onclick=done;
+  ov.onclick=(e)=>{ if(e.target===ov) done(); };
+}
+
 async function startCopy(){
   if(S.copying)return;
+  S._batchSuppress=false;   // re-arm: a batch may have left it set
+
+  // ── Pre-flight — refuse to start rather than lose footage ──────────────
+  { const problem=preflightIngest();
+    if(problem){ showBlockingError(problem.title, problem.body); return; } }
 
   // ── Verify counter is fresh (non-blocking, does not override manual value) ──
   // Counter was already auto-scanned when destination was added.
@@ -2766,15 +3107,20 @@ async function startCopy(){
     } catch(e){ console.warn('Counter scan failed:', e); }
   }
 
-  // ── If override active, warn if counter already exists in destinations ────
-  if(S.counterOverride && S.dests.length>0){
+  // ── Warn if ANY card's counter already exists in the destinations ─────────
+  // Checked for every card (S.counter + i), not just the first, and template-
+  // aware so it still works when {counter} isn't at the front of the name.
+  if(S.dests.length>0){
     try {
-      const collision = await window.ingesto.checkCounterCollision(
-        S.dests.map(d=>d.path), S.counter
-      );
-      if(collision){
-        showCounterWarning(collision);
-        return; // Block copy — user must change counter
+      const tpl = buildTplStr();
+      for(let i=0;i<S.sources.length;i++){
+        const collision = await window.ingesto.checkCounterCollision(
+          S.dests.map(d=>d.path), S.counter+i, tpl
+        );
+        if(collision){
+          showCounterWarning(collision);
+          return; // Block copy — user must change counter
+        }
       }
     } catch(e){ console.warn('Collision check failed:', e); }
   }
@@ -2821,34 +3167,53 @@ async function startCopy(){
       options: { mode: S.mode, proAlgo: S.proAlgo, proDoubleRead: S.proDoubleRead, folderTemplate: buildTplStr(), writeSentinel: S.writeSentinel, writeChecksum: S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl, fileFilter: buildFileFilterOptions() }
     });
   } else {
-    // Sequential per-source so each can pass its own skipKeys
-    for (const s of sources) {
-      await window.ingesto.startCopy({
-        sources: [s],
-        destinations: S.dests,
-        options: {
-          mode: S.mode,
-          proAlgo: S.proAlgo,
-          proDoubleRead: S.proDoubleRead,
-          folderTemplate: buildTplStr(),
-          skipKeys: s._skipKeys || [],
-          writeSentinel: S.writeSentinel,
-          writeChecksum: S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl,
-          fileFilter: buildFileFilterOptions(),
-        }
-      });
+    // Sequential per-source so each can pass its own skipKeys.
+    // Each start-copy invocation fires its own 'copy-complete' event; without
+    // suppression, the FIRST card's completion used to run the full onComplete
+    // (Start re-enabled mid-batch, power-save unblocked, bottombar closed,
+    // summary shown while card 2 was still writing, hook+ntfy fired per card).
+    // Collect each invocation's returned results instead, and run the real
+    // completion exactly once with the concatenated batch.
+    // Stays true after the loop so a trailing per-card event is ignored; the
+    // next startCopy() re-arms it to false at the top.
+    S._batchSuppress = true;
+    const batchResults = [];
+    {
+      for (const s of sources) {
+        const part = await window.ingesto.startCopy({
+          sources: [s],
+          destinations: S.dests,
+          options: {
+            mode: S.mode,
+            proAlgo: S.proAlgo,
+            proDoubleRead: S.proDoubleRead,
+            folderTemplate: buildTplStr(),
+            skipKeys: s._skipKeys || [],
+            writeSentinel: S.writeSentinel,
+            writeChecksum: S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl,
+            fileFilter: buildFileFilterOptions(),
+          }
+        });
+        if (Array.isArray(part)) batchResults.push(...part);
+        // Cancel must stop the whole batch: the next start-copy would reset
+        // cancelCopy=false in the main process and copy the remaining cards.
+        if (Array.isArray(part) && part.length && part.every(r => r && r.canceled)) break;
+      }
     }
+    onComplete(batchResults);   // the single, real completion for the whole batch
   }
 }
 
 async function doCancelCopy(){
   { const t=document.getElementById('pb-title'); t.textContent='Canceling…'; t.style.color=''; }
   const b=document.getElementById('start-btn'); b.disabled=true;
+  S.recopyCanceled=true;   // also stops a retry batch between its groups
   await window.ingesto.cancelCopy();
 }
 async function kioskCancelCopy(){
   const b=document.getElementById('krun-cancel'); if(b) b.disabled=true;
   const p=document.getElementById('krun-phase'); if(p){ p.textContent='Canceling…'; p.style.color=''; }
+  S.recopyCanceled=true;
   await window.ingesto.cancelCopy();
 }
 
@@ -2896,7 +3261,7 @@ function onProgress(d){
 
   // CARD stat box — current card + cards remaining to ingest
   const N = S.sources.length||1;
-  const ci = S.sources.findIndex(s=>s.name===d.sourceName);
+  const ci = d.sourcePath ? S.sources.findIndex(s=>s.path===d.sourcePath) : S.sources.findIndex(s=>s.name===d.sourceName);
   const cardsLeft = ci>=0 ? N-(ci+1) : 0;
   document.getElementById('s-card').innerHTML = N>1
     ? `${esc(d.sourceName)} <span class="stot">(${cardsLeft} left)</span>`
@@ -2910,7 +3275,7 @@ function onProgress(d){
   // 3 passes, each 0→100%: copy (green) → verify dest (blue) → source re-read (violet)
   const kind = d.phase==='copy' ? 'copy' : (d.pass==='source' ? 'source' : 'verify');
   const cardFrac = (d.phase==='verify' && d.passProgress!=null) ? d.passProgress : d.progress;
-  const idx = S.sources.findIndex(s=>s.name===d.sourceName);
+  const idx = d.sourcePath ? S.sources.findIndex(s=>s.path===d.sourcePath) : S.sources.findIndex(s=>s.name===d.sourceName);
   if(idx>=0){
     // cards processed before this one are done
     for(let k=0;k<idx;k++){ if(S.sources[k]){ S.sources[k]._prog={frac:1,kind:'done'}; setCardFill(k,1,'done'); } }
@@ -2976,8 +3341,9 @@ function onComplete(R){
   S.copying=false;
   // mark all card bars as done
   S.sources.forEach((s,i)=>{ s._prog={frac:1,kind:'done'}; setCardFill(i,1,'done'); });
-  // Increment counter by number of sources (not multiplied by destinations)
-  const srcCount=[...new Set(R.map(r=>r.sourceName))].length;
+  // Increment counter by number of sources (not multiplied by destinations).
+  // Count by PATH so two identically-named cards still advance it by two.
+  const srcCount=[...new Set(R.map(r=>r.sourcePath||r.sourceName))].length;
   const reportBase=S.counter;   // counter values used by this batch (before increment)
   S.counter+=srcCount;
   // If user had not overridden, keep auto mode
@@ -2995,9 +3361,22 @@ function onComplete(R){
 // Summary
 // ═══════════════════════════════════════════════════════
 function showSummary(R){
-  const tf=R.reduce((a,r)=>a+r.totalFiles,0),cf=R.reduce((a,r)=>a+r.copiedFiles,0);
-  const tb=R.reduce((a,r)=>a+r.totalBytes,0),er=R.reduce((a,r)=>a+r.errors,0);
-  const dur=R.length?Math.max(...R.map(r=>r.duration)):0;
+  // R holds ONE ENTRY PER (source × destination). Card contents and timings are
+  // shared by all the destinations of the same card — the card is read once and
+  // the phase timestamps are taken once — so summing R blindly counted a
+  // 170-file card as 340 files and made COPY+V1+V2 exceed TOTAL. Collapse to
+  // one entry per source first, then add up across cards.
+  const bySrc=new Map();
+  R.forEach(r=>{ const k=r.sourcePath||r.sourceName||''; if(!bySrc.has(k)) bySrc.set(k,[]); bySrc.get(k).push(r); });
+  const G=[...bySrc.values()];
+  const sum=(f)=>G.reduce((a,g)=>a+(f(g)||0),0);
+  const tf=sum(g=>g[0].totalFiles);
+  const tb=sum(g=>g[0].totalBytes);
+  // A file only counts as copied once it made it to EVERY destination of that
+  // card — the weakest destination is the honest number.
+  const cf=sum(g=>Math.min(...g.map(r=>r.copiedFiles)));
+  const er=R.reduce((a,r)=>a+r.errors,0);
+  const dur=sum(g=>g[0].duration);
   const canceled=R.every(r=>r.canceled),ok=!er&&!canceled;
   S._clearSrcOnClose = (cf>0);  // item 20 — only reset sources if something was actually copied
   const ico=document.getElementById('s-ico');
@@ -3009,34 +3388,109 @@ function showSummary(R){
   const modeLabel={fast:'Fast',normal:'Verified',slow:'Secure (XXHash)',pro:'PRO'}[S.mode]||'';
   document.getElementById('s-title').textContent=canceled?'Transfer Canceled':ok?(modeLabel+' Transfer Complete!'):'Finished with Errors';
   document.getElementById('s-sub').textContent=[...new Set(R.map(r=>r.sourceName))].join(', ')+(S.dests.length>1?` → ${S.dests.length} destinations`:'');
-  const copyMs=R.reduce((a,r)=>a+(r.copyMs||0),0);
-  const v1Ms=R.reduce((a,r)=>a+(r.verify1Ms||0),0);
-  const v2Ms=R.reduce((a,r)=>a+(r.verify2Ms||0),0);
+  const copyMs=sum(g=>g[0].copyMs);
+  const v1Ms=sum(g=>g[0].verify1Ms);
+  const v2Ms=sum(g=>g[0].verify2Ms);
   const ALG={xxh64:'xxHash64',xxh128:'xxHash128',md5:'MD5'};
   const r0=R[0]||{};
-  const modeTxt = r0.mode==='pro'
-    ? `PRO · ${ALG[r0.proAlgo]||r0.proAlgo||''}`
-    : ({fast:'Fast',normal:'Verified',slow:'Secure (xxHash)'}[r0.mode]||'—');
   const srow=(l,v,st)=>`<div class="srow"><div class="sr-lbl">${l}</div><div class="sr-val"${st?` style="${st}"`:''}>${v}</div></div>`;
+  // MODE tile: mode name coloured with the copy-mode palette, algorithm on a
+  // smaller sub-line (nothing left to truncate). Fixed 4×2 grid:
+  //   MODE · FILES COPIED · TOTAL SIZE · AVG SPEED
+  //   COPY · 1ST VERIFY  · 2ND VERIFY · TOTAL
+  const MODE_UI={fast:['FAST','var(--blue)'],normal:['VERIFIED','var(--green)'],
+                 slow:['SECURE','var(--orange)'],pro:['PRO','var(--pro)']};
+  const [mName,mCol]=MODE_UI[r0.mode]||['—','var(--text)'];
+  const mAlgo=r0.mode==='pro'?(ALG[r0.proAlgo]||r0.proAlgo||''):'';
+  const modeTile=`<div class="srow"><div class="sr-lbl">Mode</div>`+
+    `<div class="sr-mode" style="color:${mCol}">${mName}</div>`+
+    (mAlgo?`<div class="sr-algo" style="color:${mCol}">${esc(mAlgo)}</div>`:'')+`</div>`;
+  const dash='<span style="color:var(--text3)">—</span>';
   const rows=[
+    modeTile,
     srow('Files Copied', `${cf}/${tf}`),
     srow('Total Size', fmtSize(tb)),
-    srow('Copy', fmtEta(copyMs/1000), 'color:var(--green)'),
+    srow('Avg Speed', fmtSpd(tb/(dur/1000))),
+    srow('Copy', copyMs>0?fmtEta(copyMs/1000):dash, 'color:var(--green)'),
+    srow('1st verify', v1Ms>0?fmtEta(v1Ms/1000):dash, 'color:var(--blue)'),
+    srow('2nd verify', v2Ms>0?fmtEta(v2Ms/1000):dash, 'color:var(--pro)'),
+    srow('Total', fmtEta(dur/1000)),
   ];
-  if(v1Ms>0) rows.push(srow('1st verify', fmtEta(v1Ms/1000), 'color:var(--blue)'));
-  if(v2Ms>0) rows.push(srow('2nd verify', fmtEta(v2Ms/1000), 'color:var(--pro)'));
-  rows.push(srow('Total', fmtEta(dur/1000)));
-  rows.push(srow('Avg Speed', fmtSpd(tb/(dur/1000))));
-  rows.push(srow('Mode', modeTxt, 'font-size:14px'));
-  if(er>0) rows.push(srow('Errors', er, 'color:var(--red)'));
-  const destRows = R.map(r=>{
-    const jp=(r.destPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  if(er>0) rows.push(`<div class="srow" style="grid-column:1/-1"><div class="sr-lbl">Errors</div><div class="sr-val" style="color:var(--red)">${er}</div></div>`);
+  S._revealPaths = R.map(r => r.destPath || '');
+  const destRows = R.map((r,ri)=>{
     return `<div class="srow" style="grid-column:1/-1;align-items:center">`+
       `<div class="sr-lbl">→ ${esc(r.sourceName)}</div>`+
       `<div class="sr-dest"><div class="sr-destpath">${esc(r.destPath)}</div>`+
-      `<button class="reveal-btn" onclick="revealPath('${jp}')">Reveal</button></div></div>`;
+      `<button class="reveal-btn" onclick="revealAt(${ri})">Reveal</button></div></div>`;
   }).join('');
   document.getElementById('s-grid').innerHTML = rows.join('') + destRows;
+  // Cold-verify hint: a verified ingest (SECURE/PRO) whose read-back was NOT
+  // cache-bypassed (i.e. not on macOS) can, on the tail of a big transfer, have
+  // compared cached RAM against itself. Suggest an independent cold Verify.
+  const cv=document.getElementById('s-coldverify');
+  if(cv){
+    const verified = R.some(r => r && r.coldVerify !== null && r.coldVerify !== undefined);
+    const cold     = R.some(r => r && r.coldVerify === true);
+    // Strongest signal first: the PRO source re-read was answered from RAM, so
+    // it verified nothing about the card. Say it plainly.
+    const dblCached = R.some(r => r && r.doubleReadCached);
+    if(dblCached && !canceled){
+      cv.style.display='block';
+      const dr = R.find(r => r && r.doubleReadCached) || {};
+      const sp = v => (typeof v === 'number' && v > 0) ? fmtSpd(v) : '—';
+      // Offer a real re-check only when we can actually do it: macOS, a known
+      // source, and the per-file hashes from the copy.
+      const canRedo = window.ingesto.platform === 'darwin'
+        && dr.sourcePath && Array.isArray(dr.recheckList) && dr.recheckList.length;
+      S._redo = canRedo ? { sourcePath: dr.sourcePath, sourceName: dr.sourceName,
+                            algo: dr.proAlgoUsed || 'xxh128', files: dr.recheckList } : null;
+      cv.style.display='block';
+      // Wording aimed at shooters/DITs/editors, not engineers: lead with
+      // "your footage is safe", explain simply, keep the numbers as a small
+      // technical footnote for those who want them.
+      cv.innerHTML =
+        `<div style="margin:8px 0;padding:11px 13px;border-radius:var(--rs);`+
+        `border:1px solid rgba(242,160,61,.5);background:rgba(242,160,61,.12);color:var(--orange);font-size:12.5px;line-height:1.5">`+
+        `<b>Heads-up — the extra card check didn't really run</b><br>`+
+        `Your footage is fine: every file was copied and verified on the destination.<br>`+
+        `But the second read of the card was answered by the computer's memory, not by the card itself — `+
+        `so it couldn't test the card's health. Consider this ingest verified at <b>SECURE</b> level.`+
+        `<div style="margin-top:5px;color:var(--text3);font-size:11px;">`+
+        // The footnote must state what was actually measured. Until 2.4.7 this
+        // said "faster than this card can physically deliver", which was an
+        // inference from pass speeds; the verdict now comes from a direct test,
+        // so the numbers shown are that test's.
+        (dr.cacheProbe
+          ? `Test: an 8 MB read taken right after clearing the computer's memory took `+
+            `${esc(dr.cacheProbe.coldMs.toFixed(1))} ms, against `+
+            `${esc(dr.cacheProbe.warmMs.toFixed(1))} ms for the same data read from memory. `+
+            `Too close to be a real read of the card.`
+          : `The computer's memory could not be cleared before re-reading, so the card itself was never asked.`)+
+        `</div>`+
+        (canRedo
+          ? `<div style="margin-top:9px;padding-top:9px;border-top:1px solid rgba(242,160,61,.3);color:var(--text2);">`+
+            `You can run the card check for real: the card stays in the reader, and your copied files are untouched.`+
+            `<button id="dr-redo" style="display:block;width:100%;margin-top:8px;padding:9px;border-radius:var(--rs);`+
+            `border:1px solid rgba(242,160,61,.5);background:rgba(242,160,61,.16);color:var(--orange);`+
+            `font-family:var(--font);font-size:12.5px;font-weight:700;cursor:pointer;">`+
+            `⟳ Check the card for real</button></div>`
+          : ``)+
+        `<div id="dr-result" style="margin-top:8px;"></div>`+
+        `</div>`;
+      const rb = document.getElementById('dr-redo');
+      if(rb) rb.onclick = () => redoDoubleRead();
+    } else if(verified && !cold && !canceled){
+      cv.style.display='block';
+      cv.innerHTML =
+        `<div style="margin:8px 0;padding:11px 13px;border-radius:var(--rs);`+
+        `border:1px solid rgba(94,155,255,.4);background:rgba(94,155,255,.10);color:var(--blue);font-size:12.5px;line-height:1.5">`+
+        `<b>Tip — you can double-check this later</b><br>`+
+        `Today's check ran right after the copy, so part of it may have been answered by the computer's memory. `+
+        `For extra peace of mind: another day, re-plug the drive and press <b>Verify</b> on this folder — `+
+        `that reads every file straight from the drive.</div>`;
+    } else cv.style.display='none';
+  }
   const ae=R.flatMap(r=>r.errorList||[]);
   const eb=document.getElementById('s-errs');
   if(ae.length){eb.style.display='block';document.getElementById('s-errlist').innerHTML=ae.map(e=>`<div class="err-item">⚠ ${esc(e.file)}: ${esc(e.error)}</div>`).join('');}
@@ -3053,10 +3507,13 @@ function showSummary(R){
     ub.style.display='block';
     ub.innerHTML =
       `<div class="unstable-alert">`+
-      `<div class="ua-h">⚠ Possibly failing card</div>`+
-      `<div class="ua-b">${nUnstable} file${nUnstable>1?'s':''} returned <b>different data on re-read</b> from the source (${esc(cards)}). `+
-      `The copy may not be trustworthy — test the card and re-ingest from a known-good source. Re-copying won't help. `+
-      `These files were left out of the checksum list.</div></div>`;
+      `<div class="ua-h">⚠ This card may be failing</div>`+
+      `<div class="ua-b">${nUnstable} file${nUnstable>1?'s':''} came back <b>different when the card was read a second time</b> (${esc(cards)}). `+
+      `The copies of ${nUnstable>1?'these files':'this file'} can't be fully trusted.<br>`+
+      `What to do: keep this card as it is — <b>don't format it</b> — check ${nUnstable>1?'these files':'this file'} by eye in your edit software, `+
+      `and if another copy of this footage exists, prefer it. `+
+      `Copying the card again won't help: the card itself gives changing answers. `+
+      `${nUnstable>1?'These files were':'This file was'} left out of the verification list.</div></div>`;
   } else ub.style.display='none';
 
   // Item 12 — collect files that failed copy/verify, grouped by source+destination,
@@ -3065,6 +3522,7 @@ function showSummary(R){
     sourcePath: r.sourcePath, sourceName: r.sourceName,
     destPath:   r.destPath,  destName: (r.destPath||'').split(/[\\/]/).pop(),
     mode:       r.mode,      files: r.failedFiles,
+    destRelMap: r.failedMap || {},   // original destination paths (Reorganize runs)
   }));
   const nFailed = S._failedGroups.reduce((a,g)=>a+g.files.length,0);
   const reBtn = document.getElementById('sum-recopy');
@@ -3089,15 +3547,21 @@ async function recopyFailed(){
   // Leave the summary without triggering the "clear sources" behaviour
   S._clearSrcOnClose=false;
   document.getElementById('sum-ov').classList.remove('open');
-  S.copying=true; updateBtn();
+  S.copying=true; S.recopyCanceled=false; updateBtn();
   document.getElementById('bottombar').classList.add('open');
   const results=[];
   for(const g of groups){
+    // A cancel during the retry must stop the remaining groups. Each
+    // recopyFailed() call clears the cancel flag in the main process, so
+    // without this the next destination started copying right after the
+    // user pressed Cancel.
+    if(S.recopyCanceled) break;
     try{
       const r = await window.ingesto.recopyFailed({
         sourcePath:g.sourcePath, sourceName:g.sourceName,
         destPath:g.destPath, destName:g.destName, destIndex:0,
         mode:g.mode, proAlgo:S.proAlgo, proDoubleRead:S.proDoubleRead, files:g.files,
+        destRelMap:g.destRelMap||{},
       });
       if(r) results.push(r);
     }catch(e){ console.error('recopyFailed', e); }
@@ -3150,6 +3614,8 @@ function onSentinelToggle(el){
 
 // Item 24 — card tracking info modal
 function showCounterInfo(){ document.getElementById('counter-info-ov').classList.add('open'); }
+function showDrInfo(){ document.getElementById('dr-info-ov').classList.add('open'); }
+function hideDrInfo(){ document.getElementById('dr-info-ov').classList.remove('open'); }
 function hideCounterInfo(){ document.getElementById('counter-info-ov').classList.remove('open'); }
 
 // ═══════════════════════════════════════════════════════
@@ -3217,6 +3683,7 @@ function buildFileFilterOptions(){
   return { extCat, copyEmpty:S.copyEmptyFolders, reorganize:S.reorganizeFiles };
 }
 function revealPath(p){ try{ window.ingesto.revealPath(p); }catch(_){} }
+function revealAt(i){ const p=(S._revealPaths||[])[i]; if(p) revealPath(p); }
 
 // ══════════════════════════ INGEST REPORT ══════════════════════════
 function onReportToggle(el){
@@ -3228,6 +3695,23 @@ function onReportToggle(el){
   }
   persistPrefs();
   updateSettingsDetails();
+}
+// Full report vs light report. This applies to the ingest ABOUT TO RUN and to
+// nothing else: every card carries its own file list, so cards already in the
+// report keep exactly what they recorded. The switch can be flipped between two
+// ingests without ever losing anything — one shoot archived in full, the next
+// logged as a single line, in the same report.
+function onReportDetail(el){
+  S.reportFull=el.checked;
+  updateReportDetailNote();
+  persistPrefs();
+}
+function updateReportDetailNote(){
+  const n=document.getElementById('rf-full-note');
+  if(!n) return;
+  n.textContent = S.reportFull
+    ? 'The next ingest will list every file it copies. Cards already in the report keep what they recorded.'
+    : 'The next ingest will be recorded as a single line, without file names. Cards already in the report keep their file lists.';
 }
 function onReportFmt(){
   const wasAny=S.reportHtml||S.reportCsv||S.reportJson;
@@ -3294,6 +3778,7 @@ function updateSettingsDetails(){
   const ffEmpty=document.getElementById('ff-empty'); if(ffEmpty) ffEmpty.checked=S.copyEmptyFolders;
   const ffReorg=document.getElementById('ff-reorg'); if(ffReorg) ffReorg.checked=S.reorganizeFiles;
 }
+async function openNtfySite(){ await window.ingesto.openExternal('https://ntfy.sh/'); }
 function onNtfyToggle(el){ S.ntfyEnabled=el.checked; persistPrefs(); updateSettingsDetails(); }
 function onHookToggle(el){ S.hookEnabled=el.checked; persistPrefs(); updateSettingsDetails(); }
 function onHookField(){ S.hookCommand=(document.getElementById('set-hook').value||'').trim(); persistPrefs(); }
@@ -3325,7 +3810,7 @@ async function exportSettingsFile(){
   if (inc.copyMode)       { d.mode=S.mode; d.proAlgo=S.proAlgo; d.proDoubleRead=S.proDoubleRead; }
   if (inc.cardTracking)   d.writeSentinel = S.writeSentinel;
   if (inc.writeChecksum)  { d.writeChecksum=S.writeChecksum; d.cksumList=S.cksumList; d.cksumMhl=S.cksumMhl; }
-  if (inc.ingestReport)   { d.writeReport=S.writeReport; d.reportHtml=S.reportHtml; d.reportCsv=S.reportCsv; d.reportJson=S.reportJson; }
+  if (inc.ingestReport)   { d.writeReport=S.writeReport; d.reportHtml=S.reportHtml; d.reportCsv=S.reportCsv; d.reportJson=S.reportJson; d.reportFull=S.reportFull; }
   if (inc.fileFilter)     { d.fileFilterFormats=S.fileFilterFormats; d.copyEmptyFolders=S.copyEmptyFolders; d.reorganizeFiles=S.reorganizeFiles; }
   try{
     const r = await window.ingesto.exportSettings(d);
@@ -3342,19 +3827,18 @@ async function importSettingsFile(){
   const inc = d.include;
   // The file's own include map is authoritative — it says what it contains.
   if (inc.namingTemplate && Array.isArray(d.tokens)){
-    S.tokens = d.tokens.map(t=>({type:t.type==='var'?'var':'text', key:String(t.key||''), id:tokId++}));
+    S.tokens = d.tokens.map(t=>({type:t.type==='var'?'var':'sep', key:t.type==='var'?canonKey(String(t.key||'')):String(t.key||''), id:tokId++}));
     renderTemplate(); syncRaw();
   }
   if (inc.namingPresets && Array.isArray(d.presets)){
-    S.presets = d.presets.slice(0,4).concat(Array(Math.max(0,4-d.presets.length)).fill(null))
-      .map(p => (p && p.name) ? { name:String(p.name), tokens:(p.tokens||[]).map(t=>({type:t.type,key:t.key})) } : null);
+    S.presets = normPresets(d.presets);
     renderPresets();
   }
   if (inc.copyMode){
     if (['fast','normal','slow','pro'].includes(d.mode)) setMode(d.mode);
-    if (['xxh64','xxh128','md5'].includes(d.proAlgo)) S.proAlgo=d.proAlgo;
+    if (['xxh64','xxh128','md5'].includes(d.proAlgo)) setProAlgo(d.proAlgo,false);
     S.proDoubleRead = d.proDoubleRead === true;
-    const dr=document.getElementById('pro-dr-toggle'); if(dr) dr.checked=S.proDoubleRead;
+    const dr=document.getElementById('pro-dr-toggle'); if(dr){ dr.checked=S.proDoubleRead; dr.closest('.pa-item')?.classList.toggle('on',S.proDoubleRead); }
   }
   if (inc.cardTracking){
     S.writeSentinel = d.writeSentinel === true;
@@ -3373,10 +3857,15 @@ async function importSettingsFile(){
     S.reportHtml = d.reportHtml !== false;
     S.reportCsv  = d.reportCsv === true;
     S.reportJson = d.reportJson === true;
+    // Absent from a file written before 2.4.7 → keep the full report, which is
+    // the default and the safe direction (never silently stop recording detail).
+    S.reportFull = d.reportFull !== false;
     const a=document.getElementById('report-toggle'); if(a) a.checked=S.writeReport;
     const b=document.getElementById('rf-html'); if(b) b.checked=S.reportHtml;
     const c=document.getElementById('rf-csv');  if(c) c.checked=S.reportCsv;
     const e=document.getElementById('rf-json'); if(e) e.checked=S.reportJson;
+    const f=document.getElementById('rf-full'); if(f) f.checked=S.reportFull;
+    updateReportDetailNote();
   }
   if (inc.fileFilter){
     if (d.fileFilterFormats && typeof d.fileFilterFormats==='object') S.fileFilterFormats=d.fileFilterFormats;
@@ -3388,24 +3877,45 @@ async function importSettingsFile(){
   updateSettingsDetails();
   showToast('Settings imported — all included categories applied.', 'ok');
 }
+// Split a command line into tokens, honouring single/double quotes. Variable
+// substitution happens PER TOKEN afterwards, so a value with spaces stays one
+// argument and can never split into extra ones.
+function tokenizeCommand(str){
+  const out=[]; let cur='', q=null, has=false;
+  for(let i=0;i<str.length;i++){
+    const c=str[i];
+    if(q){ if(c===q) q=null; else cur+=c; continue; }
+    if(c==='"'||c==="'"){ q=c; has=true; continue; }
+    if(c===' '||c==='\t'){ if(has||cur){ out.push(cur); cur=''; has=false; } continue; }
+    cur+=c; has=true;
+  }
+  if(has||cur) out.push(cur);
+  return out;
+}
 function runPostHook(R){
   if(!S.hookEnabled) return;
   const cmd=(S.hookCommand||'').trim(); if(!cmd) return;
   if(R.length>0 && R.every(r=>r.canceled)) return;   // skip on cancel
-  // Card names come from volume labels — attacker-controllable. Strip shell
-  // metacharacters from every substituted value so a hostile card name can't
-  // inject into the user's shell command.
-  const shSafe = v => String(v==null?'':v).replace(/[`$;|&<>"'\n\r]/g,'');
   const er=R.reduce((a,r)=>a+(r.errors||0),0);
   const failed=R.reduce((a,r)=>a+((r.failedFiles&&r.failedFiles.length)||0),0);
   const unstable=R.reduce((a,r)=>a+((r.unstableFiles&&r.unstableFiles.length)||0),0);
   const result = unstable ? 'suspect' : ((er||failed) ? 'errors' : 'ok');
-  const uniq=[...new Set(R.map(r=>r.sourceName))];
-  const bytes=[...new Map(R.map(r=>[r.sourceName,r.totalBytes])).values()].reduce((a,b)=>a+(b||0),0);
-  const vars={ '{destPath}':shSafe(S.dests[0]?S.dests[0].path:''), '{card}':shSafe(uniq.join(', ')),
+  const uniq=[...new Set(R.map(r=>r.sourcePath||r.sourceName))];
+  const names=[...new Set(R.map(r=>r.sourceName))];
+  const bytes=[...new Map(R.map(r=>[r.sourcePath||r.sourceName,r.totalBytes])).values()].reduce((a,b)=>a+(b||0),0);
+  // No shell, no escaping games: the command is tokenized, then each token has
+  // its variables replaced as a WHOLE argument value. A hostile card name is
+  // just an argv string — it cannot inject, and a path with spaces just works.
+  const vars={ '{destPath}':(S.dests[0]?S.dests[0].path:''), '{card}':names.join(', '),
     '{count}':String(uniq.length), '{bytes}':String(bytes), '{result}':result };
-  let final=cmd; for(const k in vars){ final=final.split(k).join(vars[k]); }
-  try{ window.ingesto.runHook(final); }catch(_){}
+  const argv=tokenizeCommand(cmd).map((tok,idx)=>{
+    // Never substitute into argv[0]: otherwise a hook written as "{destPath}\x"
+    // would let an attacker-controlled card label choose the PROGRAM that runs.
+    if(idx===0) return tok;
+    let t=tok; for(const k in vars){ t=t.split(k).join(vars[k]); } return t;
+  });
+  if(!argv.length || !argv[0]) return;
+  try{ window.ingesto.runHook(argv); }catch(_){}
 }
 function onNtfyField(){
   S.ntfyServer=(document.getElementById('set-ntfy-server').value||'').trim()||'https://ntfy.sh';
@@ -3475,7 +3985,7 @@ let _ejectPaths=[];
 async function setupEjectButton(R){
   const btn=document.getElementById('sum-eject');
   if(!btn) return;
-  btn.style.display='none'; btn.disabled=false; _ejectPaths=[];
+  btn.classList.remove('on'); btn.disabled=false; _ejectPaths=[];
   const er=R.reduce((a,r)=>a+r.errors,0);
   const canceled=R.every(r=>r.canceled);
   const cf=R.reduce((a,r)=>a+r.copiedFiles,0);
@@ -3497,8 +4007,8 @@ async function setupEjectButton(R){
   }
   if(!eligible.length) return;
   _ejectPaths=eligible;
-  btn.textContent = `⏏ Eject source${eligible.length>1?'s':''}`;
-  btn.style.display='';
+  btn.innerHTML = EJECT_SVG + ` EJECT SOURCE${eligible.length>1?'S':''}`;
+  btn.classList.add('on');
 }
 async function ejectSources(){
   const btn=document.getElementById('sum-eject');
@@ -3508,9 +4018,47 @@ async function ejectSources(){
   for(const p of _ejectPaths){
     try{ const r=await window.ingesto.ejectVolume(p); if(!r||!r.ok) fail++; }catch(_){ fail++; }
   }
-  btn.textContent = fail ? '⏏ Partly ejected' : '✓ Ejected';
+  btn.innerHTML = fail ? (EJECT_SVG+' PARTLY EJECTED') : '✓ EJECTED';
   if(fail) showToast(`${fail} card${fail>1?'s':''} could not be ejected — eject manually.`,'warn',4500);
 }
+// Forced physical re-read of the source: unmount the card, remount it (cache
+// gone), and re-hash every file against what was read during the copy.
+async function redoDoubleRead(){
+  const job = S._redo;
+  if(!job) return;
+  const btn = document.getElementById('dr-redo');
+  const out = document.getElementById('dr-result');
+  if(btn){ btn.disabled = true; btn.textContent = '⟳ Unmounting and re-reading…'; btn.style.opacity = '.6'; }
+  let res = null;
+  try{ res = await window.ingesto.redoDoubleRead(job); }
+  catch(e){ res = { ok:false, error: e && e.message }; }
+  if(!out) return;
+  if(!res || !res.ok){
+    const why = (res && res.error) ? esc(res.error) : 'unknown error';
+    out.innerHTML = `<div style="color:var(--orange);">The card couldn't be checked (${why}). `+
+      `This is usually another app using the card — close Finder windows or photo apps and try again. `+
+      `Your copied files are not affected.</div>`;
+    if(btn){ btn.disabled=false; btn.style.opacity=''; btn.textContent='⟳ Check the card for real'; }
+    return;
+  }
+  if(btn) btn.style.display='none';
+  const spd = res.speed ? fmtSpd(res.speed) : '—';
+  if(res.unstable && res.unstable.length){
+    out.innerHTML =
+      `<div style="color:var(--red);font-weight:700;">⚠ ${res.unstable.length} file`+
+      `${res.unstable.length>1?'s':''} came back different when the card was read again.</div>`+
+      `<div style="color:var(--text2);margin-top:4px;">This card is not reliable. Keep it as it is — don't format it — `+
+      `and check these files by eye in your edit software. If another copy of this footage exists, prefer it.</div>`+
+      res.unstable.slice(0,20).map(f=>`<div class="err-item">⚠ ${esc(f)}</div>`).join('');
+  } else if(res.errors && res.errors.length){
+    out.innerHTML = `<div style="color:var(--orange);">The check finished, but ${res.errors.length} file`+
+      `${res.errors.length>1?'s':''} couldn't be read from the card. Your copies on the destination are verified and safe.</div>`;
+  } else {
+    out.innerHTML = `<div style="color:var(--green);font-weight:700;">✓ Card checked — all ${res.checked} file`+
+      `${res.checked>1?'s':''} read back identical (${esc(spd)}). Full PRO level confirmed.</div>`;
+  }
+}
+
 async function openReport(){
   if(!S.dests.length){ showToast('No destination set — no report yet.','warn',3500); return; }
   const ok=await window.ingesto.reportOpen(S.dests[0].path);
@@ -3527,67 +4075,166 @@ function fmtReportDate(iso){
   }catch(_){ return iso||'—'; }
 }
 async function updateReports(R, base){
-  const uniq=[...new Set(R.map(r=>r.sourceName))];
+  // Group by source PATH, not name: two cards labelled the same ("Untitled",
+  // "NO NAME") used to collapse into one record, dropping the second card from
+  // the client-facing report entirely.
+  const uniq=[...new Set(R.map(r=>r.sourcePath||r.sourceName))];
   const now=new Date(), p=x=>String(x).padStart(2,'0');
   const dateStr=`${p(now.getDate())}.${p(now.getMonth()+1)} ${p(now.getHours())}:${p(now.getMinutes())}`;
   const isoNow=now.toISOString();
-  const newRecs=uniq.map((name,i)=>{
-    const rs=R.filter(r=>r.sourceName===name), r0=rs[0], src=S.sources.find(s=>s.name===name)||{};
+  const newRecs=uniq.map((sp,i)=>{
+    const rs=R.filter(r=>(r.sourcePath||r.sourceName)===sp), r0=rs[0], name=r0.sourceName;
+    const src=S.sources.find(s=>s.path===sp)||S.sources.find(s=>s.name===name)||{};
     const errors=rs.reduce((a,r)=>a+(r.errors||0),0);
     const failed=rs.reduce((a,r)=>a+((r.failedFiles&&r.failedFiles.length)||0),0);
     const unstable=rs.reduce((a,r)=>a+((r.unstableFiles&&r.unstableFiles.length)||0),0);
+    // A cancelled ingest must NEVER be recorded as "OK" — the report is the
+    // client-facing proof of archival. Show it as cancelled and count only what
+    // was actually copied, not the full scan total.
+    const canceled=rs.length>0 && rs.every(r=>r.canceled);
+    const copiedFiles=rs.reduce((a,r)=>a+(r.copiedFiles||0),0);
+    const copiedBytes=rs.reduce((a,r)=>a+(r.copiedBytes||0),0);
     let result='OK', rclass='r-ok';
-    if(unstable>0){ result='⚠ suspect card'; rclass='r-suspect'; }
+    if(canceled){ result='canceled'; rclass='r-err'; }
+    else if(unstable>0){ result='⚠ suspect card'; rclass='r-suspect'; }
     else if(errors>0||failed>0){ const n=errors||failed; result=`${n} error${n>1?'s':''}`; rclass='r-err'; }
     return { n:String(base+i).padStart(3,'0'), date:dateStr, card:name,
       operator:src.operator||'', cam:src.camera||'', note:src.note||'',
       mode:reportModeLabel(r0), modeClass:reportModeClass(r0),
-      files:r0.totalFiles||0, bytes:r0.totalBytes||0, result, rclass,
-      fileList:(r0.fileList||[]).map(f=>({path:f.path,size:f.size,mtime:f.mtime})) };
+      files:canceled?copiedFiles:(r0.totalFiles||0), bytes:canceled?copiedBytes:(r0.totalBytes||0), result, rclass,
+      // Phase timings, in ms. v2 is 0 outside PRO double source read.
+      copyMs:r0.copyMs, v1Ms:r0.verify1Ms, v2Ms:r0.verify2Ms,
+      // Light report: this card is recorded without its file names. Cards
+      // already in the report are carried over untouched.
+      fileList:S.reportFull?(r0.fileList||[]).map(f=>({path:f.path,size:f.size,mtime:f.mtime})):[] };
   });
   for(const d of S.dests){
-    let created=isoNow, records=[];
+    let created=isoNow, records=[], unreadable=false;
     try{
       const existing=await window.ingesto.reportRead(d.path);
-      if(existing){ created=existing.created||isoNow; records=Array.isArray(existing.records)?existing.records:[]; }
+      if(existing && existing.unreadable){
+        // The destination HAS a report we could not parse. Its history cannot be
+        // carried over, so the old file is kept beside the new one instead of
+        // being overwritten, and the operator is told — silently restarting a
+        // client-facing report from scratch is not acceptable.
+        unreadable=true;
+        showToast(`The ingest report in "${esc(d.name||d.path)}" could not be read. It has been kept as INGESTO_report.unreadable.html and a new one started.`, 'warn', 8000);
+      } else if(existing){ created=existing.created||isoNow; records=Array.isArray(existing.records)?existing.records:[]; }
     }catch(_){}
     records=records.concat(newRecs);
-    if(S.reportHtml){ try{ await window.ingesto.reportWrite(d.path, buildReportHtml(created, isoNow, d.path, records)); }catch(_){} }
+    if(S.reportHtml){ try{ await window.ingesto.reportWrite(d.path, await buildReportHtml(created, isoNow, d.path, records), unreadable); }catch(_){} }
     if(S.reportCsv){  try{ await window.ingesto.reportWriteNamed(d.path, 'INGESTO_report.csv', buildReportCsv(records)); }catch(_){} }
     if(S.reportJson){ try{ await window.ingesto.reportWriteNamed(d.path, 'INGESTO_report.json', buildReportJson(created, isoNow, d.path, records)); }catch(_){} }
   }
 }
+// A record's file list, whatever its origin: fresh records carry `fileList`
+// ({path,size,…}); records RE-READ from a destination's existing report come
+// back slim, as `f` ([path,size] pairs). Reading only `fileList` used to drop
+// every older card's file detail on the next ingest — the client-facing report
+// silently amputating itself. Normalise to [path,size] pairs here.
+// Duration for the reports: "—" when the record predates 2.4.2 (older reports
+// simply have no timings), otherwise the same compact style as the UI.
+function fmtReportDur(ms){
+  // 0 means "this phase did not run" (no 2nd verify outside PRO double read),
+  // which must read as "—", not "<1s".
+  if(typeof ms!=='number' || !isFinite(ms) || ms<=0) return '—';
+  const s = ms/1000;
+  if(s < 1)    return '<1s';
+  const t = Math.round(s);              // round ONCE, then split — rounding the
+  if(t < 60)   return `${t}s`;          // seconds separately printed "1m60s"
+  if(t < 3600) return `${Math.floor(t/60)}m${String(t%60).padStart(2,'0')}s`;
+  return `${Math.floor(t/3600)}h${String(Math.floor((t%3600)/60)).padStart(2,'0')}m`;
+}
+function reportFilePairs(r){
+  if (Array.isArray(r.fileList) && r.fileList.length) return r.fileList.map(x=>[x.path, x.size]);
+  if (Array.isArray(r.f) && r.f.length) return r.f.map(x=>Array.isArray(x)?[x[0],x[1]]:[x.path,x.size]);
+  return [];
+}
 function buildReportCsv(records){
-  const q=(x)=>{ const s=String(x==null?'':x); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const head=['#','Date','Card','Operator','Cam','Mode','Files','Bytes','Size','Result','Note','Files list'];
+  const q=(x)=>{
+    let s=String(x==null?'':x);
+    // CSV formula-injection guard: a cell starting with = + - @ (or a control
+    // char) is executed as a formula by Excel/Sheets. Card names and notes are
+    // user/label-controlled, so neutralise the leading character.
+    if(/^[=+\-@\t\r]/.test(s)) s="'"+s;
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  // Timings are exported BOTH readable and raw (ms) — the readable one for a
+  // human opening the sheet, the raw one so it can be summed or charted.
+  const head=['#','Date','Card','Operator','Cam','Mode','Files','Bytes','Size','Result',
+              'Copy','Verify 1','Verify 2','Copy ms','Verify1 ms','Verify2 ms','Note','Files list'];
+  const num=v=>(typeof v==='number'&&isFinite(v))?v:'';
   const rows=records.map(r=>{
-    const fl=(r.fileList||[]).map(f=>`${f.path} (${fmtSize(f.size)})`).join(' | ');
-    return [r.n,r.date,r.card,r.operator,r.cam,r.mode,r.files,r.bytes,fmtSize(r.bytes),r.result,r.note,fl].map(q).join(',');
+    const fl=reportFilePairs(r).map(([p,sz])=>`${p} (${fmtSize(sz)})`).join(' | ');
+    return [r.n,r.date,r.card,r.operator,r.cam,r.mode,r.files,r.bytes,fmtSize(r.bytes),r.result,
+            fmtReportDur(r.copyMs),fmtReportDur(r.v1Ms),fmtReportDur(r.v2Ms),
+            num(r.copyMs),num(r.v1Ms),num(r.v2Ms),
+            r.note,fl].map(q).join(',');
   });
   return head.join(',')+'\n'+rows.join('\n')+'\n';
 }
 function buildReportJson(created, updated, destPath, records){
   return JSON.stringify({ created, updated, destPath, cards:records.length, records }, null, 2);
 }
-function buildReportHtml(created, updated, destPath, records){
+// gzip + base64 in the renderer (CompressionStream is a browser API; the main
+// process reads it back with zlib). base64 is used rather than raw bytes because
+// the payload has to survive inside an HTML document as text.
+async function gzipB64(str){
+  const cs=new CompressionStream('gzip');
+  const stream=new Blob([new TextEncoder().encode(str)]).stream().pipeThrough(cs);
+  const buf=new Uint8Array(await new Response(stream).arrayBuffer());
+  let bin=''; const CH=0x8000;
+  for(let i=0;i<buf.length;i+=CH) bin+=String.fromCharCode.apply(null,buf.subarray(i,i+CH));
+  return btoa(bin);
+}
+async function buildReportHtml(created, updated, destPath, records){
   const escH=(x)=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const totalBytes=records.reduce((a,r)=>a+(r.bytes||0),0);
+  // A report legitimately MIXES full and light cards, so the chevron column
+  // exists as soon as one card has a file list, and each row says for itself
+  // whether it has one.
+  const anyFl=records.some(r=>reportFilePairs(r).length>0);
   // File lists are NOT rendered into the rows: they would store every path twice
   // (once in the hidden HTML, once in the embedded JSON below). The chevron builds
   // the list on demand from that JSON, so each path is stored once.
   const rows=records.map((r,ri)=>{
-    const hasFl = Array.isArray(r.fileList) && r.fileList.length>0;
-    const chev = hasFl
+    const hasFl = reportFilePairs(r).length>0;
+    const chev = !anyFl ? ''
+      : hasFl
       ? `<td class="c-chev" onclick="tgl(${ri})" id="ch-${ri}" title="Show files">\u25b8</td>`
-      : `<td class="c-chev c-mut" title="No file detail (older record)">\u00b7</td>`;
+      : `<td class="c-chev c-mut" title="Recorded as a light entry — no file list">\u00b7</td>`;
+    // modeClass / rclass go into a class attribute unescaped, and files into
+    // markup as a number — but records are re-read from the report JSON that
+    // lives on the (possibly shared) destination, so a tampered INGESTO_report
+    // could smuggle `"><img onerror=...>` through them. Whitelist the classes
+    // and coerce the count to an integer.
+    const MODE_CLASSES = new Set(['m-fast','m-verified','m-secure','m-pro','mode-fast','mode-normal','mode-slow','mode-pro','']);
+    const R_CLASSES    = new Set(['r-ok','r-err','r-suspect','']);
+    const modeCls = MODE_CLASSES.has(r.modeClass) ? r.modeClass : '';
+    const rCls    = R_CLASSES.has(r.rclass) ? r.rclass : '';
+    const nFiles  = Number.isFinite(+r.files) ? (+r.files|0) : 0;
     const main = `<tr class="rec">`+chev+
       `<td class="c-num">${escH(r.n)}</td><td class="c-mut">${escH(r.date)}</td><td>${escH(r.card)}</td>`+
       `<td class="c-txt">${escH(r.operator)}</td><td>${escH(r.cam)}</td>`+
-      `<td class="${r.modeClass}">${escH(r.mode)}</td>`+
-      `<td class="c-r">${r.files}</td><td class="c-r">${fmtSize(r.bytes)}</td>`+
-      `<td class="${r.rclass}">${escH(r.result)}</td><td class="c-txt c-mut">${escH(r.note)}</td></tr>`;
+      `<td class="${modeCls}">${escH(r.mode)}</td>`+
+      `<td class="c-r">${nFiles}</td><td class="c-r">${fmtSize(r.bytes)}</td>`+
+      `<td class="${rCls}">${escH(r.result)}</td>`+
+      // One compact column rather than three: the table already carries 11
+      // columns and three more would crush it. All three values are shown.
+      // Phase timings: fixed-width sub-columns so the "/" separators line up
+      // from row to row, coloured with the app's phase palette (copy=green,
+      // dest verify=blue, source re-read=violet). A phase that didn't run
+      // stays grey — colours only ever mark a real measurement.
+      `<td class="c-r" style="white-space:nowrap">`+
+        `<span class="tv ${r.copyMs>0?'t-copy':'t-na'}">${escH(fmtReportDur(r.copyMs))}</span>`+
+        `<span class="t-sep">/</span>`+
+        `<span class="tv ${r.v1Ms>0?'t-v1':'t-na'}">${escH(fmtReportDur(r.v1Ms))}</span>`+
+        `<span class="t-sep">/</span>`+
+        `<span class="tv ${r.v2Ms>0?'t-v2':'t-na'}">${escH(fmtReportDur(r.v2Ms))}</span>`+
+      `</td>`+
+      `<td class="c-txt c-mut">${escH(r.note)}</td></tr>`;
     if(!hasFl) return main;
-    return main+`<tr class="det" id="det-${ri}" style="display:none;"><td></td><td colspan="10"></td></tr>`;
+    return main+`<tr class="det" id="det-${ri}" style="display:none;"><td></td><td colspan="11"></td></tr>`;
   }).join('');
   // Compact encoding: [path, size] pairs instead of {path,size,mtime} objects
   // (~30 chars of JSON scaffolding saved per file). mtime is dropped — it is
@@ -3595,11 +4242,24 @@ function buildReportHtml(created, updated, destPath, records){
   const slim = records.map(r=>{
     const o = { n:r.n, date:r.date, card:r.card, operator:r.operator, cam:r.cam,
       mode:r.mode, modeClass:r.modeClass, files:r.files, bytes:r.bytes,
-      result:r.result, rclass:r.rclass, note:r.note };
-    if (Array.isArray(r.fileList) && r.fileList.length) o.f = r.fileList.map(x=>[x.path, x.size]);
+      result:r.result, rclass:r.rclass, note:r.note,
+      copyMs:r.copyMs, v1Ms:r.v1Ms, v2Ms:r.v2Ms };
+    const pairs = reportFilePairs(r);
+    if (pairs.length) o.f = pairs;
     return o;
   });
-  const data=JSON.stringify({created, v:2, records:slim});
+  // Neutralise a closing script tag (and any other "<") inside the embedded
+  // JSON: a note or filename containing one would otherwise end the data block
+  // early and let the rest render as HTML. "<" parses back to "<", so the data
+  // is unchanged for the reader.
+  // The data block is gzipped and base64'd. On a 180-card session it is the
+  // file lists that make the report heavy — thousands of paths sharing the same
+  // folder and differing by a number, which is the ideal case for gzip: a
+  // 1.55 MB report comes out at ~174 KB. The VISIBLE table stays plain HTML, so
+  // the part a client actually reads opens in anything; only the file lists,
+  // which appear on click, go through decompression.
+  const raw=JSON.stringify({created, v:2, records:slim});
+  const data=await gzipB64(raw);
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>INGESTO — Ingest Report</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}
 body{margin:0;background:#0e0f13;color:#e8e8ec;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
@@ -3617,6 +4277,12 @@ tbody td{padding:10px 12px;border-top:1px solid #18181c;font-family:ui-monospace
 .c-txt{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
 .m-fast{color:#4d90f0;font-weight:600;}.m-verified{color:#35c98b;font-weight:600;}.m-secure{color:#f2a03d;font-weight:600;}.m-pro{color:#a880ff;font-weight:600;}
 .r-ok{color:#35c98b;font-weight:700;}.r-err{color:#f2555a;font-weight:700;}.r-suspect{color:#f2a03d;font-weight:700;}
+/* Phase timings — same colour language as the app's progress bars.
+   .tv fixed width + right-align keeps the separators vertically aligned. */
+.tv{display:inline-block;min-width:38px;text-align:right;}
+.t-sep{display:inline-block;width:14px;text-align:center;color:#5a5a62;}
+.t-copy{color:#35c98b;font-weight:600;}.t-v1{color:#4d90f0;font-weight:600;}
+.t-v2{color:#a880ff;font-weight:600;}.t-na{color:#5a5a62;}
 .c-chev{cursor:pointer;color:#6a6a72;width:22px;text-align:center;user-select:none;font-family:inherit;}
 .c-chev:hover{color:#4d90f0;}
 .det td{border-top:none !important;padding-top:0;}
@@ -3634,28 +4300,78 @@ tbody tr.rec:nth-child(even) td{background:#fafafa;}.c-mut{color:#666;}
 .fl-list{max-height:none;overflow:visible;border-color:#ddd;background:#fff;}
 .fl-hd{color:#555;}.fl-p{color:#333;}.fl-s{color:#666;}
 .m-fast{color:#1a73c7;}.m-verified{color:#0f9d58;}.m-secure{color:#d97706;}.m-pro{color:#7c3aed;}
-.r-ok{color:#0f9d58;}.r-err{color:#d32f2f;}.r-suspect{color:#ea8600;}.ft{color:#999;}}
+.r-ok{color:#0f9d58;}.r-err{color:#d32f2f;}.r-suspect{color:#ea8600;}.ft{color:#999;}
+.t-copy{color:#0f9d58;}.t-v1{color:#1a73e8;}.t-v2{color:#7c4dff;}.t-na,.t-sep{color:#999;}}
 </style></head><body><div class="wrap">
 <div class="hd"><div>
 <div class="brand">ingesto<span>.</span> <span class="ttl">Ingest Report</span></div>
 <div class="path">${escH(destPath)}</div>
 <div class="meta">Generated: ${fmtReportDate(created)} · Last update: ${fmtReportDate(updated)} · ${records.length} card${records.length>1?'s':''} · ${fmtSize(totalBytes)}</div>
-</div><button class="pdf" onclick="window.print()">⭳ Export PDF</button></div>
-<table><thead><tr><th></th><th>#</th><th>DATE</th><th>CARD</th><th>OPERATOR</th><th>CAM</th><th>MODE</th><th class="c-r">FILES</th><th class="c-r">SIZE</th><th>RESULT</th><th>NOTE</th></tr></thead>
+</div><button class="pdf" onclick="_pdf()">⭳ Export PDF</button></div>
+<table><thead><tr>${anyFl?'<th class="c-chev"></th>':''}<th>#</th><th>DATE</th><th>CARD</th><th>OPERATOR</th><th>CAM</th><th>MODE</th><th class="c-r">FILES</th><th class="c-r">SIZE</th><th>RESULT</th><th class="c-r" title="Copy / 1st verify (destination) / 2nd verify (source re-read)" style="white-space:nowrap"><span class="tv t-copy">COPY</span><span class="t-sep">/</span><span class="tv t-v1">V1</span><span class="t-sep">/</span><span class="tv t-v2">V2</span></th><th>NOTE</th></tr></thead>
 <tbody>${rows}</tbody></table>
-<div class="ft">Written by INGESTO — this file lives in the destination and updates after each ingest. Click \u25b8 on a line to list the ingested files.</div>
+<div class="ft">Written by INGESTO — this file lives in the destination and updates after each ingest.${anyFl?' Click \u25b8 on a line to list the ingested files.':''}</div>
 </div>
-<script>var _D=null,_B=[];function _sz(b){if(!b)return'0 B';var u=['B','KB','MB','GB','TB'],i=0;while(b>=1024&&i<4){b/=1024;i++;}return(i?b.toFixed(1):Math.round(b))+' '+u[i];}
+<script id="ingesto-report-data" type="application/gzip+base64">${data}<\/script>
+<script>var _D=null,_B=[],_P=null;function _sz(b){if(!b)return'0 B';var u=['B','KB','MB','GB','TB'],i=0;while(b>=1024&&i<4){b/=1024;i++;}return(i?b.toFixed(1):Math.round(b))+' '+u[i];}
 function _esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function _data(){if(!_D){try{_D=JSON.parse(document.getElementById('ingesto-report-data').textContent);}catch(e){_D={records:[]};}}return _D;}
-function _fill(i){if(_B[i])return;var r=(_data().records||[])[i]||{},f=r.f||[],h='';
-for(var k=0;k<f.length;k++){h+='<div class="fl-row"><span class="fl-p">'+_esc(f[k][0])+'</span><span class="fl-s">'+_sz(f[k][1])+'</span></div>';}
-var c=document.getElementById('det-'+i).getElementsByTagName('td')[1];
-c.innerHTML='<div class="fl-hd">'+f.length+' file'+(f.length>1?'s':'')+' ingested</div><div class="fl-list">'+h+'</div>';_B[i]=1;}
-function tgl(i){var d=document.getElementById('det-'+i),c=document.getElementById('ch-'+i);if(!d)return;var open=d.style.display!=='none';if(!open)_fill(i);d.style.display=open?'none':'table-row';if(c)c.textContent=open?'\u25b8':'\u25be';}
-function _all(){var t=document.querySelectorAll('tr.det');for(var i=0;i<t.length;i++){var n=+t[i].id.slice(4);_fill(n);t[i].style.display='table-row';}}
-window.addEventListener('beforeprint',_all);<\/script>
-<script id="ingesto-report-data" type="application/json">${data}<\/script>
+function _bin(s){var r=atob(s),a=new Uint8Array(r.length);for(var i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a;}
+// Decoding is kicked off AT LOAD and its result cached, so that everything the
+// print path touches stays SYNCHRONOUS. This matters: window.print() blocks the
+// main thread, so an async beforeprint handler returns before it has built
+// anything and the browser prints empty file lists. Chrome/Firefox/Edge fire
+// beforeprint on Cmd+P and on File > Print — the gesture a user is most likely
+// to make and least likely to notice is broken.
+// Reports written before 2.4.7 hold plain JSON; newer ones hold gzip+base64.
+async function _decode(){
+  var el=document.getElementById('ingesto-report-data');
+  // The data block is emitted before this script, but a report produced by an
+  // older version puts it after: wait for the document to finish parsing rather
+  // than concluding there is no data.
+  if(!el && document.readyState==='loading'){
+    await new Promise(function(r){document.addEventListener('DOMContentLoaded',r,{once:true});});
+    el=document.getElementById('ingesto-report-data');
+  }
+  var txt=el?((el.textContent||'').trim()):'';
+  try{
+    if(!el){ _D={records:[]}; return _D; }
+    if(el.type!=='application/gzip+base64'){ _D=JSON.parse(txt); return _D; }
+    if(typeof DecompressionStream!=='function'){ _D={records:[],_noDecomp:1}; return _D; }
+    var st=new Blob([_bin(txt)]).stream().pipeThrough(new DecompressionStream('gzip'));
+    _D=JSON.parse(await new Response(st).text());
+  }catch(e){ _D={records:[],_bad:1}; }
+  return _D;
+}
+function _ready(){ if(!_P) _P=_decode(); return _P; }
+// Synchronous once _D is in memory; a no-op in the first few ms after load.
+function _fill(i){
+  if(_B[i]||!_D) return;
+  var r=(_D.records||[])[i]||{},f=r.f||[],h='';
+  var row=document.getElementById('det-'+i); if(!row) return;
+  var c=row.getElementsByTagName('td')[1];
+  if(_D._noDecomp){c.innerHTML='<div class="fl-hd">File list unavailable in this browser</div><div class="fl-list"><div class="fl-row">The list is stored compressed. Open this report in a recent browser (Safari 16.4+, Chrome, Firefox, Edge) to read it.</div></div>';_B[i]=1;return;}
+  if(_D._bad){c.innerHTML='<div class="fl-hd">File list could not be read</div><div class="fl-list"><div class="fl-row">The stored data is damaged. The table above is unaffected.</div></div>';_B[i]=1;return;}
+  for(var k=0;k<f.length;k++){h+='<div class="fl-row"><span class="fl-p">'+_esc(f[k][0])+'</span><span class="fl-s">'+_sz(f[k][1])+'</span></div>';}
+  c.innerHTML='<div class="fl-hd">'+f.length+' file'+(f.length>1?'s':'')+' ingested</div><div class="fl-list">'+h+'</div>';_B[i]=1;}
+// The open/closed state is read AFTER the await, or two fast clicks during
+// the first decode both see "closed" and both open the row.
+async function tgl(i){
+  await _ready();
+  var d=document.getElementById('det-'+i),c=document.getElementById('ch-'+i);if(!d)return;
+  var open=d.style.display!=='none';
+  if(!open)_fill(i);
+  d.style.display=open?'none':'table-row';if(c)c.textContent=open?'\u25b8':'\u25be';}
+function _all(){var t=document.querySelectorAll('tr.det');
+for(var i=0;i<t.length;i++){var n=+t[i].id.slice(4);_fill(n);t[i].style.display='table-row';
+var c=document.getElementById('ch-'+n);if(c)c.textContent='\u25be';}}
+// Safari implements neither beforeprint nor afterprint, so the button does the
+// work itself; everywhere else beforeprint covers Cmd+P and the File menu.
+async function _pdf(){await _ready();_all();window.print();}
+window.addEventListener('beforeprint',_all);
+// Kick off decoding now. The data block above is already in the DOM at this
+// point — it MUST stay before this script: when it came after, this call found
+// no element and every report opened with an empty history.
+_ready();<\/script>
 </body></html>`;
 }
 
@@ -3724,9 +4440,17 @@ function enterKiosk(){
 function kioskRequestAdmin(){ kioskOpenPin('enter'); }
 
 let _kp={mode:'enter', buf:'', first:''};
+let _kpFails=0, _kpLock=0;   // wrong-PIN counter + lockout-until timestamp
 function kioskOpenPin(mode){
   _kp={mode, buf:'', first:''};
   document.getElementById('kp-title').textContent = mode==='set' ? 'Set a 4-digit PIN' : 'Enter PIN';
+  // Stating it plainly on the screen that sets it: nobody should discover this
+  // by being locked out, and nobody should expect the PIN to still be there
+  // tomorrow.
+  const sub=document.getElementById('kp-sub');
+  if(sub) sub.textContent = mode==='set'
+    ? 'For this session only. Quitting ingesto leaves kiosk mode and clears the PIN.'
+    : 'Forgotten it? Quit and reopen ingesto — that leaves kiosk mode.';
   document.getElementById('kp-err').textContent='';
   kioskPinRender();
   document.getElementById('kiosk-pin-ov').classList.add('on');
@@ -3753,8 +4477,15 @@ function kioskPinComplete(){
       document.getElementById('kp-title').textContent='Set a 4-digit PIN'; kioskPinRender();
     }
   } else {
-    if(_kp.buf===S.kioskPin){ kioskPinCancel(); S.kioskMode=false; persistPrefs(); applyKioskMode(); }
-    else { err.textContent='Wrong PIN'; _kp.buf=''; kioskPinRender(); }
+    // Rate-limit wrong PINs so the 4-digit space can't just be walked through.
+    if(_kpLock && Date.now()<_kpLock){ err.textContent='Too many attempts — wait a moment'; _kp.buf=''; kioskPinRender(); return; }
+    if(_kp.buf===S.kioskPin){ _kpFails=0; kioskPinCancel(); S.kioskMode=false; persistPrefs(); applyKioskMode(); }
+    else {
+      _kpFails++;
+      if(_kpFails>=5){ _kpLock=Date.now()+30000; _kpFails=0; err.textContent='Too many attempts — locked for 30s'; }
+      else err.textContent='Wrong PIN';
+      _kp.buf=''; kioskPinRender();
+    }
   }
 }
 async function kioskBrowse(){
@@ -3831,7 +4562,12 @@ function kioskAfterIngest(R){
   const okAll = R.length>0 && R.every(r=>r.success && !(r.failedFiles&&r.failedFiles.length) && !(r.unstableFiles&&r.unstableFiles.length));
   const canceled = R.every(r=>r.canceled);
   if(!canceled) playIngestSound(okAll);
-  if(okAll){
+  if(canceled){
+    // A deliberate stop is not a failure. Saying "Call the boss!" to someone who
+    // just pressed Cancel is both alarming and wrong — but the card must still
+    // be kept, because the copy is incomplete.
+    kioskShowResult('stop','Ingest stopped','Nothing was deleted. Keep your card and start again.');
+  } else if(okAll){
     S.sources.forEach(s=>{ try{ window.ingesto.ejectVolume(s.path); }catch(_){} });
     kioskShowResult('ok','Ingest complete','Verified. You can remove your card.');
   } else {
@@ -3840,10 +4576,10 @@ function kioskAfterIngest(R){
 }
 function kioskShowResult(kind,title,sub){
   const card=document.getElementById('kr-card');
-  card.className='kr-card '+(kind==='ok'?'ok':'fail');
+  card.className='kr-card '+(kind==='ok'?'ok':kind==='stop'?'stop':'fail');
   const ICO_CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>';
   const ICO_X='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>';
-  document.getElementById('kr-icon').innerHTML = kind==='ok'?ICO_CHECK:ICO_X;
+  document.getElementById('kr-icon').innerHTML = kind==='ok'?ICO_CHECK:(kind==='stop'?STOP_SVG:ICO_X);
   document.getElementById('kr-title').textContent=title;
   document.getElementById('kr-sub').textContent=sub;
   document.getElementById('kr-btn').textContent = kind==='ok'?'Next card':'Dismiss';
@@ -3928,17 +4664,29 @@ function showVerifyResult(res, folder){
     document.getElementById('verify-result-ov').classList.add('open');
     return;
   }
-  const ok = res.corrupted.length===0 && res.missing.length===0 && !res.canceled;
+  // A folder holding a quarantined bad copy (or a temp file from an interrupted
+  // run) is NOT a clean folder — it used to pass because those files were only
+  // listed under "extra files".
+  const quar = res.quarantined || [];
+  const ok = res.corrupted.length===0 && res.missing.length===0 && quar.length===0 && !res.canceled;
   ico.className='sum-ico '+(ok?'ok':'err');
   ico.innerHTML = ok?ICO_CHECK:ICO_X;
   title.textContent = res.canceled ? 'Verification canceled' : (ok?'Verification passed':'Verification failed');
   sub.textContent = folderName;
+  let listsHtmlPre='';
   grid.innerHTML =
     '<div class="srow"><div class="sr-lbl">Checked</div><div class="sr-val">'+res.total+'</div></div>'+
     '<div class="srow"><div class="sr-lbl">Matched</div><div class="sr-val">'+res.matched+'</div></div>'+
     '<div class="srow"><div class="sr-lbl">Corrupted</div><div class="sr-val'+(res.corrupted.length?' bad':'')+'">'+res.corrupted.length+'</div></div>'+
-    '<div class="srow"><div class="sr-lbl">Missing</div><div class="sr-val'+(res.missing.length?' bad':'')+'">'+res.missing.length+'</div></div>';
-  let listsHtml='';
+    '<div class="srow"><div class="sr-lbl">Missing</div><div class="sr-val'+(res.missing.length?' bad':'')+'">'+res.missing.length+'</div></div>'+
+    (quar.length?'<div class="srow"><div class="sr-lbl">No good copy</div><div class="sr-val bad">'+quar.length+'</div></div>':'');
+  if(quar.length){
+    listsHtmlPre = '<div class="vf-flist"><div class="vf-flist-h bad">Files this folder is missing a good copy of</div>'+
+      quar.map(f=>'<div class="vf-fitem bad">'+esc(String(f).replace(/\.ingesto-(failed|part)$/,''))+
+        ' <span class="vf-tag">'+(String(f).endsWith('.ingesto-part')?'copy interrupted':'failed verification')+'</span></div>').join('')+
+      '<div class="vf-fitem">Copy these from the card again.</div></div>';
+  }
+  let listsHtml=listsHtmlPre;
   if(res.corrupted.length || res.missing.length){
     listsHtml += '<div class="vf-flist"><div class="vf-flist-h bad">Corrupted / missing files</div>'+
       res.corrupted.map(f=>'<div class="vf-fitem bad">'+esc(f)+' <span class="vf-tag">hash mismatch</span></div>').join('')+
@@ -3968,11 +4716,7 @@ async function importPresets(){
     if(!res || !res.ok) return; // user cancelled
     const d = res.data;
     if(!d || !Array.isArray(d.presets)){ showToast('Not a valid presets file.', 'warn'); return; }
-    const arr = d.presets.slice(0,4);
-    while(arr.length < 4) arr.push(null);
-    S.presets = arr.map(p => (p && p.name)
-      ? { name:String(p.name), tokens:(p.tokens||[]).map(t=>({type:t.type, key:t.key})) }
-      : null);
+    S.presets = normPresets(d.presets);
     renderPresets();
     persistPrefs();
     showToast('Presets imported.', 'info');
@@ -3995,7 +4739,7 @@ function fmtSizePair(rem,tot){
   return`${fr} ${u[i]} <span class="stot">(${ft} ${u[i]})</span>`;
 }
 function fmtSpd(b){return b>0?`${fmtSize(b)}/s`:'—';}
-function fmtEta(s){if(!s||!isFinite(s)||s<=0)return'—';if(s<60)return`${Math.round(s)}s`;if(s<3600)return`${Math.floor(s/60)}m${Math.round(s%60)}s`;return`${Math.floor(s/3600)}h${Math.floor((s%3600)/60)}m`;}
+function fmtEta(s){if(!s||!isFinite(s)||s<=0)return'—';const t=Math.round(s);if(t<60)return`${t}s`;if(t<3600)return`${Math.floor(t/60)}m${t%60}s`;return`${Math.floor(t/3600)}h${Math.floor((t%3600)/60)}m`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 async function openJE(){await window.ingesto.openExternal('https://github.com/noar-justedit/ingesto/releases');}
 </script>

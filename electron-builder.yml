@@ -3,6 +3,18 @@ productName: ingesto
 copyright: "Copyright © 2026 Just Edit"
 compression: maximum
 asar: true
+# koffi ships a native .node binary that must live outside the asar archive to
+# be loadable at runtime. It also ships one for SIXTEEN platforms in the same
+# package (~62 MB), and none of them can be stripped by compression because they
+# live outside the archive — so each platform below keeps only the binary it can
+# actually run and drops the rest.
+#
+# GET THIS WRONG AND CACHE CONTROL FAILS SILENTLY: koffi falls back to "not
+# available", verification quietly stops bypassing the OS cache, and nothing
+# says so at runtime. Every build script therefore checks the packaged app for
+# the expected koffi.node and REFUSES to report success if it is missing.
+asarUnpack:
+  - "**/node_modules/koffi/**"
 directories:
   buildResources: build-resources
 files:
@@ -14,6 +26,14 @@ files:
   - "LICENSE"
 
 mac:
+  # Keep only the koffi binary this platform can run. koffi ships one for
+  # 16 platforms (~62 MB) and they sit OUTSIDE the asar, so compression
+  # cannot help. Written as an EXCLUSION and nothing else: for files under
+  # node_modules, electron-builder keeps only the '!' patterns and silently
+  # discards positive ones, so an exclude-all-then-re-include pair dropped
+  # every binary — including the right one — and broke the build outright.
+  files:
+    - "!**/node_modules/koffi/build/koffi/!(darwin_arm64)/**"
   category: public.app-category.photography
   icon: build-resources/icon.icns
   hardenedRuntime: true
@@ -46,6 +66,14 @@ dmg:
       path: "LICENSE"
 
 linux:
+  # Keep only the koffi binary this platform can run. koffi ships one for
+  # 16 platforms (~62 MB) and they sit OUTSIDE the asar, so compression
+  # cannot help. Written as an EXCLUSION and nothing else: for files under
+  # node_modules, electron-builder keeps only the '!' patterns and silently
+  # discards positive ones, so an exclude-all-then-re-include pair dropped
+  # every binary — including the right one — and broke the build outright.
+  files:
+    - "!**/node_modules/koffi/build/koffi/!(linux_x64|musl_x64)/**"
   icon: build-resources/icons
   category: AudioVideo;Video;
   maintainer: "Just Edit <contact@just-edit.fr>"
@@ -80,6 +108,14 @@ deb:
     - udisks2
 
 win:
+  # Keep only the koffi binary this platform can run. koffi ships one for
+  # 16 platforms (~62 MB) and they sit OUTSIDE the asar, so compression
+  # cannot help. Written as an EXCLUSION and nothing else: for files under
+  # node_modules, electron-builder keeps only the '!' patterns and silently
+  # discards positive ones, so an exclude-all-then-re-include pair dropped
+  # every binary — including the right one — and broke the build outright.
+  files:
+    - "!**/node_modules/koffi/build/koffi/!(win32_x64)/**"
   icon: build-resources/icon.ico
   requestedExecutionLevel: asInvoker
   target:

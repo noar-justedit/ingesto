@@ -23,6 +23,11 @@
 # ╚══════════════════════════════════════════════════════════╝
 
 set -e
+# NOTE: do NOT use `set -o pipefail` here. Every pipeline in this script ends in
+# a `grep -v` filter, and grep exits 1 when it filters out EVERY line — which is
+# exactly what a clean `npm install --silent` produces. pipefail would turn a
+# perfectly successful step into an abort. The real command's status is read
+# explicitly through PIPESTATUS instead.
 
 RED='[0;31m'
 GREEN='[0;32m'
@@ -43,14 +48,53 @@ echo ""
 
 cd "$PROJECT_DIR"
 
+# ── Cache-control binary check ───────────────────────────────────────────────
+# koffi's native binary is what lets ingesto bypass the OS cache during
+# verification. If packaging drops it, koffi reports "unavailable", verification
+# silently stops hitting the medium and reads from memory instead, and NOTHING
+# says so at runtime. So the build refuses to claim success without it.
+check_koffi() {
+  triplet="$1"
+  found=$(find dist -path "*app.asar.unpacked/node_modules/koffi/build/koffi/${triplet}/koffi.node" 2>/dev/null | head -1 || true)
+  if [ -z "$found" ]; then
+    echo ""
+    echo -e "${RED}✗ Packaging problem: the cache-control binary (koffi, ${triplet}) is missing${NC}"
+    echo -e "  from the packaged app. Verification would silently stop reading the"
+    echo -e "  medium and read from memory instead. Check asarUnpack/files for this"
+    echo -e "  platform in electron-builder.yml."
+    read -p "Press Enter to exit..."; exit 1
+  fi
+  echo -e "${GREEN}✓ Cache-control binary present (${triplet})${NC}"
+}
+
 # ── 1. Check Node.js ──────────────────────────────────────────
 echo -e "${BLUE}[1/5]${NC} Checking Node.js…"
+# This script is launched from build-mac.command through a NON-interactive,
+# NON-login bash, which reads neither ~/.zshrc nor ~/.bashrc — where nvm lives.
+# Without this block a Mac whose only Node is nvm-managed (the usual case) was
+# told "Node.js not found" while having Node 22 installed.
+node_ok() { command -v node >/dev/null 2>&1 && node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>20||(a===20&&b>=19)?0:1)' >/dev/null 2>&1; }
+if ! node_ok && [ -s "$HOME/.nvm/nvm.sh" ]; then
+  echo "  → Loading nvm…"
+  export NVM_DIR="$HOME/.nvm"
+  # shellcheck disable=SC1091
+  \. "$NVM_DIR/nvm.sh" || true
+  nvm use --silent 22 >/dev/null 2>&1 || nvm use --silent node >/dev/null 2>&1 || true
+fi
 if ! command -v node &> /dev/null; then
   echo -e "${RED}✗ Node.js not found!${NC}"
   echo "  → https://nodejs.org  (download the LTS version)"
   read -p "Press Enter to exit..."; exit 1
 fi
 echo -e "${GREEN}✓ Node.js $(node --version)${NC}"
+# electron-builder 26 (used since the Electron 43 upgrade) needs Node 20.19+;
+# older Nodes crash mid-build with a cryptic "ERR_REQUIRE_ESM @noble/hashes"
+# error. nodejs.org's current LTS (22) is fine.
+if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>20||(a===20&&b>=19)?0:1)'; then
+  echo -e "${RED}✗ Node.js $(node --version) is too old — 20.19 or newer is required (22 LTS recommended).${NC}"
+  echo "  → https://nodejs.org  (download the LTS version), then run this script again."
+  read -p "Press Enter to exit..."; exit 1
+fi
 
 # ── 2. Check npm ──────────────────────────────────────────────
 echo -e "${BLUE}[2/5]${NC} Checking npm…"
@@ -69,18 +113,36 @@ echo -e "${GREEN}✓ All required files present${NC}"
 
 # ── 4. Install dependencies ───────────────────────────────────
 echo -e "${BLUE}[4/5]${NC} Installing dependencies…"
-npm install --silent 2>&1 | grep -v "^npm warn" || true
+set +e
+npm install --silent 2>&1 | grep -v "^npm warn"
+NPM_STATUS=${PIPESTATUS[0]}
+set -e
+if [ "$NPM_STATUS" -ne 0 ]; then
+  echo -e "${RED}✗ Installing dependencies failed. See error above.${NC}"
+  read -p "Press Enter to exit..."; exit 1
+fi
 echo -e "${GREEN}✓ Dependencies installed${NC}"
 
 # ── 5. Build DMG ─────────────────────────────────────────────
+# Clear previous artefacts FIRST. Without this, a failed build left the previous
+# version's DMG in dist/ and the "Done" screen proudly listed it — the operator
+# then shipped the old build believing it was the new one.
+rm -rf "$PROJECT_DIR/dist"
 echo -e "${BLUE}[5/5]${NC} Building ingesto DMG (arm64)…"
-npm run build 2>&1 | grep -v "^>" | grep -v "^\s*$" || {
+set +e
+npm run build 2>&1 | grep -v "^>" | grep -v "^\s*$"
+BUILD_STATUS=${PIPESTATUS[0]}
+set -e
+if [ "$BUILD_STATUS" -ne 0 ]; then
   echo -e "${RED}✗ Build failed. See error above.${NC}"
   read -p "Press Enter to exit..."; exit 1
-}
+fi
 
 # ── Done ──────────────────────────────────────────────────────
-DMG_FILES=$(find dist -name "*.dmg" 2>/dev/null)
+# `|| true`: dist/ is deleted before the build, so find exits 1 when the build
+# produced nothing — and `set -e` would kill the script before the message below.
+check_koffi darwin_arm64
+DMG_FILES=$(find dist -name "*.dmg" 2>/dev/null || true)
 
 if [ -z "$DMG_FILES" ]; then
   echo -e "${RED}✗ No DMG found in dist/ — build may have failed silently.${NC}"
@@ -95,7 +157,7 @@ echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "${BOLD}DMG created:${NC}"
 while IFS= read -r f; do
-  SIZE=$(du -sh "$f" 2>/dev/null | cut -f1)
+  SIZE=$(du -sh "$f" 2>/dev/null | cut -f1 || true)
   echo -e "  ${GREEN}→${NC} $f  (${SIZE})"
 done <<< "$DMG_FILES"
 echo ""

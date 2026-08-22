@@ -69,6 +69,11 @@ If you just want to try it before building:
   once assigned
 - **Filters** (column header): hide System and/or Network volumes, or manually
   hide a given volume (right-click → Hide Volume)
+- **Eject** (right-click a card or drive → **Eject**): unmounts it without
+  leaving the app. Offered only for ejectable volumes — never the system disk or
+  a network share — and refused while an ingest is running. If the volume was
+  loaded as SOURCE or DESTINATION it is unloaded automatically, but only once
+  the eject actually succeeded.
 - **↻ Refresh**: refresh the volume list
 
 ### Typical workflow
@@ -128,6 +133,7 @@ ingesto/
 │   │   ├── main.js            — Electron main process (copy engine, volumes, IPC…)
 │   │   ├── camera-detect.js   — Camera brand/model detection from card structure
 │   │   ├── sentinel.js        — Card tracking (.ingesto.json), off by default
+│   │   ├── nocache.js         — Uncached read-back verification (macOS)
 │   │   └── preload.js         — Secure bridge between main and renderer
 │   └── renderer/
 │       └── index.html         — Full user interface (HTML+CSS+JS)
