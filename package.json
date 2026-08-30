@@ -1,6 +1,6 @@
 {
   "name": "ingesto",
-  "version": "2.4.8",
+  "version": "2.5.3",
   "description": "Professional camera media ingest application",
   "main": "src/main/main.js",
   "author": "Just Edit <contact@just-edit.fr>",
@@ -16,7 +16,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node scripts/test-p0.js",
+    "test": "node scripts/test-p0.js && node scripts/test-parallel-verify.js && node scripts/test-ascmhl.js && node scripts/test-volume-check.js",
     "build": "electron-builder --config electron-builder.yml --mac --arm64",
     "build:dmg": "electron-builder --mac dmg",
     "pack": "electron-builder --dir",

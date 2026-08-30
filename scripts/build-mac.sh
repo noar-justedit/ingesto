@@ -55,7 +55,19 @@ cd "$PROJECT_DIR"
 # says so at runtime. So the build refuses to claim success without it.
 check_koffi() {
   triplet="$1"
-  found=$(find dist -path "*app.asar.unpacked/node_modules/koffi/build/koffi/${triplet}/koffi.node" 2>/dev/null | head -1 || true)
+  scope="$2"
+  # Search ONLY this platform's own output. The Windows and Linux packages
+  # bundle every koffi triplet, so looking across the whole dist/ could find
+  # darwin_arm64 inside win-unpacked/ and pass a Mac build that had actually
+  # dropped it — the exact silent failure this check exists to catch. Since
+  # 2.5.0 the other platforms' builds are no longer wiped, so the scope matters.
+  roots=$(ls -d dist/$scope 2>/dev/null || true)
+  if [ -z "$roots" ]; then
+    echo ""
+    echo -e "${RED}✗ Packaging problem: no packaged app found in dist/$scope${NC}"
+    read -p "Press Enter to exit..."; exit 1
+  fi
+  found=$(find $roots -path "*app.asar.unpacked/node_modules/koffi/build/koffi/${triplet}/koffi.node" 2>/dev/null | head -1 || true)
   if [ -z "$found" ]; then
     echo ""
     echo -e "${RED}✗ Packaging problem: the cache-control binary (koffi, ${triplet}) is missing${NC}"
@@ -124,10 +136,16 @@ fi
 echo -e "${GREEN}✓ Dependencies installed${NC}"
 
 # ── 5. Build DMG ─────────────────────────────────────────────
-# Clear previous artefacts FIRST. Without this, a failed build left the previous
-# version's DMG in dist/ and the "Done" screen proudly listed it — the operator
-# then shipped the old build believing it was the new one.
-rm -rf "$PROJECT_DIR/dist"
+# Clear this platform's previous artefacts FIRST. Without this, a failed build
+# left the previous version's DMG in dist/ and the "Done" screen proudly listed
+# it — the operator then shipped the old build believing it was the new one.
+#
+# Only the MAC artefacts go: wiping the whole dist/ also destroyed a Windows or
+# Linux build made earlier the same day, so building all three in a row left you
+# with just the last one.
+rm -rf "$PROJECT_DIR"/dist/*.dmg "$PROJECT_DIR"/dist/*.dmg.blockmap \
+       "$PROJECT_DIR"/dist/mac "$PROJECT_DIR"/dist/mac-* \
+       "$PROJECT_DIR"/dist/latest-mac.yml
 echo -e "${BLUE}[5/5]${NC} Building ingesto DMG (arm64)…"
 set +e
 npm run build 2>&1 | grep -v "^>" | grep -v "^\s*$"
@@ -141,7 +159,7 @@ fi
 # ── Done ──────────────────────────────────────────────────────
 # `|| true`: dist/ is deleted before the build, so find exits 1 when the build
 # produced nothing — and `set -e` would kill the script before the message below.
-check_koffi darwin_arm64
+check_koffi darwin_arm64 'mac*'
 DMG_FILES=$(find dist -name "*.dmg" 2>/dev/null || true)
 
 if [ -z "$DMG_FILES" ]; then

@@ -118,7 +118,11 @@ async function hashPro(fp, hasher) {
       try { hasher.update(d); }
       catch (e) { try { s.destroy(); } catch(_) {} rej(e instanceof Error ? e : new Error('hash update failed')); }
     });
-    s.on('end', () => res(hasher.digest()));
+    // digest() can throw (a hasher used by two readers at once, an internal
+    // WASM failure). Thrown from a stream listener it escaped the promise
+    // entirely and took the whole main process down, killing an ingest in
+    // progress. Turn it into a rejection the verify loop can report.
+    s.on('end', () => { try { res(hasher.digest()); } catch (e) { rej(e instanceof Error ? e : new Error('hash digest failed')); } });
     s.on('error', rej);
   });
 }
@@ -159,6 +163,14 @@ function writeChecksumList(destPath, algo, entries) {
 function xmlEsc(s){
   return String(s==null?'':s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // Escaped for ATTRIBUTE position too — ASC MHL puts the tool version and the
+    // author name in attributes, and one quote in a user name produced a
+    // manifest no parser would open.
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;')
+    // A carriage return survives as a literal today, and every conforming XML
+    // parser then turns it into a newline: the name that comes back out is not
+    // the name on disk. Encode it instead.
+    .replace(/\r/g,'&#13;')
     // Strip characters that are simply illegal in XML 1.0, so one exotic byte in
     // a filename can't produce a manifest that no parser will open.
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
@@ -175,6 +187,169 @@ function isoSec(ms){
 // Windows and most tools use composed (NFC). Without this, an accented clip
 // verified across platforms shows up as BOTH missing and extra.
 function nfc(s){ try { return String(s).normalize('NFC'); } catch(_) { return String(s); } }
+// ─── ASC MHL v2.0 ──────────────────────────────────────────────────────────
+// Written IN ADDITION to the classic .mhl, never instead of it: the classic
+// manifest is what most tools on set read today, ASC MHL is where the industry
+// is going. Everything here reuses fingerprints already computed during the
+// ingest — nothing is hashed twice.
+//
+// Validated against the ASC's own reference implementation (the `ascmhl`
+// Python package): our four algorithms produce byte-identical values, and the
+// C4 identifier below matches theirs on a real manifest.
+//
+// Deliberately NOT written: directory and root hashes. They are optional in the
+// schema, and the verifiers that consume ASC MHL (Pomfort MediaVerify among
+// them) check the folder against the manifest's FILE LIST and then re-hash each
+// file — a missing file is caught either way. A directory hash that was subtly
+// wrong would make a verifier reject a perfectly good folder, which is the one
+// failure this application must never produce.
+
+const ASCMHL_ALGOS = { xxh64:'xxh64', xxh128:'xxh128', xxh3:'xxh3', md5:'md5', sha1:'sha1' };
+const C4_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+// C4 identifier of a buffer: SHA-512, base58, left-padded to 88 characters
+// after the "c4" prefix — 90 characters in all. The chain file demands one and
+// the schema makes it mandatory, so a folder without it is not an ASC MHL
+// history, only something that looks like one.
+async function c4Id(buf){
+  const hw = getHashWasm();
+  const hex = await hw.sha512(buf);
+  let n = BigInt('0x' + hex), out = '';
+  const B = 58n;
+  while (n > 0n) { const r = n % B; out = C4_ALPHABET[Number(r)] + out; n = n / B; }
+  return 'c4' + out.padStart(88, '1');
+}
+
+// ISO timestamp with a UTC offset, the shape the reference implementation emits.
+function ascIso(ms){
+  let d = new Date(ms);
+  if (isNaN(d.getTime())) d = new Date();
+  return d.toISOString().replace(/\.\d{3}Z$/, '+00:00');
+}
+
+// Next free generation number in an existing ascmhl folder.
+function ascNextSeq(dir){
+  let max = 0;
+  try {
+    for (const f of fs.readdirSync(dir)) {
+      const m = /^(\d{4,})_.*\.mhl$/.exec(f);
+      if (m) { const n = parseInt(m[1], 10); if (n > max) max = n; }
+    }
+  } catch (_) {}
+  return max + 1;
+}
+
+// destPath/ascmhl/NNNN_<folder>_<YYYY-MM-DD>_<HHMMSSZ>.mhl  +  ascmhl_chain.xml
+async function writeAscMhl(destPath, algo, entries, meta){
+  try {
+    const tag = ASCMHL_ALGOS[algo];
+    if (!tag || !entries || !entries.length) return null;
+    const dir = path.join(destPath, 'ascmhl');
+    fs.mkdirSync(dir, { recursive: true });
+
+    const now = new Date();
+    const seq = ascNextSeq(dir);
+    const iso = now.toISOString();                       // 2026-08-29T14:49:15.000Z
+    const day = iso.slice(0, 10);
+    const hms = iso.slice(11, 19).replace(/:/g, '') + 'Z';
+    const folder = path.basename(destPath);
+    const name = `${String(seq).padStart(4, '0')}_${folder}_${day}_${hms}.mhl`;
+
+    let user = ''; try { user = os.userInfo().username || ''; } catch(_) {}
+    const host = os.hostname() || '';
+    const created = ascIso(now.getTime());
+
+    const hashes = entries.slice()
+      .sort((a, b) => a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0)
+      .map(e => {
+        const rel = nfc(String(e.rel).replace(/\\/g, '/'));
+        const mt  = ascIso(e.mtimeMs || now.getTime());
+        // action="verified": every entry in this list was read back from the
+        // destination and compared during V1. Saying "original" would understate
+        // what ingesto actually did.
+        return '    <hash>\n'
+             + `      <path size="${e.size || 0}" lastmodificationdate="${mt}">${xmlEsc(rel)}</path>\n`
+             + `      <${tag} action="verified" hashdate="${created}">${xmlEsc(e.hash)}</${tag}>\n`
+             + '    </hash>';
+      }).join('\n');
+
+    // "transfer": these files were copied here from somewhere else, which is
+    // exactly what an ingest is. "in-place" would claim we merely fingerprinted
+    // a folder that was already there.
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<hashlist version="2.0" xmlns="urn:ASC:MHL:v2.0">\n'
+      + '  <creatorinfo>\n'
+      + `    <creationdate>${created}</creationdate>\n`
+      + `    <hostname>${xmlEsc(host)}</hostname>\n`
+      + `    <tool version="${xmlEsc(app.getVersion())}">ingesto</tool>\n`
+      + (user ? `    <author name="${xmlEsc(user)}"></author>\n` : '')
+      + '  </creatorinfo>\n'
+      + '  <processinfo>\n'
+      + '    <process>transfer</process>\n'
+      + '    <ignore>\n'
+      + '      <pattern>.DS_Store</pattern>\n'
+      + '      <pattern>ascmhl</pattern>\n'
+      + '    </ignore>\n'
+      + '  </processinfo>\n'
+      + '  <hashes>\n' + hashes + '\n  </hashes>\n'
+      + '</hashlist>\n';
+
+    writeFileAtomic(path.join(dir, name), xml);
+
+    // The chain references every generation by its C4 identifier. It is READ
+    // BACK from disk rather than hashed from the string above, so the recorded
+    // identifier is the one covering the bytes that actually landed.
+    const onDisk = fs.readFileSync(path.join(dir, name));
+    const c4 = await c4Id(onDisk);
+
+    const chainPath = path.join(dir, 'ascmhl_chain.xml');
+    let rows = [];
+    try {
+      const prev = fs.readFileSync(chainPath, 'utf8');
+      rows = prev.match(/<hashlist[\s\S]*?<\/hashlist>/g) || [];
+    } catch (_) {}
+
+    // A chain that is missing, empty or damaged used to be replaced by a single
+    // row carrying the NEW sequence number, leaving every earlier manifest
+    // unreferenced — a history with holes, written without a word. If what we
+    // read does not account for every manifest in the folder, rebuild the chain
+    // from the folder itself: the manifests are the truth, the chain is an index.
+    const onDiskMhl = (() => {
+      try {
+        return fs.readdirSync(dir)
+          .filter(f => /^(\d{4,})_.*\.mhl$/.test(f))
+          .sort();
+      } catch (_) { return []; }
+    })();
+    if (rows.length !== onDiskMhl.length - 1) {
+      rows = [];
+      for (const f of onDiskMhl) {
+        if (f === name) continue;
+        const n = parseInt(/^(\d{4,})_/.exec(f)[1], 10);
+        let h;
+        try { h = await c4Id(fs.readFileSync(path.join(dir, f))); }
+        catch (_) { continue; }
+        rows.push(`  <hashlist sequencenr="${n}">\n`
+                + `    <path>${xmlEsc(f)}</path>\n`
+                + `    <c4>${h}</c4>\n`
+                + '  </hashlist>');
+      }
+    }
+
+    rows.push(`  <hashlist sequencenr="${seq}">\n`
+            + `    <path>${xmlEsc(name)}</path>\n`
+            + `    <c4>${c4}</c4>\n`
+            + '  </hashlist>');
+    writeFileAtomic(chainPath,
+      '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + '<ascmhldirectory xmlns="urn:ASC:MHL:DIRECTORY:v2.0">\n'
+      + rows.join('\n') + '\n'
+      + '</ascmhldirectory>\n');
+
+    return name;
+  } catch (_) { return null; }
+}
+
 function writeMHL(destPath, algo, entries, meta){
   try {
     if (algo!=='md5' && algo!=='xxh64') return null;      // classic MHL: MD5 or xxHash64 only
@@ -253,7 +428,7 @@ function readChecksumListFile(destPath) {
     const fp = path.join(destPath, file);
     if (!fs.existsSync(fp)) continue;
     try {
-      const lines = fs.readFileSync(fp, 'utf8').replace(/^﻿/, '').split('\n').map(l => l.trim()).filter(Boolean);
+      const lines = fs.readFileSync(fp, 'utf8').replace(/^﻿/, '').split('\n').map(l => l.replace(/\r?\n?$/, '').replace(/^\s+/, '')).filter(Boolean);
       const entries = [];
       for (const line of lines) {
         const m = line.match(/^([0-9a-fA-F]+)\s+\*(.+)$/);
@@ -312,9 +487,15 @@ function isIngestoResidue(name) {
 // A half-written sidecar/report temp: our own bookkeeping, not the user's media.
 function isIngestoTemp(name) { return name.endsWith(ATOMIC_TMP_SUFFIX); }
 function isIngestoSidecar(name, destBase) {
+  // `name` can be a relative path with folders, because the scan is recursive.
+  // The ASC MHL history and the recovery copies of an unreadable report are
+  // files INGESTO writes itself; listing them back as "extra files (not in
+  // manifest)" made the operator doubt a folder the application had just
+  // produced.
+  if (/^ascmhl\//.test(name)) return true;
+  if (/^INGESTO_report(\.unreadable)?(-\d+)?\.(html|csv|json)$/.test(name)) return true;
   return name === destBase + '.xxh' || name === destBase + '.xxh3' || name === destBase + '.md5' ||
-         name === destBase + '.mhl' || name === 'INGESTO_report.html' ||
-         name === 'INGESTO_report.csv' || name === 'INGESTO_report.json';
+         name === destBase + '.mhl';
 }
 
 ipcMain.handle('verify-folder', async (event, destPath) => {
@@ -972,9 +1153,9 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
   } finally { activeCopyCount--; }
 });
 
-ipcMain.handle('cancel-copy', async () => { cancelCopy = true; pauseCopy = false; return true; });
+ipcMain.handle('cancel-copy', async () => { cancelCopy = true; pauseCopy = false; pauseEnd(); return true; });
 ipcMain.handle('pause-copy',  async () => { pauseCopy = true;  return true; });
-ipcMain.handle('resume-copy', async () => { pauseCopy = false; return true; });
+ipcMain.handle('resume-copy', async () => { pauseCopy = false; pauseEnd(); return true; });
 
 // ─── Re-copy only the files that failed verification, into the SAME folder ───
 ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath, mode, proAlgo, proDoubleRead, files, destRelMap, destIndex, destName }) => {
@@ -1026,6 +1207,12 @@ ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath
                     { rel: e.rel, hash: e.hash, size: e.size, mtimeMs: e.mtimeMs });
         }
         writeMHL(destPath, algo, [...byRel.values()], { startMs: Date.now() });
+      }
+      // ASC MHL: a retry is a new GENERATION, which is exactly what the format's
+      // chain is for. Without this the history kept describing the state before
+      // the retry, and omitted precisely the files that had been at risk.
+      if (fs.existsSync(path.join(destPath, 'ascmhl'))) {
+        await writeAscMhl(destPath, algo, _cksumEntries, { startMs: Date.now() });
       }
     }
   } catch (_) { /* sidecar refresh is best-effort; the copy result stands */ }
@@ -1261,7 +1448,12 @@ function copyFanOut(src, destFiles, onBytes, hasher) {
     const maybeSettle = () => {
       if (settled || !readEnded || pendingFinish > 0) return;
       settled = true;
-      resolve({ digest: hasher ? hasher.digest() : null, failed });
+      // Same hazard as in hashPro: thrown from a stream listener, this escapes
+      // the promise entirely and takes the whole main process down mid-copy.
+      let dg = null;
+      try { dg = hasher ? hasher.digest() : null; }
+      catch (e) { reject(e instanceof Error ? e : new Error('hash digest failed')); return; }
+      resolve({ digest: dg, failed });
     };
     const failDest = (i, err) => {
       if (state[i] !== 'open') return;
@@ -1403,14 +1595,61 @@ function copyFanOut(src, destFiles, onBytes, hasher) {
 // wall-clock, so without this an operator who pauses for two minutes during a
 // one-minute copy sees "COPY 3m" in the report — and, worse, the copy speed
 // derived from it collapses.
-let pausedMs = 0;
-function resetPausedMs() { pausedMs = 0; }
+// Paused time, measured on the WALL CLOCK. It used to be accumulated inside
+// pauseGate by every caller that waited — fine while one loop ran at a time,
+// wrong the moment several destinations are verified at once: three lanes
+// waiting through the same 10-second pause billed 30 seconds, and the phase
+// durations in the report went to zero.
+let pausedMs = 0, _pauseStart = 0, _pauseHeldSent = false;
+// Close any pause still open before zeroing, or a pause that started between
+// two cards of a batch would be credited to nobody and its minutes would land
+// inside the next card's phase durations.
+function resetPausedMs() { pauseEnd(); pausedMs = 0; _pauseStart = 0; _pauseHeldSent = false; }
+function pauseBegin() { if (!_pauseStart) _pauseStart = Date.now(); }
+function pauseEnd() {
+  if (_pauseStart) { pausedMs += Date.now() - _pauseStart; _pauseStart = 0; }
+  _pauseHeldSent = false;
+}
+// Split a list into groups that can safely be read AT THE SAME TIME: one group
+// per physical device, so two folders on the same disk stay in the same group
+// and are read one after the other. Falls back to "each on its own" when the
+// device cannot be determined — parallel reads of two paths that turn out to
+// share a disk cost speed, never correctness.
+function groupByDevice(items, pathOf) {
+  const byDev = new Map();
+  for (const it of items) {
+    let k;
+    try { k = 'd' + fs.statSync(pathOf(it)).dev; }
+    catch (_) { k = 'p' + pathOf(it); }
+    if (!byDev.has(k)) byDev.set(k, []);
+    byDev.get(k).push(it);
+  }
+  return [...byDev.values()];
+}
+
+// Why a card ended up with nothing to copy — or null when there is nothing to
+// complain about. "Nothing to do" is a legitimate outcome when every file was
+// already ingested; it is NOT one when the folder was empty or the format
+// filter excluded everything. Those two used to come back success:true: green
+// summary, "all verified" notification, and in kiosk mode the card ejected with
+// "You can remove your card" on screen, having read not one of its files.
+function emptyRunReason(seenFiles, skippedAlready, totalFiles) {
+  if (totalFiles > 0 || skippedAlready > 0) return null;
+  return seenFiles === 0
+    ? 'no file was found on this card — check that you selected the card itself and not an empty folder inside it'
+    : `all ${seenFiles} file${seenFiles > 1 ? 's' : ''} on this card were excluded by the file filter — nothing was copied`;
+}
+
 async function pauseGate(win) {
   if (!pauseCopy || cancelCopy) return;
-  const t = Date.now();
-  try { win.webContents.send('pause-held'); } catch (_) {}
+  // The clock starts HERE, when a lane actually stops — not when the button was
+  // pressed. Between the two the engine is still finishing the file in flight,
+  // and billing that time as pause subtracted it from the phase durations: a
+  // 500-second verify could be reported as 240 seconds, or clamped to zero.
+  pauseBegin();
+  // "Held" is announced once per pause, not once per waiting lane.
+  if (!_pauseHeldSent) { _pauseHeldSent = true; try { win.webContents.send('pause-held'); } catch (_) {} }
   while (pauseCopy && !cancelCopy) await new Promise(r => setTimeout(r, 200));
-  pausedMs += Date.now() - t;
 }
 
 // Copy one source to every destination. Returns one result object PER
@@ -1436,6 +1675,9 @@ async function performCopyMulti(source, destinations, options, onProgress) {
   // check didn't really run" alarm on ingests whose second read was genuine.
   let copyPurgeFails = 0, dblPurgeFails = 0;
   let copiedBytes=0, totalBytes=0, totalFiles=0;
+  // How the scan ended, so that "nothing to copy" can be told apart from
+  // "nothing worth copying" — see emptyRunReason.
+  let seenFiles=0, skippedAlready=0;
   const isPro    = options.mode === 'pro';
   const isSecure = options.mode === 'slow';
   const proAlgo  = options.proAlgo || 'xxh128';
@@ -1535,10 +1777,11 @@ async function performCopyMulti(source, destinations, options, onProgress) {
         else {
           const s=fs.statSync(full);
           const rel = path.relative(source.path, full).replace(/\\/g, '/');
+          seenFiles++;
           if (onlyRel && !onlyRel.has(rel)) continue;
           if (skipKeys.size) {
             const key = `${rel}|${s.size}|${Math.floor(s.mtimeMs/1000)}`;
-            if (skipKeys.has(key)) continue;
+            if (skipKeys.has(key)) { skippedAlready++; continue; }
           }
           let cat = null;
           if (FF) {
@@ -1560,6 +1803,9 @@ async function performCopyMulti(source, destinations, options, onProgress) {
     }
   })(source.path);
   totalFiles = allFiles.length;
+
+  { const why = emptyRunReason(seenFiles, skippedAlready, totalFiles);
+    if (why) for (const r of R) { r.errors++; r.errorList.push({ file:'(card)', error: why, phase:'scan' }); } }
 
   // Surface the scan failures on every destination result: they must count as
   // errors so the run can never come back success:true, and so the sentinel is
@@ -1768,7 +2014,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
     const totalSteps = R.reduce((a,r)=>a+r.copied.length,0) + (proDouble ? srcByRel.size : 0);
     let verifiedBytes=0, verifiedFiles=0, lastB=0, lastT=Date.now();
     let passBytes=0, passTotal=destPassTotal;
-    const emit=(cur,pass,di,dn)=>{
+    const emit=(cur,pass,di,dn,extra)=>{
       const now=Date.now();
       if (now-lastT>=120){ speedPush(verifiedBytes-lastB,now-lastT); lastB=verifiedBytes; lastT=now; }
       const sp=avgSpd();
@@ -1779,56 +2025,121 @@ async function performCopyMulti(source, destinations, options, onProgress) {
         progress:verifyTotalBytes>0?verifiedBytes/verifyTotalBytes:1,
         passProgress: passTotal>0 ? passBytes/passTotal : 1,
         speed:sp, eta:sp>0?(verifyTotalBytes-verifiedBytes)/sp:0,
-        errors:R.reduce((a,r)=>a+r.errors,0), pass });
+        errors:R.reduce((a,r)=>a+r.errors,0), pass, ...(extra||{}) });
     };
 
-    // 2a — verify every destination against the fingerprint taken during copy
+    // Per-destination progress and throughput. Until now the renderer received
+    // ONE cumulative figure for the whole pass and had to work out each
+    // destination's share by arithmetic — which was wrong twice already, and
+    // becomes meaningless once destinations are verified at the same time.
+    // Each destination now reports its own progress and its own speed.
     for (const r of R) {
-      for (const c of r.copied) {
-        if (cancelCopy) break;
-        await pauseGate(mainWindow);
-        if (cancelCopy) break;
-        let okv=false;
-        try {
-          if (isPro || isSecure) {
-            // Evict this destination file's cached pages first, so the
-            // read-back is forced to hit the disk. On macOS the uncached write
-            // already kept most pages out (APFS); this covers Windows/Linux —
-            // where the copy is fully cached and the read-back used to compare
-            // RAM with itself — and exFAT/NTFS destinations on macOS, whose
-            // drivers ignore F_NOCACHE. The RESULT is kept: a failed purge
-            // (antivirus holding the file, exotic filesystem) means this
-            // read-back may come from RAM, and coldVerify must say so.
-            try { if (!nocache.purgeFileCache(c.dest)) r._purgeFails = (r._purgeFails||0) + 1; }
-            catch(_) { r._purgeFails = (r._purgeFails||0) + 1; }
-            if (await hashPro(c.dest,hasher) !== c.srcHash) throw new Error(isPro?'checksum mismatch':'xxHash mismatch');
-          } else {
-            if (fs.statSync(c.src).size !== fs.statSync(c.dest).size) throw new Error('Size mismatch');
-          }
-          okv=true;
-        } catch(e){
-          r.errors++; r.errorList.push({file:c.rel,error:e.message,phase:'verify'});
-          r.failedFiles.push(c.rel); r.failedMap[c.rel]=c.destRel;
-          // Quarantine the bad copy. Until now it kept its FINAL name while
-          // being left out of the checksum list, so if the operator never ran
-          // "Re-copy failed files" the folder held a corrupt clip under its
-          // real name — and a later Verify on that folder listed it merely as
-          // an "extra file" and still reported "Verification passed".
-          // The whole point of the .ingesto-part protocol is that a real name
-          // means a good file; this restores it for the verify phase too.
-          try { fs.renameSync(c.dest, c.dest + FAILED_SUFFIX); c._quarantined = true; }
-          catch(_) { /* locked or gone — the error is already recorded */ }
-        }
-        c._writeOk = okv;
-        if (okv && !proDouble) {
-          r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000), ...(c.destRel&&c.destRel!==c.rel?{d:c.destRel}:{}) });
-          if (isPro || isSecure) r.cksumEntries.push({ rel:c.destRel||c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
-        }
-        verifiedBytes+=c.size; passBytes+=c.size; verifiedFiles++;
-        emit(c.rel,'dest',r.di,r.name);
-      }
-      if (cancelCopy) break;
+      r._vTotal = r.copied.reduce((a,c)=>a+c.size, 0);
+      r._vBytes = 0; r._vSpd = []; r._sB = 0; r._sT = Date.now(); r._lastEmit = 0;
     }
+    const destSpeed = (r) => {
+      const now = Date.now(), ms = now - r._sT;
+      if (ms >= 150) {
+        r._vSpd.push((r._vBytes - r._sB) / ms * 1000);
+        if (r._vSpd.length > 12) r._vSpd.shift();
+        r._sB = r._vBytes; r._sT = now;
+      }
+      return r._vSpd.length ? r._vSpd.reduce((a,b)=>a+b) / r._vSpd.length : 0;
+    };
+    const emitDest = (r, cur, force) => {
+      const now = Date.now();
+      // Several lanes reporting per file would flood the renderer; one update
+      // per destination per 100 ms is more than the eye can follow, and the
+      // last file of a destination always gets through.
+      if (!force && now - r._lastEmit < 100) return;
+      r._lastEmit = now;
+      emit(cur, 'dest', r.di, r.name, {
+        destProgress: r._vTotal > 0 ? Math.min(1, r._vBytes / r._vTotal) : 1,
+        destSpeed: destSpeed(r),
+      });
+    };
+
+    // 2a — verify every destination against the fingerprint taken during copy.
+    //
+    // Destinations are verified CONCURRENTLY, but only when they sit on
+    // different physical devices. Two folders on the same disk are read one
+    // after the other: making that disk seek between two streams is slower
+    // than reading them in turn. The grouping reads the machine's actual
+    // topology (the filesystem's device id) instead of guessing from paths.
+    //
+    // Worst case is "no gain", never a regression: the reads are asynchronous
+    // and the total amount of hashing is unchanged, so if the fingerprint
+    // calculation is what saturates, the lanes simply take turns on it.
+    const lanes = groupByDevice(R, r => r.destPath);
+    // ONE HASHER PER LANE. hashPro() calls hasher.init() then streams into it;
+    // two concurrent calls on the same instance would interleave their updates
+    // and produce a digest belonging to neither file — a silent false
+    // "checksum mismatch", the worst possible failure for this application.
+    const laneHashers = [];
+    for (let i = 0; i < lanes.length; i++) {
+      laneHashers.push(!hasher ? null
+        : (i === 0 ? hasher : await newProHasher(isPro ? proAlgo : 'xxh64')));
+    }
+
+    const runLane = async (group, laneHasher) => {
+      for (const r of group) {
+        if (!r.copied.length) continue;   // nothing was written here
+        for (const c of r.copied) {
+          if (cancelCopy) return;
+          await pauseGate(mainWindow);
+          if (cancelCopy) return;
+          let okv=false;
+          try {
+            if (isPro || isSecure) {
+              // Evict this destination file's cached pages first, so the
+              // read-back is forced to hit the disk. On macOS the uncached write
+              // already kept most pages out (APFS); this covers Windows/Linux —
+              // where the copy is fully cached and the read-back used to compare
+              // RAM with itself — and exFAT/NTFS destinations on macOS, whose
+              // drivers ignore F_NOCACHE. The RESULT is kept: a failed purge
+              // (antivirus holding the file, exotic filesystem) means this
+              // read-back may come from RAM, and coldVerify must say so.
+              try { if (!nocache.purgeFileCache(c.dest)) r._purgeFails = (r._purgeFails||0) + 1; }
+              catch(_) { r._purgeFails = (r._purgeFails||0) + 1; }
+              if (await hashPro(c.dest,laneHasher) !== c.srcHash) throw new Error(isPro?'checksum mismatch':'xxHash mismatch');
+            } else {
+              if (fs.statSync(c.src).size !== fs.statSync(c.dest).size) throw new Error('Size mismatch');
+            }
+            okv=true;
+          } catch(e){
+            r.errors++; r.errorList.push({file:c.rel,error:e.message,phase:'verify'});
+            r.failedFiles.push(c.rel); r.failedMap[c.rel]=c.destRel;
+            // Quarantine the bad copy. Until now it kept its FINAL name while
+            // being left out of the checksum list, so if the operator never ran
+            // "Re-copy failed files" the folder held a corrupt clip under its
+            // real name — and a later Verify on that folder listed it merely as
+            // an "extra file" and still reported "Verification passed".
+            // The whole point of the .ingesto-part protocol is that a real name
+            // means a good file; this restores it for the verify phase too.
+            try { fs.renameSync(c.dest, c.dest + FAILED_SUFFIX); c._quarantined = true; }
+            catch(_) {
+              // The bad copy is still sitting there under its REAL name. Left
+              // silent, a later Verify listed it merely as an "extra file" and
+              // still reported "Verification passed". Say it explicitly.
+              r.errorList.push({ file:c.rel, phase:'verify',
+                error:'this file failed verification and could NOT be set aside — a bad copy is still in the destination under its real name. Delete it by hand or re-copy the card.' });
+            }
+          }
+          c._writeOk = okv;
+          if (okv && !proDouble) {
+            r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000), ...(c.destRel&&c.destRel!==c.rel?{d:c.destRel}:{}) });
+            if (isPro || isSecure) r.cksumEntries.push({ rel:c.destRel||c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
+          }
+          verifiedBytes+=c.size; passBytes+=c.size; verifiedFiles++;
+          r._vBytes += c.size;
+          emitDest(r, c.rel, r._vBytes >= r._vTotal);
+        }
+        // This destination is finished: say so even if the throttle just ate
+        // the last update, or its bar would sit at 97% for the rest of the run.
+        emitDest(r, '', true);
+      }
+    };
+    await Promise.all(lanes.map((g, i) => runLane(g, laneHashers[i])));
     tV1End = Date.now(); tV2End = tV1End;
     pausedAtV1End = pausedAtV2End = pausedMs;
 
@@ -1929,6 +2240,12 @@ async function performCopyMulti(source, destinations, options, onProgress) {
       if (wantCk && isPro && options.cksumMhl === true && (proAlgo==='xxh64'||proAlgo==='md5')) {
         const mhlName = writeMHL(r.destPath, proAlgo, r.cksumEntries, { startMs:t0 });
         if (!mhlName) r.errorList.push({ file:'(MHL manifest)', error:'could not be written to destination', phase:'sidecar' });
+      }
+      // ASC MHL comes IN ADDITION to the classic manifest, and covers every
+      // algorithm ingesto can produce — not only the two the 2005 format knew.
+      if (wantCk && options.ascMhl === true) {
+        const ascName = await writeAscMhl(r.destPath, cksumAlgo, r.cksumEntries, { startMs:t0 });
+        if (!ascName) r.errorList.push({ file:'(ASC MHL manifest)', error:'could not be written to destination', phase:'sidecar' });
       }
     }
   } else if (!cancelCopy) {
@@ -2321,6 +2638,87 @@ ipcMain.handle('report-open', async (_, destPath) => {
 ipcMain.handle('disk-free', async (_, p) => {
   try { const s = fs.statfsSync(p); return { free: s.bavail * s.bsize, total: s.blocks * s.bsize }; }
   catch (_) { return null; }
+});
+// ─── Are these volumes still there? ────────────────────────────────────────
+// A card or a destination drive can be unplugged, ejected or dropped off the
+// network between the moment it is loaded and the moment Start is pressed.
+// Nothing noticed: the ingest began and failed file by file.
+//
+// Existence alone is not enough. On Linux an unmounted volume often leaves its
+// empty mount point behind, and on any system a second card can be mounted at
+// the path the first one had. So the device id recorded when the volume was
+// loaded is compared with the one it has now: a different device is a different
+// volume, whatever the path says.
+// Is this volume still there, and still the SAME volume? Split out of the IPC
+// handler so the rules can be exercised against a real filesystem in the tests.
+function checkOnePath(e) {
+    const p = e && e.path;
+    const out = { path: p, ok: false, reason: 'missing', dev: null, isMount: null, total: null };
+    if (!p) return out;
+    let st;
+    try { st = fs.statSync(p); }
+    catch (err) {
+      out.reason = (err && err.code === 'ENOENT') ? 'missing' : 'unreachable';
+      return out;
+    }
+    if (!st.isDirectory()) { out.reason = 'notdir'; return out; }
+    out.dev = st.dev;
+
+    // Is this path a mount point AT THIS INSTANT? Compared with its own parent,
+    // never with a value remembered from earlier — which is the whole point:
+    // a volume that is unplugged and plugged back in gets a NEW device number
+    // on macOS, so comparing device numbers across time rejected the very
+    // recovery the error message asks the operator to perform.
+    try {
+      const up = path.dirname(p);
+      out.isMount = (up === p) ? true : (fs.statSync(up).dev !== st.dev);
+    } catch (_) { out.isMount = null; }
+
+    // Capacity of the filesystem behind this path. Stable for a given volume
+    // across mounts, and different for a different card — which makes it a
+    // usable identity check where the device number is not.
+    try { const sf = fs.statfsSync(p); out.total = sf.blocks * sf.bsize; }
+    catch (_) { out.total = null; }
+
+    try { fs.accessSync(p, fs.constants.R_OK); }
+    catch (_) { out.reason = 'unreachable'; return out; }
+    // A network share can vanish while its mount point survives: the stat
+    // succeeds but reading the directory does not.
+    try { fs.readdirSync(p); }
+    catch (_) { out.reason = 'unreachable'; return out; }
+
+    // It was a mount point when it was loaded and it is not one any more: the
+    // volume is gone and only its empty mount folder is left. Linux leaves one
+    // behind routinely, and there the path alone proves nothing.
+    if (e.isMount === true && out.isMount === false) { out.reason = 'unmounted'; return out; }
+
+    // A different volume at the same path. One percent of tolerance because an
+    // APFS volume shares its container and its reported size can drift a little
+    // between mounts — a real swap changes the capacity by far more than that.
+    if (e.total > 0 && out.total > 0) {
+      const diff = Math.abs(out.total - e.total) / e.total;
+      if (diff > 0.01) { out.reason = 'replaced'; return out; }
+    }
+
+    out.ok = true; out.reason = null;
+    return out;
+}
+ipcMain.handle('check-paths', async (_, entries) => {
+  const list = Array.isArray(entries) ? entries : [];
+  // A throw here rejects the promise, the renderer swallows it, and the volume
+  // check is skipped WITHOUT SAYING SO — a safety guard that fails open. Coerce
+  // the incoming values and never let one bad entry take the others down.
+  return list.map(e => {
+    try {
+      return checkOnePath({
+        path:    (e && typeof e.path === 'string') ? e.path : null,
+        isMount: (e && typeof e.isMount === 'boolean') ? e.isMount : null,
+        total:   (e && Number.isFinite(Number(e.total))) ? Number(e.total) : null,
+      });
+    } catch (err) {
+      return { path: e && e.path, ok: false, reason: 'unreachable', dev: null, isMount: null, total: null };
+    }
+  });
 });
 ipcMain.handle('folder-size', async (_, p) => {
   try { return listAllFiles(p).reduce((a, f) => a + (f.s || 0), 0); }

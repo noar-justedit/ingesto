@@ -52,7 +52,19 @@ cd "$PROJECT_DIR"
 # says so at runtime. So the build refuses to claim success without it.
 check_koffi() {
   triplet="$1"
-  found=$(find dist -path "*app.asar.unpacked/node_modules/koffi/build/koffi/${triplet}/koffi.node" 2>/dev/null | head -1 || true)
+  scope="$2"
+  # Search ONLY this platform's own output. The Windows and Linux packages
+  # bundle every koffi triplet, so looking across the whole dist/ could find
+  # darwin_arm64 inside win-unpacked/ and pass a Mac build that had actually
+  # dropped it — the exact silent failure this check exists to catch. Since
+  # 2.5.0 the other platforms' builds are no longer wiped, so the scope matters.
+  roots=$(ls -d dist/$scope 2>/dev/null || true)
+  if [ -z "$roots" ]; then
+    echo ""
+    echo -e "${RED}✗ Packaging problem: no packaged app found in dist/$scope${NC}"
+    read -p "Press Enter to exit..."; exit 1
+  fi
+  found=$(find $roots -path "*app.asar.unpacked/node_modules/koffi/build/koffi/${triplet}/koffi.node" 2>/dev/null | head -1 || true)
   if [ -z "$found" ]; then
     echo ""
     echo -e "${RED}✗ Packaging problem: the cache-control binary (koffi, ${triplet}) is missing${NC}"
@@ -155,9 +167,13 @@ fi
 echo -e "${GREEN}✓ Dependencies installed${NC}"
 
 # ── 6. Build ────────────────────────────────────────────────────
-# Clear previous artefacts first, so a failed build can never present the
-# previous version's installer as this build's output.
-rm -rf "$PROJECT_DIR/dist"
+# Clear this platform's previous artefacts first, so a failed build can never
+# present the previous version's installer as this build's output. Only the
+# WINDOWS ones: wiping the whole dist/ also destroyed the Mac build made just
+# before, which is exactly what happens when you build both in a row.
+rm -rf "$PROJECT_DIR"/dist/*.exe "$PROJECT_DIR"/dist/*.exe.blockmap \
+       "$PROJECT_DIR"/dist/win-unpacked "$PROJECT_DIR"/dist/win-* \
+       "$PROJECT_DIR"/dist/latest.yml
 echo -e "${BLUE}[6/6]${NC} Building ingesto for Windows (x64)…"
 echo ""
 echo -e "${YELLOW}  Note: electron-builder will download the Windows Electron binary"
@@ -177,7 +193,7 @@ if [ "$BUILD_STATUS" -ne 0 ]; then
 fi
 
 # ── Done ────────────────────────────────────────────────────────
-check_koffi win32_x64
+check_koffi win32_x64 'win-unpacked'
 EXE_FILES=$(find dist -name "*.exe" 2>/dev/null || true)
 
 # No installer means no build, whatever electron-builder's exit code said.

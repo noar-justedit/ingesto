@@ -238,8 +238,6 @@ display:flex;align-items:center;justify-content:center;transition:all .15s;}
 .sic-sub{padding:0 10px 9px 10px;}
 .sic-preview{font-size:11px;color:var(--text3);font-family:var(--mono);
 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:1px 0 6px;}
-.sic-bar{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;}
-.sic-fill{height:100%;width:0;background:var(--green);border-radius:2px;transition:width .25s ease;}
 /* ── Modes ────────────────────────────────────── */
 .modes{display:flex;flex-direction:column;gap:5px;padding:0 12px 8px;flex-shrink:0;}
 /* Center control strip — verification modes (row) + card tracking, above the global bar */
@@ -500,8 +498,17 @@ display:flex;align-items:center;justify-content:flex-start;flex-shrink:0;gap:6px
 .fc a:hover{color:var(--text2);border-color:var(--text3);}
 /* ── Center volumes ───────────────────────────── */
 #center{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+/* The header can hold a lot during an ingest: the queue ring and its legend,
+   the title, the count, the view switch, the volume filters and refresh. On a
+   window narrower than about 1250 px that used to overflow a single nowrap row,
+   and flex shrank the ICON SWITCH — the one item with no text to resist — down
+   to two pixels. The operator who had gone to look at the volumes could not get
+   back to the transfers. It now wraps onto a second line instead, and nothing
+   in it is allowed to shrink. */
 #vols-hd{padding:14px 18px 10px;border-bottom:1px solid var(--border);
-display:flex;align-items:center;gap:9px;flex-shrink:0;}
+display:flex;align-items:center;gap:9px;flex-shrink:0;flex-wrap:wrap;row-gap:8px;}
+#vols-hd > *{flex:0 0 auto;}
+#vols-hd h2{white-space:nowrap;}
 #vols-hd h2{font-size:14px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);}
 .vcnt{font-size:13px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:1px 7px;}
 .vcnt.vcnt-hidden{color:var(--red);background:var(--red-d);border-color:var(--red-g);}
@@ -527,6 +534,101 @@ color:var(--text2);font-size:14px;font-family:var(--font);cursor:pointer;}
 .vp-ign:hover{color:var(--text);}
 #vols-grid{flex:1;overflow-y:auto;padding:14px 18px;
 display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px;align-content:start;}
+/* ── Transfers view ────────────────────────────────────────────────────────
+   Replaces the volumes grid while an ingest runs. One block per card; in
+   multi-destination the block nests one sub-line per destination, so two
+   destinations of the SAME card can never read as two different cards.
+   The card-level bar carries the card-level phases (copy, source re-read);
+   the sub-lines carry the per-destination verify. */
+#tf-list{flex:1;overflow-y:auto;padding:14px 18px;display:none;flex-direction:column;}
+#tf-list.on{display:flex;}
+.tf-card{border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.025);
+padding:11px 13px;margin-bottom:10px;}
+.tf-card.multi{border-color:var(--border2);background:rgba(255,255,255,.04);padding-bottom:10px;}
+.tf-card.queued{opacity:.55;}
+.tf-card.done{opacity:.7;}
+.tf-hd{display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap;}
+.tf-nm{font-weight:800;font-size:13.5px;color:var(--text);}
+.tf-sub{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.tf-arrow{color:var(--text3);}
+.tf-net{font-size:9.5px;font-weight:800;letter-spacing:.06em;color:var(--blue);
+border:1px solid rgba(77,144,240,.4);border-radius:4px;padding:1px 5px;}
+.tf-chip{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.08em;
+padding:3px 8px;border-radius:5px;white-space:nowrap;}
+.tf-chip.copy{background:rgba(53,201,139,.15);color:var(--green);}
+.tf-chip.verify{background:rgba(77,144,240,.15);color:var(--blue);}
+.tf-chip.source{background:rgba(168,128,255,.15);color:var(--pro);}
+.tf-chip.done{background:rgba(53,201,139,.15);color:var(--green);}
+.tf-chip.queued{background:rgba(255,255,255,.06);color:var(--text3);}
+.tf-chip.copied{background:rgba(53,201,139,.10);color:var(--green);}
+.tf-chip.err{background:rgba(242,85,90,.15);color:var(--red);}
+.tf-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:6px;}
+.tf-bar.thin{height:4px;}
+.tf-bar i{display:block;height:100%;border-radius:3px;transition:width .2s linear;}
+.tf-ft{display:flex;justify-content:space-between;gap:12px;font-size:11px;
+color:var(--text3);font-family:var(--mono);}
+.tf-file{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tf-meta{flex-shrink:0;}
+.tf-kids{padding:8px 0 0 16px;display:flex;flex-direction:column;gap:7px;}
+.tf-kid{border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.02);padding:8px 11px;}
+.tf-dot{width:5px;height:5px;border-radius:50%;background:var(--text3);flex:0 0 auto;}
+/* Global queue ring, first item in the header — left of the TRANSFERS title.
+   60 px: at 38 px the figure inside was unreadable beyond arm's length, which
+   is exactly the distance the operator watches it from. */
+.tf-ring{display:flex;align-items:center;gap:11px;margin-right:6px;flex:0 0 auto;}
+.tf-ring .rl{white-space:nowrap;}
+.tf-ring .rw{position:relative;width:60px;height:60px;flex:0 0 auto;}
+.tf-ring svg{transform:rotate(-90deg);}
+.tf-ring .rp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+/* The -90° above is for the ARC, so that it starts at twelve o'clock. The tick
+   drawn inside the ring must not inherit it, or the check lies on its side. */
+.tf-ring .rp svg, .tf-cring .cp svg{transform:none;}
+.tf-ring .rl{font-size:10.5px;color:var(--text3);line-height:1.5;}
+/* The queue title lives here now: TRANSFERS and QUEUE said the same thing
+   twice, so they were merged into one heading that also carries the count. */
+.tf-ring .rl b{display:block;font-size:14px;font-weight:600;letter-spacing:.12em;
+text-transform:uppercase;color:var(--text3);}
+.tf-ring .rl span{font-family:var(--mono);}
+/* Per-card ring. The card bar shows the phase; the ring carries the figure. */
+.tf-cring{position:relative;width:34px;height:34px;flex:0 0 auto;}
+.tf-cring svg{transform:rotate(-90deg);}
+.tf-cring .cp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+font-size:9.5px;font-weight:800;font-variant-numeric:tabular-nums;}
+.tf-kpct{font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+font-family:var(--mono);flex:0 0 auto;}
+/* Throughput of THIS destination — measured per disk since 2.5.1, so a NAS
+   dragging behind two local drives is visible instead of averaged away. */
+.tf-kid .tf-kspd{margin-left:auto;font-size:11px;color:var(--text3);
+font-family:var(--mono);font-variant-numeric:tabular-nums;}
+.tf-kid .tf-chip{margin-left:8px;}
+/* Header stats strip — replaced the bottom bar in 2.5.0. Same boxes, moved up
+   next to the queue they describe. */
+#tf-stats{display:none;padding:9px 18px 10px;border-bottom:1px solid var(--border);
+gap:8px;flex-shrink:0;--pb-color:var(--green);}
+#tf-stats.on{display:flex;}
+#tf-stats .sbox-file{flex:1.8;}
+#tf-stats .sbox-size{flex:1.25;}
+#tf-stats .slabel{font-size:9.5px;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#tf-stats .sval{font-size:16px;}
+.tf-spark{position:absolute;left:0;bottom:0;width:100%;height:70%;opacity:.3;pointer-events:none;}
+.tf-spark .spark-area{fill:var(--pb-color,var(--green));opacity:.5;stroke:none;}
+.tf-spark .spark-line{fill:none;stroke:var(--pb-color,var(--green));stroke-width:1.4;
+stroke-linecap:round;stroke-linejoin:round;}
+.tf-spark .spark-dot{fill:var(--pb-color,var(--green));}
+/* Sources / Destinations locked while an ingest runs. Kept visible and
+   readable — only the controls stop responding. */
+.lockable{transition:opacity .18s ease;}
+body.ingesting .lockable{opacity:.55;pointer-events:none;user-select:none;}
+/* TRANSFERS | VOLUMES switch */
+#tf-switch{margin-left:auto;display:none;border:1px solid var(--border2);border-radius:7px;overflow:hidden;
+flex:0 0 auto;}
+#tf-switch.on{display:flex;}
+#tf-switch button{border:0;border-radius:0;padding:6px 13px;
+display:flex;align-items:center;justify-content:center;}
+#tf-switch button + button{border-left:1px solid var(--border2);}
+#tf-switch button.sel{background:rgba(77,144,240,.16);color:var(--blue);}
+#tf-switch button svg{width:15px;height:15px;display:block;}
 #vols-grid::-webkit-scrollbar{width:4px;}
 #vols-grid::-webkit-scrollbar-thumb{background:var(--bg4);}
 .vc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
@@ -551,40 +653,16 @@ margin:2px 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-w
 .tag-src{background:var(--red-d);color:var(--red);border-color:var(--red-g);}
 .tag-dst{background:var(--green-d);color:var(--green);border-color:var(--green-g);}
 /* ── Progress ─────────────────────────────────── */
-#bottombar{height:0;overflow:hidden;border-top:1px solid rgba(255,255,255,.09);
-background:rgba(14,15,19,.72);backdrop-filter:blur(28px) saturate(150%);-webkit-backdrop-filter:blur(28px) saturate(150%);
-transition:height .3s ease;display:flex;flex-direction:column;flex-shrink:0;}
-#bottombar.open{height:208px;}
-.pb-track-top{height:4px;background:var(--bg3);overflow:hidden;flex-shrink:0;}
-.pb-inner{flex:1;padding:11px 18px;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:hidden;}
-.pb-hd{display:flex;align-items:center;gap:16px;}
-.pb-hd-text{flex:1;min-width:0;}
-.pb-title{font-size:19px;font-weight:700;}
-.pb-file{font-size:14px;color:var(--text3);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px;}
-.pb-pct-ring{position:relative;width:76px;height:76px;flex-shrink:0;}
-.pb-pct-ring svg{width:100%;height:100%;}
-.pb-pct-ring .ring-track{stroke:var(--bg3);}
-.pb-pct-ring .ring-fill{stroke:var(--pb-color,var(--green));stroke-linecap:round;
-transition:stroke-dashoffset .3s ease, stroke .3s ease;}
-.pb-pct-ring .ring-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-font-size:17px;font-weight:800;font-family:var(--mono);color:var(--text);}
-.sic-pct{font-size:11px;font-family:var(--mono);color:var(--text3);text-align:right;margin-top:2px;line-height:1;}
+/* The bottom bar was removed in 2.5.0: during an ingest it repeated what the
+   Transfers view and the header strip already show. Only the stat-box styles
+   below survive — they are reused by #tf-stats. */
 .sr-dest{display:flex;align-items:center;gap:8px;justify-content:flex-end;min-width:0;flex:1;}
 .sr-destpath{font-size:13px;font-weight:400;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);}
 .reveal-btn{flex-shrink:0;padding:4px 12px;border-radius:6px;border:1px solid var(--border2);
 background:transparent;color:var(--text2);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;}
 .reveal-btn:hover{border-color:var(--blue);color:var(--blue);}
-.pb-fill{height:100%;background:linear-gradient(90deg,var(--pb-color,var(--green)),var(--pb-color2,#00ffaa));
-transition:width .5s ease;box-shadow:0 0 8px var(--pb-glow,var(--green-g));}
-.pb-stats{display:flex;gap:8px;margin-top:12px;}
 .sbox{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);padding:6px 8px;min-width:0;position:relative;overflow:hidden;}
 .sbox-spd{overflow:hidden;}
-.pb-spark{position:absolute;left:0;bottom:0;width:100%;height:70%;opacity:.3;pointer-events:none;}
-.pb-spark .spark-area{fill:var(--pb-color,var(--green));opacity:.5;stroke:none;}
-.pb-spark .spark-line{fill:none;stroke:var(--pb-color,var(--green));stroke-width:1.4;
-stroke-linecap:round;stroke-linejoin:round;}
-.pb-spark .spark-dot{fill:var(--pb-color,var(--green));}
-.sbox-card{flex:1.5;}
 .sbox-err{padding:6px 6px;}
 .slabel{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;}
 .sval{font-size:17px;font-weight:700;color:var(--text);font-family:var(--mono);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -801,6 +879,7 @@ margin:0 auto 14px;border:1px solid transparent;}
 .krun-phase{font-size:18px;font-weight:700;color:var(--text);margin-bottom:16px;text-align:center;}
 .kr-run{padding-bottom:28px;}
 .krun-ring-wrap{position:relative;width:200px;height:200px;margin:0 auto 20px;}
+.krun-card{font-size:17px;color:var(--text3);font-weight:600;margin-top:4px;}
 .krun-ring-track{stroke:var(--bg3);}
 .krun-ring-fill{stroke:var(--green);stroke-linecap:round;transition:stroke-dashoffset .3s ease, stroke .3s ease;}
 .krun-ring-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
@@ -878,16 +957,16 @@ border:1px solid var(--border);border-radius:var(--r);padding:14px;margin:12px 0
 <div class="panel panel-left">
 <div class="panel-hd"><div class="hd-dot src"></div><h2 class="src-h">Sources</h2></div>
 <div class="panel-scroll" ondragover="onDZ(event,'src')" ondrop="dropDZ(event,'src')">
-<div class="drop-zone src-z" id="src-zone"
+<div class="drop-zone src-z lockable" id="src-zone"
 ondragover="onDZ(event,'src')" ondragleave="offDZ(event,'src')" ondrop="dropDZ(event,'src')">
 <span class="dz-hint">Drop your card here</span>
 <button class="dz-browse" onclick="browseFolder('src')">+ Browse</button>
 </div>
-<div class="zone-list" id="src-list"></div>
+<div class="zone-list lockable" id="src-list"></div>
 <div class="sec-title sec-strong sec-red" id="src-info-title" style="display:none;">Loaded Cards</div>
-<div class="src-info-list" id="src-info-list"></div>
+<div class="src-info-list lockable" id="src-info-list"></div>
 <div class="sec-title sec-strong sec-red" id="copy-info-title">Copy Info</div>
-<div class="meta-sec" id="global-meta-sec">
+<div class="meta-sec lockable" id="global-meta-sec">
 <div class="mf"><div class="mf-label">Operator</div>
 <input id="meta-cam" type="text" placeholder="Operator"
 oninput="sanitizeMeta(this);persistPrefs();syncDefaultsToSources()"></div>
@@ -908,7 +987,7 @@ onblur="this.style.borderColor=''"></textarea>
 </div>
 </div>
 <div class="sec-title sec-strong sec-violet" style="display:flex;align-items:center;gap:6px;">Counter<button class="info-btn" onclick="showCounterInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
-<div style="padding:0 12px 10px;flex-shrink:0;">
+<div class="lockable" style="padding:0 12px 10px;flex-shrink:0;">
 <div class="counter-row">
 <button class="counter-pm" onclick="stepCounter(-1)">−</button>
 <div class="counter-val-wrap">
@@ -926,22 +1005,56 @@ value="1" oninput="onCounterInput()">
 </div>
 <div id="center">
 <div id="vols-hd">
-<h2>Mounted Volumes</h2>
+<!-- Global queue progress, FIRST in the header so it reads before the title.
+     Byte-weighted across every segment of the queue, so a small card nearly
+     finished never inflates the figure ahead of a big one still waiting.
+     Hidden outside an ingest. -->
+<div class="tf-ring" id="tf-ring" style="display:none;">
+  <div class="rw">
+    <svg width="60" height="60" viewBox="0 0 60 60">
+      <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5"/>
+      <circle cx="30" cy="30" r="26" fill="none" stroke="var(--green)" stroke-width="5"
+        stroke-linecap="round" stroke-dasharray="163.36" stroke-dashoffset="163.36" id="tf-ring-arc"/>
+    </svg>
+    <div class="rp" id="tf-ring-pct">0%</div>
+  </div>
+  <div class="rl"><b id="tf-ring-title">INGEST QUEUE</b><span id="tf-ring-lbl">—</span></div>
+</div>
+<h2 id="center-title">Mounted Volumes</h2>
 <div class="vcnt" id="vcnt">—</div>
 <div class="vcnt vcnt-hidden" id="vcnt-hidden" style="display:none;"></div>
+<div id="tf-switch">
+  <button class="pillbtn sel" id="tf-sw-t" data-tip="Transfers in progress"
+    onclick="setCenterView('transfers')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/></svg></button>
+  <button class="pillbtn" id="tf-sw-v" data-tip="Mounted volumes"
+    onclick="setCenterView('volumes')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/></svg></button>
+</div>
 <button class="pillbtn" id="fb-system" style="margin-left:auto;" onclick="toggleFilter('system')">HIDE SYSTEM</button>
 <button class="pillbtn" id="fb-network" onclick="toggleFilter('network')">HIDE NETWORK</button>
 <button class="pillbtn" id="fb-showhidden" onclick="toggleShowHidden()" data-tip="Show/hide volumes you've manually hidden"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg></button>
 <button id="refresh-btn" onclick="loadVolumes(true)" data-tip="Refresh mounted volumes"><span class="rfr-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></span></button>
 </div>
+<!-- Live figures for the whole ingest. Sat in the bottom bar until 2.5.0; it
+     belongs next to the queue it describes, not two panes away. -->
+<div id="tf-stats">
+<div class="sbox sbox-file"><div class="slabel" id="h-title">Copying</div><div class="sval" id="h-file">—</div></div>
+<div class="sbox"><div class="slabel">Files Remaining</div><div class="sval" id="h-files">—</div></div>
+<div class="sbox sbox-size"><div class="slabel">Datas Remaining</div><div class="sval" id="h-size">—</div></div>
+<div class="sbox sbox-spd">
+<svg class="tf-spark" id="h-spark" viewBox="0 0 100 28" preserveAspectRatio="none"></svg>
+<div class="slabel">Speed</div><div class="sval" id="h-spd">—</div></div>
+<div class="sbox"><div class="slabel">ETA</div><div class="sval" id="h-eta">—</div></div>
+<div class="sbox sbox-err" id="h-errbox" style="display:none"><div class="slabel">Errors</div><div class="sval serr" id="h-err">0</div></div>
+</div>
 <div id="vols-grid">
 <div class="empty"><div class="empty-ico" style="opacity:1;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" style="animation:spin .9s linear infinite;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" stroke-opacity=".15"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-opacity=".6"/></svg></div><div class="empty-txt">Loading volumes…</div></div>
 </div>
+<div id="tf-list"></div>
 <div id="center-controls">
 <div class="cc-group">
 <div class="cc-label cc-label-neutral">Copy Mode
 <button class="info-btn" onclick="showModesInfo()" title="What do these modes do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
-<div class="modes-row">
+<div class="modes-row lockable">
 <button class="mbtn" id="mode-fast" onclick="setMode('fast')">
 <div class="minfo">
 <div class="mbadge-row"><div class="mbadge bf">FAST</div><span class="msel">Selected</span></div>
@@ -967,7 +1080,7 @@ value="1" oninput="onCounterInput()">
 </div>
 </button>
 </div>
-<div id="pro-algo" class="pro-algo" style="display:none;">
+<div id="pro-algo" class="pro-algo lockable" style="display:none;">
 <div class="pa-line">
 <div class="pa-item pa-item-dr"><label class="switch"><input type="checkbox" id="pro-dr-toggle" onchange="setProDouble(this.checked)"><span class="slider"></span></label><span class="pa-cap">Double source read</span><button class="info-btn" onclick="showDrInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
 <div class="pa-ck">
@@ -980,45 +1093,16 @@ value="1" oninput="onCounterInput()">
 </div>
 
 </div>
-<div id="bottombar">
-<div class="pb-track-top"><div class="pb-fill" id="pb-fill" style="width:0%"></div></div>
-<div class="pb-inner">
-<div class="pb-hd">
-<div class="pb-pct-ring">
-  <svg viewBox="0 0 76 76">
-    <circle cx="38" cy="38" r="31" fill="none" stroke-width="6" class="ring-track"/>
-    <circle cx="38" cy="38" r="31" fill="none" stroke-width="6" class="ring-fill" id="pb-pct-ring-fill"
-      stroke-dasharray="194.8" stroke-dashoffset="194.8" transform="rotate(-90 38 38)"/>
-  </svg>
-  <div class="ring-txt" id="pb-pct">0%</div>
-</div>
-<div class="pb-hd-text">
-<div class="pb-title" id="pb-title">Transferring…</div>
-<div class="pb-file"  id="pb-file">—</div>
-</div>
-</div>
-<div class="pb-stats">
-<div class="sbox sbox-card"><div class="slabel">Card</div><div class="sval" id="s-card">—</div></div>
-<div class="sbox"><div class="slabel">Files Remaining</div><div class="sval"      id="s-files">—</div></div>
-<div class="sbox"><div class="slabel">Datas Remaining</div><div class="sval"      id="s-size">—</div></div>
-<div class="sbox sbox-spd">
-<svg class="pb-spark" id="pb-spark" viewBox="0 0 100 28" preserveAspectRatio="none"></svg>
-<div class="slabel">Speed</div><div class="sval"      id="s-spd">—</div></div>
-<div class="sbox"><div class="slabel">ETA</div>            <div class="sval"      id="s-eta">—</div></div>
-<div class="sbox sbox-err" style="display:none"><div class="slabel">Errors</div><div class="sval serr" id="s-err">0</div></div>
-</div>
-</div>
-</div>
 </div>
 <div class="panel panel-right">
 <div class="panel-hd"><div class="hd-dot dst"></div><h2 class="dst-h">Destinations</h2></div>
 <div class="panel-scroll" ondragover="onDZ(event,'dst')" ondrop="dropDZ(event,'dst')">
-<div class="drop-zone dst-z" id="dst-zone"
+<div class="drop-zone dst-z lockable" id="dst-zone"
 ondragover="onDZ(event,'dst')" ondragleave="offDZ(event,'dst')" ondrop="dropDZ(event,'dst')">
 <span class="dz-hint">Drop your destinations here</span>
 <button class="dz-browse" onclick="browseFolder('dst')">+ Browse</button>
 </div>
-<div class="zone-list" id="dst-list"></div>
+<div class="zone-list lockable" id="dst-list"></div>
 
 <div class="tpl-preview-wrap">
 <div class="tpl-preview-label">Folder Name Preview</div>
@@ -1026,7 +1110,7 @@ ondragover="onDZ(event,'dst')" ondragleave="offDZ(event,'dst')" ondrop="dropDZ(e
 </div>
 
 <div class="sec-title sec-strong sec-green" style="padding:10px 0 6px;">Folder Name Template</div>
-<div class="tpl-section" style="padding:0 0 8px;">
+<div class="tpl-section lockable" style="padding:0 0 8px;">
 <div class="tpl-sub-label">Drag to reorder</div>
 <div class="tpl-box" id="tpl-box"
 ondragover="tokContainerOver(event)" ondrop="tokContainerDrop(event)"></div>
@@ -1050,9 +1134,9 @@ oninput="onRawInput()" onfocus="rawFocused=true" onblur="rawFocused=false">
 </div>
 <div class="sec-title sec-strong sec-green" style="padding:8px 0 4px;display:flex;align-items:center;gap:8px;">Template Memories
 <span style="flex:1"></span>
-<button class="tpl-io-btn" onclick="exportPresets()">Export</button>
-<button class="tpl-io-btn" onclick="importPresets()">Import</button></div>
-<div class="memory-list presets-section" id="presets-row"></div>
+<button class="tpl-io-btn lockable" onclick="exportPresets()">Export</button>
+<button class="tpl-io-btn lockable" onclick="importPresets()">Import</button></div>
+<div class="memory-list presets-section lockable" id="presets-row"></div>
 </div>
 <div id="launch">
 <div id="launch-row">
@@ -1284,6 +1368,7 @@ Save
 <div id="kiosk-run-ov">
   <div class="kr-card kr-run">
     <div class="krun-phase" id="krun-phase">Copying…</div>
+    <div class="krun-card" id="krun-card"></div>
     <div class="krun-ring-wrap">
       <svg width="200" height="200" viewBox="0 0 200 200">
         <circle cx="100" cy="100" r="80" fill="none" stroke-width="12" class="krun-ring-track"/>
@@ -1349,6 +1434,7 @@ Save
 <div class="set-details" id="cksum-details">
 <div class="set-subrow"><label class="switch"><input type="checkbox" id="cf-list" checked onchange="onChecksumFmt()"><span class="slider"></span></label><span class="set-sub-lbl">Checksum list</span><span class="set-sub-hint">— .xxh/.md5, re-checkable in TeraCopy</span></div>
 <div class="set-subrow"><label class="switch"><input type="checkbox" id="cf-mhl" onchange="onChecksumFmt()"><span class="slider"></span></label><span class="set-sub-lbl">MHL manifest</span><span class="set-sub-hint">— Silverstack, YoYotta, OffShoot (PRO, MD5 or xxHash64 only)</span></div>
+<div class="set-subrow"><label class="switch"><input type="checkbox" id="cf-ascmhl" onchange="onChecksumFmt()"><span class="slider"></span></label><span class="set-sub-lbl">ASC MHL</span><span class="set-sub-hint">— the newer standard, in an <code>ascmhl</code> folder. Works with every algorithm</span></div>
 </div>
 </div>
 
@@ -1479,7 +1565,7 @@ const S = {
   writeReport:true,
   reportHtml:true, reportCsv:false, reportJson:false, reportFull:true,
   writeChecksum:true,
-  cksumList:true, cksumMhl:false,
+  cksumList:true, cksumMhl:false, ascMhl:false,
   ntfyEnabled:false, ntfyServer:'https://ntfy.sh', ntfyTopic:'',
   hookEnabled:false, exportInclude:null,
   hookCommand:'',
@@ -1575,7 +1661,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
         : '<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
     });
   }
-  const prefs=await window.ingesto.loadPrefs();
+  const prefs=(await window.ingesto.loadPrefs())||{};   // a failed read must not stop the boot
   if(Array.isArray(prefs.presets)) S.presets=normPresets(prefs.presets);
   if(prefs.fileFilterFormats && typeof prefs.fileFilterFormats==='object'){
     S.fileFilterFormats=prefs.fileFilterFormats;
@@ -1621,10 +1707,12 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   { const sw=document.getElementById('cksum-toggle'); if(sw) sw.checked=S.writeChecksum; }
   if(typeof prefs.cksumList==='boolean') S.cksumList=prefs.cksumList;
   if(typeof prefs.cksumMhl==='boolean') S.cksumMhl=prefs.cksumMhl;
+  if(typeof prefs.ascMhl==='boolean') S.ascMhl=prefs.ascMhl;
   { const a=document.getElementById('cf-list'); if(a) a.checked=S.cksumList;
-    const b=document.getElementById('cf-mhl');  if(b) b.checked=S.cksumMhl; }
+    const b=document.getElementById('cf-mhl');  if(b) b.checked=S.cksumMhl;
+    const a2=document.getElementById('cf-ascmhl'); if(a2) a2.checked=S.ascMhl; }
   initMaster('report-toggle', (S.reportHtml||S.reportCsv||S.reportJson), v=>S.writeReport=v, ()=>S.writeReport);
-  initMaster('cksum-toggle', (S.cksumList||S.cksumMhl), v=>S.writeChecksum=v, ()=>S.writeChecksum);
+  initMaster('cksum-toggle', (S.cksumList||S.cksumMhl||S.ascMhl), v=>S.writeChecksum=v, ()=>S.writeChecksum);
   if(typeof prefs.ntfyEnabled==='boolean') S.ntfyEnabled=prefs.ntfyEnabled;
   // hookEnabled didn't exist before 2.0.5 — a non-empty command used to mean "active"
   S.hookEnabled = typeof prefs.hookEnabled==='boolean' ? prefs.hookEnabled : !!(prefs.hookCommand||'').trim();
@@ -1755,7 +1843,7 @@ function persistPrefs(){
     writeReport:S.writeReport,
     reportHtml:S.reportHtml, reportCsv:S.reportCsv, reportJson:S.reportJson,
     reportFull:S.reportFull,
-    writeChecksum:S.writeChecksum, cksumList:S.cksumList, cksumMhl:S.cksumMhl,
+    writeChecksum:S.writeChecksum, cksumList:S.cksumList, cksumMhl:S.cksumMhl, ascMhl:S.ascMhl,
     ntfyEnabled:S.ntfyEnabled, ntfyServer:S.ntfyServer, ntfyTopic:S.ntfyTopic,
     hookEnabled:S.hookEnabled, exportInclude:S.exportInclude,
     hookCommand:S.hookCommand,
@@ -1848,6 +1936,9 @@ function proposeNewVolumes(vols){
 }
 
 function renderVolumes(){
+  // While the Transfers view is on screen the volumes grid is hidden; a mount
+  // event must not repaint it underneath.
+  if(S.copying && S.centerView === 'transfers') return;
   const grid=document.getElementById('vols-grid');
   const shown=S.volumes.filter(v=>{
     if(S.filters.system&&v.isSystem)return false;
@@ -2085,6 +2176,17 @@ function pathToName(p){
 }
 
 function addToZone(z,entry){
+  // An ingest works from the list frozen when it started: anything added now
+  // would sit in the column looking loaded, never be copied, and throw the
+  // "cards left" count off. Refusing is the only honest answer until the job
+  // queue exists.
+  if(S.copying){
+    showToast(z==='src'
+      ? 'An ingest is running — this card was not added. Load it when the current ingest completes.'
+      : 'An ingest is running — this destination was not added. Add it when the current ingest completes.',
+      'warn', 5000);
+    return;
+  }
   const arr=z==='src'?S.sources:S.dests;
   if(arr.find(x=>x.path===entry.path))return;
   // Refuse the assignment straight away when it would make a volume both the
@@ -2112,6 +2214,15 @@ A card cannot be copied into itself.`, 'error');
     }
   }
   arr.push(entry);
+  // Remember what this volume WAS, so that a card swapped for another at the
+  // same mount point is caught before the ingest starts. Deliberately not the
+  // device number: macOS hands out a new one every time a volume is mounted, so
+  // an unplug-and-replug of the SAME drive would look like a different one.
+  try{
+    window.ingesto.checkPaths([{ path: entry.path }])
+      .then(r => { if(r && r[0] && r[0].ok){ entry._isMount = r[0].isMount; entry._total = r[0].total; } })
+      .catch(()=>{});
+  }catch(_){}
   renderZoneList(z);
   renderVolumes();
   updateBtn();
@@ -2175,6 +2286,16 @@ function removeZoneAt(z,i){
   if(e) removeFromZone(z, e.path);
 }
 function removeFromZone(z,p){
+  // Symmetrical with addToZone: the engine works from the list frozen at
+  // START, so removing an entry now would only desync what is on screen from
+  // what is actually being written.
+  if(S.copying){
+    showToast(z==='src'
+      ? 'An ingest is running — this card cannot be removed until it completes.'
+      : 'An ingest is running — this destination cannot be removed until it completes.',
+      'warn', 5000);
+    return;
+  }
   if(z==='src') S.sources=S.sources.filter(x=>x.path!==p);
   else          S.dests  =S.dests.filter(x=>x.path!==p);
   renderZoneList(z);renderVolumes();updateBtn();
@@ -2183,6 +2304,8 @@ function removeFromZone(z,p){
 }
 
 function renderZoneList(z){
+  // Rows redrawn during an ingest must come back locked.
+  setTimeout(applyIngestLock,0);
   const arr=z==='src'?S.sources:S.dests;
   const list=document.getElementById(`${z}-list`);
   if(!arr.length){list.innerHTML='';return;}
@@ -2279,6 +2402,7 @@ function addTok(type,key){S.tokens.push(mkTok(type,key));renderTemplate();syncRa
 function removeTok(id){S.tokens=S.tokens.filter(t=>t.id!==id);renderTemplate();syncRaw();persistPrefs();}
 
 function renderTemplate(){
+  setTimeout(applyIngestLock,0);
   const box=document.getElementById('tpl-box');
   box.innerHTML=S.tokens.map(t=>{
     const cls=t.type==='sep'?'tok tok-sep':'tok tok-var';
@@ -2451,6 +2575,7 @@ function normPresets(arr){
   return out;
 }
 function renderPresets(){
+  setTimeout(applyIngestLock,0);
   const list = document.getElementById('presets-row');
   list.innerHTML = S.presets.map((p, i) => {
     const isActive = i === S.activePreset;
@@ -2705,9 +2830,6 @@ function renderSourceInfoCards(){
       </div>
       <div class="sic-sub">
         <div class="sic-preview" id="sicprev-${i}">${esc(previewForSource(src,i))}</div>
-        <div class="sic-bar"><div class="sic-fill" id="sicfill-${i}"
-          style="width:${((src._prog&&src._prog.frac)||0)*100}%;background:${src._prog?(src._prog.kind==='source'?'var(--pro)':src._prog.kind==='verify'?'var(--blue)':'var(--green)'):'var(--green)'}"></div></div>
-        <div class="sic-pct" id="sicpct-${i}">${src._prog&&src._prog.frac?Math.round(src._prog.frac*100)+'%':''}</div>
       </div>
       <div class="src-info-body">
         <div>
@@ -2732,6 +2854,7 @@ function renderSourceInfoCards(){
     </div>`;
   }).join('');
   updatePreview();
+  applyIngestLock();   // the cards are rebuilt at START — bring the lock back
 }
 
 function toggleSIC(i){
@@ -2959,8 +3082,10 @@ function onPauseBtn(){
   if(!S.paused){
     S.paused=true;
     window.ingesto.pauseCopy();
-    // The in-flight file finishes first — the 'pause-held' event flips the
-    // badge to "Paused" once the engine is actually holding.
+    // This one stays: a pause does not stop the copy on the spot, the file in
+    // flight is finished first. Without it the operator clicks Pause, watches
+    // the bar keep moving, and concludes the button did nothing. The badge
+    // disappears as soon as the engine really holds.
     setPauseBadge('Pausing — finishing current file…');
   } else {
     S.paused=false;
@@ -2969,7 +3094,10 @@ function onPauseBtn(){
   }
   updateBtn();
 }
-function onPauseHeld(){ if(S.paused) setPauseBadge('Paused — ingest will resume where it left off'); }
+// The engine is now actually holding. The badge has done its job and goes
+// away: the button already reads "Resume" and every figure has stopped moving,
+// so a banner repeating "Paused" is one thing too many on screen.
+function onPauseHeld(){ if(S.paused) setPauseBadge(null); }
 function setPauseBadge(txt){
   const b=document.getElementById('pause-badge');
   const t=document.getElementById('pause-badge-txt');
@@ -3001,6 +3129,16 @@ function updateBtn(){
 // or overwrote a previous card.
 
 // Same cleanup the engine applies in buildFolderName().
+// Two folder names that a filesystem would treat as ONE. macOS and Windows are
+// case-insensitive, and macOS stores names decomposed while Windows composes
+// them — so "NO NAME" and "No Name", or the same accented name typed on two
+// systems, all land in the same directory.
+function folderKey(name){
+  let n = String(name || '');
+  try { n = n.normalize('NFC'); } catch(_) {}
+  return n.trim().toLowerCase();
+}
+
 function folderNameFromTemplate(src, i){
   const now=new Date(),p=x=>String(x).padStart(2,'0');
   const cam = (src.operator || document.getElementById('meta-cam')?.value   || '').trim();
@@ -3065,7 +3203,41 @@ function preflightIngest(){
              `ingested and offered for ejection. Remove one of the two.` };
     }
   }
-  // 3. File filter on, every format unchecked
+  // 3. Two cards of the same run resolving to the SAME destination folder.
+  //    Nothing caught this: the check above only asks whether each name is
+  //    valid, and the counter-collision check compares against what is already
+  //    on the disk, never card against card. With a template carrying no
+  //    {counter} and two cards labelled the same — "NO NAME" is the factory
+  //    label on half the cards in circulation — both ingests wrote into one
+  //    folder, the second overwrote the first, and BOTH runs reported success.
+  //    The operator then erased two cards holding one card's footage.
+  //    Compared on the RESOLVED name, not the card label: a template like
+  //    {operator}_{YY}{MM}{DD} collides for every card of the day whatever they
+  //    are called.
+  { const byKey = new Map();
+    for(let i=0;i<S.sources.length;i++){
+      const nm = folderNameFromTemplate(S.sources[i], i);
+      const k  = folderKey(nm);
+      if(byKey.has(k)){
+        const first = S.sources[byKey.get(k)], second = S.sources[i];
+        const same  = folderKey(first.name) === folderKey(second.name);
+        return { title:'Two cards would land in the same folder',
+          body:`Card "<b>${esc(first.name||first.path)}</b>" and card `+
+               `"<b>${esc(second.name||second.path)}</b>" both produce the folder `+
+               `"<b>${esc(nm)}</b>". The second would be written over the first, and `+
+               `both would be reported as a success.<div style="margin-top:10px;">`+
+               (same
+                 ? `The two cards carry the same name. Add <b>{counter}</b> to the folder-name `+
+                   `template — it is different for every card — or rename one of the cards.`
+                 : `Add <b>{counter}</b> or <b>{cardname}</b> to the folder-name template so each `+
+                   `card gets its own folder.`)+
+               `</div>` };
+      }
+      byKey.set(k, i);
+    }
+  }
+
+  // 4. File filter on, every format unchecked
   const ff=buildFileFilterOptions();
   if(ff && Object.keys(ff.extCat).length===0){
     return { title:'File filter selects nothing',
@@ -3074,6 +3246,56 @@ function preflightIngest(){
   }
   return null;
 }
+// Every card and every destination must still be there — and be the SAME
+// volume — at the moment Start is pressed. Ejecting a destination and then
+// starting used to run the whole ingest into errors, file by file.
+async function checkVolumesStillThere(){
+  const items = [
+    ...S.sources.map(x => ({ zone:'src', entry:x })),
+    ...S.dests.map(x   => ({ zone:'dst', entry:x })),
+  ];
+  if(!items.length) return null;
+  let res;
+  try{
+    res = await window.ingesto.checkPaths(items.map(i => ({
+      path: i.entry.path, isMount: i.entry._isMount, total: i.entry._total })));
+  }catch(_){ return null; }          // the check must never block a valid ingest
+  if(!Array.isArray(res)) return null;
+
+  const lost = [];
+  res.forEach((r,i) => {
+    if(r && r.ok){
+      // Refresh what we know: the volume is fine, and it may not have been
+      // measured yet (the first probe can lose a race with a fast operator).
+      if(r.isMount != null) items[i].entry._isMount = r.isMount;
+      if(r.total   != null) items[i].entry._total   = r.total;
+    } else {
+      lost.push({ ...items[i], reason: (r && r.reason) || 'missing' });
+    }
+  });
+  if(!lost.length) return null;
+
+  const nameOf = l => esc(l.entry.name || l.entry.path);
+  const why = { missing:'is no longer connected', unreachable:'cannot be reached any more',
+                notdir:'is no longer a folder', unmounted:'is no longer mounted',
+                replaced:'has been replaced by a different volume' };
+  const cards = lost.filter(l => l.zone==='src');
+  const dests = lost.filter(l => l.zone==='dst');
+  const lines = lost.map(l =>
+    `<div style="margin:6px 0;"><b>${nameOf(l)}</b> — ${l.zone==='src'?'card':'destination'} ${why[l.reason]||'is unavailable'}.</div>`
+  ).join('');
+
+  const what = cards.length && dests.length ? 'A card and a destination are missing'
+             : cards.length > 1 ? 'Cards are no longer connected'
+             : cards.length ? 'The card is no longer connected'
+             : dests.length > 1 ? 'Destinations are no longer connected'
+             : 'The destination is no longer connected';
+
+  return { title: what, body:
+    `${lines}<div style="margin-top:10px;">Nothing has been copied. Reconnect it and press `+
+    `Start again. If ingesto still does not see it, remove it from the list and drop it back in.</div>` };
+}
+
 function showBlockingError(title, bodyHtml){
   const old=document.getElementById('preflight-ov'); if(old) old.remove();
   const ov=document.createElement('div');
@@ -3092,10 +3314,15 @@ function showBlockingError(title, bodyHtml){
 async function startCopy(){
   if(S.copying)return;
   S._batchSuppress=false;   // re-arm: a batch may have left it set
+  S.recopyCanceled=false;   // and so may a cancel from the previous run
 
   // ── Pre-flight — refuse to start rather than lose footage ──────────────
   { const problem=preflightIngest();
     if(problem){ showBlockingError(problem.title, problem.body); return; } }
+
+  // ── Is every volume still on the machine? ──────────────────────────────
+  { const gone=await checkVolumesStillThere();
+    if(gone){ showBlockingError(gone.title, gone.body); return; } }
 
   // ── Verify counter is fresh (non-blocking, does not override manual value) ──
   // Counter was already auto-scanned when destination was added.
@@ -3136,12 +3363,36 @@ async function startCopy(){
 
   S.copying=true;updateBtn();
   window.ingesto.setPowerBlock(true);
-  // reset per-card progress bars
-  S.sources.forEach(s=>{ s._prog={frac:0,kind:'copy'}; });
+  // ── Freeze the run ──────────────────────────────────────────────────────
+  // Everything the engine and the report need is captured HERE, once. The
+  // sequential (per-card) path calls the engine inside a loop; reading the
+  // template, the mode or the filter live meant a change made while card 1 was
+  // copying silently applied to cards 2 and 3 — different folder name, different
+  // copy mode, same run. The panels are locked as well, but a run must not
+  // depend on a lock holding.
+  S.run = {
+    tpl:        buildTplStr(),
+    mode:       S.mode,
+    proAlgo:    S.proAlgo,
+    proDouble:  S.proDoubleRead,
+    filter:     buildFileFilterOptions(),
+    base:       S.counter,
+    // The report and the notification are written AFTER the panels unlock and
+    // are not awaited. Reading the live lists there meant a drive dropped in
+    // right after an ingest could receive a report listing footage it does not
+    // hold — and a notification could name the wrong drive beside each result.
+    dests:      S.dests.map(d => ({ path: d.path, name: d.name })),
+    sources:    S.sources.map(x => ({ path: x.path, name: x.name,
+                                      operator: x.operator || '', camera: x.camera || '', note: x.note || '' })),
+    sentinel:   S.writeSentinel,
+    cksum:      S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl, ascMhl: S.ascMhl,
+    startedAt:  Date.now(),
+  };
+  setIngestLock(true);
+  // The centre column stops listing volumes and shows the transfers instead.
+  tfEnter();
   renderSourceInfoCards();
-  { const t=document.getElementById('pb-title'); t.textContent='Transferring…'; t.style.color=''; }
   resetSpark();
-  document.getElementById('bottombar').classList.add('open');
   // Use per-source operator/camera/note; fall back to global defaults
   const globalOp  = document.getElementById('meta-cam')?.value  || '';
   const globalCam = document.getElementById('meta-model')?.value || '';
@@ -3151,7 +3402,7 @@ async function startCopy(){
   // that have no skipKeys, and isolate those that do.
   const sources=S.sources.map((s,i)=>({
     ...s,
-    counter:   String(S.counter+i).padStart(3,'0'),
+    counter:   String(S.run.base+i).padStart(3,'0'),
     cameraman: s.operator || globalOp  || '',
     camera:    s.camera   || globalCam || '',
     note:      s.note     || '',
@@ -3161,16 +3412,25 @@ async function startCopy(){
   // process them sequentially. Otherwise, batch all in one call.
   const anyHasSkip = sources.some(s => s._skipKeys && s._skipKeys.length);
   if (!anyHasSkip) {
+    try {
     await window.ingesto.startCopy({
       sources,
       destinations: S.dests,
-      options: { mode: S.mode, proAlgo: S.proAlgo, proDoubleRead: S.proDoubleRead, folderTemplate: buildTplStr(), writeSentinel: S.writeSentinel, writeChecksum: S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl, fileFilter: buildFileFilterOptions() }
+      options: { mode: S.run.mode, proAlgo: S.run.proAlgo, proDoubleRead: S.run.proDouble, folderTemplate: S.run.tpl, writeSentinel: S.run.sentinel, writeChecksum: S.run.cksum, cksumList: S.run.cksumList, cksumMhl: S.run.cksumMhl, ascMhl: S.run.ascMhl, fileFilter: S.run.filter }
     });
+    } catch(e){
+      // Without this the engine's rejection never produced a 'copy-complete',
+      // so onComplete never ran: panels locked, ring frozen mid-arc, Start stuck
+      // on Cancel — for ever, with no message.
+      console.error('start-copy failed', e);
+      showToast('The ingest could not be completed: ' + (e && e.message ? e.message : 'unexpected error'), 'error', 8000);
+      onComplete([]);
+    }
   } else {
     // Sequential per-source so each can pass its own skipKeys.
     // Each start-copy invocation fires its own 'copy-complete' event; without
     // suppression, the FIRST card's completion used to run the full onComplete
-    // (Start re-enabled mid-batch, power-save unblocked, bottombar closed,
+    // (Start re-enabled mid-batch, power-save unblocked, panels unlocked,
     // summary shown while card 2 was still writing, hook+ntfy fired per card).
     // Collect each invocation's returned results instead, and run the real
     // completion exactly once with the concatenated batch.
@@ -3180,20 +3440,34 @@ async function startCopy(){
     const batchResults = [];
     {
       for (const s of sources) {
-        const part = await window.ingesto.startCopy({
+        // Cancel pressed between two cards used to be lost: the part that had
+        // just returned carried canceled:false, and the next start-copy cleared
+        // the engine's cancel flag and copied the following card in full.
+        if (S.recopyCanceled) break;
+        let part;
+        try {
+        part = await window.ingesto.startCopy({
           sources: [s],
           destinations: S.dests,
           options: {
-            mode: S.mode,
-            proAlgo: S.proAlgo,
-            proDoubleRead: S.proDoubleRead,
-            folderTemplate: buildTplStr(),
+            mode: S.run.mode,
+            proAlgo: S.run.proAlgo,
+            proDoubleRead: S.run.proDouble,
+            folderTemplate: S.run.tpl,
             skipKeys: s._skipKeys || [],
-            writeSentinel: S.writeSentinel,
-            writeChecksum: S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl,
-            fileFilter: buildFileFilterOptions(),
+            writeSentinel: S.run.sentinel,
+            writeChecksum: S.run.cksum, cksumList: S.run.cksumList, cksumMhl: S.run.cksumMhl, ascMhl: S.run.ascMhl,
+            fileFilter: S.run.filter,
           }
         });
+        } catch(e){
+          // The engine rejected instead of completing. Report it and stop the
+          // batch: swallowing this would leave the app locked in "copying"
+          // for ever, refusing every card the operator drops afterwards.
+          console.error('start-copy failed', e);
+          showToast('The ingest could not be completed: ' + (e && e.message ? e.message : 'unexpected error'), 'error', 8000);
+          break;
+        }
         if (Array.isArray(part)) batchResults.push(...part);
         // Cancel must stop the whole batch: the next start-copy would reset
         // cancelCopy=false in the main process and copy the remaining cards.
@@ -3205,7 +3479,7 @@ async function startCopy(){
 }
 
 async function doCancelCopy(){
-  { const t=document.getElementById('pb-title'); t.textContent='Canceling…'; t.style.color=''; }
+  { const t=document.getElementById('h-title'); if(t){ t.textContent='Canceling'; t.style.color=''; } }
   const b=document.getElementById('start-btn'); b.disabled=true;
   S.recopyCanceled=true;   // also stops a retry batch between its groups
   await window.ingesto.cancelCopy();
@@ -3220,16 +3494,16 @@ async function kioskCancelCopy(){
 // ═══════════════════════════════════════════════════════
 // Progress + complete
 // ═══════════════════════════════════════════════════════
-// Real-time throughput sparkline (bottom bar) — classic line + filled area chart
+// Real-time throughput sparkline (header strip) — line + filled area chart
 const SPARK_N = 24, SPARK_W = 100, SPARK_H = 28;
 S._spark = [];
 function resetSpark(){
   S._spark = [];
-  const svg = document.getElementById('pb-spark');
+  const svg = document.getElementById('h-spark');
   if(svg) svg.innerHTML = `<path class="spark-area" d=""></path><path class="spark-line" d=""></path><circle class="spark-dot" r="2" style="display:none"></circle>`;
 }
 function pushSpark(speedBps){
-  const svg = document.getElementById('pb-spark');
+  const svg = document.getElementById('h-spark');
   if(!svg) return;
   if(!svg.querySelector('.spark-line')) resetSpark();
   S._spark.push(Math.max(0, speedBps||0));
@@ -3253,107 +3527,601 @@ function pushSpark(speedBps){
   dot.setAttribute('cx', last[0]); dot.setAttribute('cy', last[1]);
   dot.style.display = '';
 }
-function onProgress(d){
-  if(S.kioskMode) kioskProgress(d);
-  const di=S.dests.length>1?` → ${d.destName||'?'}`:'';
-  const ph=d.phase==='verify'?(d.pass==='source'?'DOUBLE SOURCE READ':'VERIFYING'):'COPYING';
-  const phaseCol=d.phase==='verify'?(d.pass==='source'?'var(--pro)':'var(--blue)'):'var(--green)';
+// ── Transfers view ──────────────────────────────────────────────────────────
+// While an ingest runs, the centre column stops showing mounted volumes —
+// nobody plugs a card in mid-copy — and shows what is actually happening
+// instead: one block per card, one sub-line per destination.
+//
+// Why the shape is what it is: the engine reports a SINGLE copy event for all
+// destinations (one read of the card fanning out to N writes), then verifies
+// each destination in turn, then re-reads the source once. So copy and source
+// re-read are card-level facts and live on the card's own bar, while the
+// destination verify is per-destination and lives on its sub-line. Drawing a
+// separate copy bar per destination would imply N independent operations that
+// the engine never performs.
+const TF_LBL = { queued:'QUEUED', copy:'COPYING', copied:'COPIED',
+                 verify:'VERIFYING', source:'DOUBLE SOURCE READ',
+                 done:'VERIFIED ✓', err:'ERROR' };
+const TF_COL = { copy:'var(--green)', copied:'var(--green)', verify:'var(--blue)',
+                 source:'var(--pro)', done:'var(--green)', err:'var(--red)',
+                 queued:'transparent' };
 
-  // CARD stat box — current card + cards remaining to ingest
-  const N = S.sources.length||1;
-  const ci = d.sourcePath ? S.sources.findIndex(s=>s.path===d.sourcePath) : S.sources.findIndex(s=>s.name===d.sourceName);
-  const cardsLeft = ci>=0 ? N-(ci+1) : 0;
-  document.getElementById('s-card').innerHTML = N>1
-    ? `${esc(d.sourceName)} <span class="stot">(${cardsLeft} left)</span>`
-    : esc(d.sourceName);
-
-  { const t=document.getElementById('pb-title'); t.textContent=`${ph} · ${d.sourceName}${di}`; t.style.color=phaseCol; }
-  document.getElementById('pb-file').textContent=d.currentFile;
-  pushSpark(d.speed);
-
-  // ── Per-card progress bars in the LOADED CARDS list ─────────────────────
-  // 3 passes, each 0→100%: copy (green) → verify dest (blue) → source re-read (violet)
-  const kind = d.phase==='copy' ? 'copy' : (d.pass==='source' ? 'source' : 'verify');
-  const cardFrac = (d.phase==='verify' && d.passProgress!=null) ? d.passProgress : d.progress;
-  const idx = d.sourcePath ? S.sources.findIndex(s=>s.path===d.sourcePath) : S.sources.findIndex(s=>s.name===d.sourceName);
-  if(idx>=0){
-    // cards processed before this one are done
-    for(let k=0;k<idx;k++){ if(S.sources[k]){ S.sources[k]._prog={frac:1,kind:'done'}; setCardFill(k,1,'done'); } }
-    S.sources[idx]._prog={frac:cardFrac,kind};
-    setCardFill(idx,cardFrac,kind);
-  }
-
-  // ── Bottom bar = GLOBAL progress across all cards (each card weighted 1/N) ─
-  const hasVerify = S.mode!=='fast';
-  const three = (S.mode==='pro' && S.proDoubleRead);  // 3 weighted segments in PRO double
-  let localFrac;
-  if(three){
-    localFrac = d.phase==='verify' ? (1/3 + d.progress*2/3) : d.progress/3;
-  } else {
-    localFrac = d.phase==='verify' ? (hasVerify ? 0.5+d.progress*0.5 : 1)
-                                   : (hasVerify ? d.progress*0.5 : d.progress);
-  }
-  const globalFrac = idx>=0 ? (idx+localFrac)/N : d.progress;
-
-  // Colors are set on #bottombar: the top fill bar (.pb-track-top) is a
-  // SIBLING of .pb-inner, so variables set on .pb-inner never reached it —
-  // the general bar stayed green through every phase while the ring changed.
-  const pbRoot=document.getElementById('bottombar');
-  const fill=document.getElementById('pb-fill');
-  fill.style.width=`${(globalFrac*100).toFixed(1)}%`;
-  if(d.phase==='verify'){
-    if(d.pass==='source'){
-      pbRoot.style.setProperty('--pb-color','var(--pro)');
-      pbRoot.style.setProperty('--pb-color2','#d0aaff');
-      pbRoot.style.setProperty('--pb-glow','rgba(168,128,255,.45)');
-    } else {
-      pbRoot.style.setProperty('--pb-color','var(--blue)');
-      pbRoot.style.setProperty('--pb-color2','#7bc8ff');
-      pbRoot.style.setProperty('--pb-glow','rgba(77,144,240,.45)');
-    }
-  } else {
-    pbRoot.style.setProperty('--pb-color','var(--green)');
-    pbRoot.style.setProperty('--pb-color2','#00ffaa');
-    pbRoot.style.setProperty('--pb-glow','var(--green-g)');
-  }
-  document.getElementById('pb-pct').textContent=`${(globalFrac*100).toFixed(0)}%`;
-  { const RING_C=194.8; const r=document.getElementById('pb-pct-ring-fill'); if(r) r.style.strokeDashoffset=(RING_C*(1-globalFrac)).toFixed(1); }
-  document.getElementById('s-files').innerHTML=`${d.remainingFiles} <span class="stot">(${d.totalFiles})</span>`;
-  document.getElementById('s-size').innerHTML=fmtSizePair(d.totalBytes-d.copiedBytes,d.totalBytes);
-  document.getElementById('s-spd').textContent=fmtSpd(d.speed);
-  document.getElementById('s-eta').textContent=fmtEta(d.eta);
-  const errBox=document.querySelector('.sbox-err'); if(errBox) errBox.style.display = d.errors>0 ? '' : 'none';
-  document.getElementById('s-err').textContent=d.errors;
+function tfIsNetwork(p){
+  const v = S.volumes.find(x => x.path === p);
+  if (v) return !!v.isNetwork;
+  // Browse can land on a sub-folder of a mounted share: fall back to the
+  // volume that contains it, then to a plain UNC path.
+  if (S.volumes.some(x => x.isNetwork && p && pathContains(x.path, p))) return true;
+  return /^(\/\/|\\\\)/.test(p||'');
 }
 
-// Update one card's progress bar (copy=green, verify=blue, done=green)
-function setCardFill(i, frac, kind){
-  const el=document.getElementById(`sicfill-${i}`);
-  if(el){
-    el.style.width=`${Math.max(0,Math.min(1,frac))*100}%`;
-    el.style.background = kind==='source' ? 'var(--pro)' : kind==='verify' ? 'var(--blue)' : 'var(--green)';
+// Built once per ingest, from the list frozen at START.
+function tfInit(){
+  const nD    = Math.max(1, S.dests.length);
+  const hasV1 = S.mode !== 'fast';
+  const hasV2 = (S.mode === 'pro' && S.proDoubleRead);
+  // Everything the queue maths needs is FROZEN here. Reading S.mode or
+  // S.dests live would let a mid-ingest change (removing a destination,
+  // switching mode) rewrite the denominator under a run already in flight
+  // and send the ring to 100% while the copy is still going.
+  const cards = S.sources.map(src => ({
+    name: src.name, path: src.path,
+    bytes: src._bytes || 0,      // shown; may be refined once copying starts
+    w: src._bytes || 0,          // weight in the ring, never changed after this
+    files: 0, errors: 0,
+    phase: 'queued', frac: 0, file: '', speed: 0,
+    dests: S.dests.map(d => ({ name: d.name, net: tfIsNetwork(d.path),
+                               phase: 'queued', frac: 0, speed: 0 }))
+  }));
+  // A card whose size could not be measured (unreadable folder, network
+  // source) must not weigh zero — it would vanish from the queue and let the
+  // ring reach 100% with that card still copying. Give it the median of the
+  // ones we do know, or an equal share if we know none.
+  const known = cards.map(c => c.w).filter(x => x > 0).sort((a,b)=>a-b);
+  const fallback = known.length ? known[Math.floor(known.length/2)] : 1;
+  cards.forEach(c => { if(!(c.w > 0)) c.w = fallback; });
+
+  S.tfSpd = 0;
+  S.spd = { copy:0, dest:0, source:0 };
+  S.tf = { multi: S.dests.length > 1, nD, hasV1, hasV2,
+           segs: 1 + (hasV1 ? nD : 0) + (hasV2 ? 1 : 0), cards };
+  S._tfSig = '';
+}
+
+// A retry is a queue too. Built from the failed groups rather than from the
+// loaded cards: only the destinations that actually failed appear, and the ring
+// is weighted by NUMBER OF FILES — the retry list carries file names, not
+// sizes. Less exact than the byte weighting of a normal ingest, which matters
+// far less when a retry is a handful of files rather than terabytes.
+function tfInitFromGroups(groups){
+  const byCard = new Map();
+  for(const g of groups){
+    const k = g.sourcePath || g.sourceName || '';
+    if(!byCard.has(k)) byCard.set(k, { name:g.sourceName, path:g.sourcePath, dests:[] });
+    byCard.get(k).dests.push(g);
   }
-  const pct=document.getElementById(`sicpct-${i}`);
-  if(pct) pct.textContent = `${Math.round(Math.max(0,Math.min(1,frac))*100)}%`;
+  // Each group is told where it lives in the view, so the progress it reports
+  // lands on the right destination line instead of all piling onto the first.
+  [...byCard.values()].forEach((c, ci) => c.dests.forEach((g, di) => { g._ci = ci; g._di = di; }));
+  const cards = [...byCard.values()].map(c => ({
+    name: c.name, path: c.path,
+    // Weight = units of WORK (a file redone on two destinations is two jobs);
+    // the count shown = distinct files, which is what the operator counts.
+    bytes: 0, w: Math.max(1, c.dests.reduce((a,g)=>a+g.files.length, 0)),
+    files: new Set(c.dests.flatMap(g => g.files)).size, errors: 0,
+    phase: 'queued', frac: 0, file: '', speed: 0,
+    dests: c.dests.map(g => ({ name: g.destName || g.destPath, net: tfIsNetwork(g.destPath),
+                               phase: 'queued', frac: 0, speed: 0, seg: 0 }))
+  }));
+  const nD = Math.max(1, ...cards.map(c => c.dests.length));
+  const mode = groups[0] && groups[0].mode;
+  const hasV1 = mode !== 'fast';
+  // A PRO retry DOES re-read the source when the double read is on — the engine
+  // is told so by recopyFailed. Claiming otherwise made the card reach 100%
+  // while the source re-read still had minutes to run.
+  const hasV2 = (mode === 'pro' && !!S.proDoubleRead);
+  S.tfSpd = 0;
+  S.spd = { copy:0, dest:0, source:0 };
+  S.tf = { multi: nD > 1, nD, hasV1, hasV2,
+           segs: 1 + (hasV1 ? nD : 0) + (hasV2 ? 1 : 0), cards, retry: true };
+  S._tfSig = '';
+}
+
+function tfProgress(d){
+  if(!S.tf) return;
+  const ci = d.sourcePath ? S.tf.cards.findIndex(c => c.path === d.sourcePath)
+                          : S.tf.cards.findIndex(c => c.name === d.sourceName);
+  if(ci < 0) return;
+  const c = S.tf.cards[ci];
+
+  // Everything before the current card is finished — but "finished" is not
+  // "verified". A card that reported errors keeps saying so; painting it green
+  // would be the one lie this application cannot afford.
+  c._seen = true;
+  for(let k=0;k<ci;k++){
+    const p = S.tf.cards[k];
+    // "Finished" was inferred from the index alone. A card the engine refused
+    // outright — an impossible folder name, a destination inside the source —
+    // emits NOT ONE event, so its error count is still zero and it was painted
+    // VERIFIED ✓ with a green tick over a card that was never read. A card we
+    // never heard from cannot be called clean.
+    const bad = p.errors > 0 || !p._seen;
+    p.phase = bad ? 'err' : 'done';
+    p.frac = 1; p.file = '';
+    // The engine reports errors per card, not per destination, so on a card
+    // that failed we state only what is certain — the files were written —
+    // rather than putting a green tick under a red heading.
+    p.dests.forEach(x => { x.phase = bad ? 'copied' : 'done'; x.frac = 1; });
+  }
+
+  // In a retry each destination is a separate engine run reporting only ITS
+  // own file count and size, so adopting them would shrink the card's totals
+  // to whatever is being redone right now. The figures fixed at the start are
+  // the ones that describe the card.
+  if(!S.tf.retry){
+    if(d.totalFiles) c.files = d.totalFiles;
+    // The displayed size follows what is really being copied (a filter or
+    // "new files only" makes it smaller than the card); the RING WEIGHT does
+    // not move, or the total would shrink under a run in progress and the
+    // percentage would go backwards.
+    if(d.phase === 'copy' && d.totalBytes) c.bytes = d.totalBytes;
+  }
+  c.file   = d.currentFile || '';
+  c.speed  = d.speed || 0;
+  // In a retry each destination is a SEPARATE engine run whose error count
+  // restarts at zero. Overwriting meant a group that failed was erased by the
+  // next group's clean start, and the card ended with a green tick.
+  c.errors = S.tf.retry ? Math.max(c.errors || 0, d.errors || 0) : (d.errors || 0);
+
+  // Each bar shows ITS OWN phase from 0 to 100. `progress` is the whole
+  // verify (destinations + source re-read) and would start the double source
+  // read at two thirds full; `passProgress` is the current pass and is what
+  // the label above the bar actually names.
+  const pass = (d.phase === 'verify' && d.passProgress != null)
+    ? Math.max(0, Math.min(1, d.passProgress))
+    : Math.max(0, Math.min(1, d.progress || 0));
+  c.frac = pass;
+
+  if(d.phase === 'copy'){
+    c.phase = 'copy';
+    if(S.tf.retry){
+      // A retry redoes one destination at a time — each is its own engine run.
+      const x = c.dests[d.destIndex || 0];
+      if(x){ x.phase='copy'; x.frac=c.frac; x.seg=0; x.speed=d.speed||0; }
+    } else {
+      // One operation writing to every destination at once: the sub-lines
+      // mirror the card's progress rather than inventing per-destination
+      // figures the copy phase does not measure separately.
+      c.dests.forEach(x => { x.phase='copy'; x.frac=c.frac; });
+    }
+  } else if(d.pass === 'source'){
+    c.phase = 'source';
+    // Same rule as for a finished card: on a card that reported errors the
+    // engine does not say WHICH destination failed, so we state only what is
+    // certain — the files were written. A green tick here would have covered a
+    // destination holding quarantined copies.
+    const bad = (d.errors || 0) > 0 || c.errors > 0;
+    c.dests.forEach(x => { x.phase = bad ? 'copied' : 'done'; x.frac=1; });
+  } else {
+    c.phase = 'verify';
+    const di = d.destIndex || 0;
+    // Since 2.5.1 the engine verifies destinations AT THE SAME TIME and reports
+    // each one's own progress. An event now speaks for ONE destination — the
+    // others keep whatever they had, instead of being rewritten from an
+    // arithmetic guess about whose turn it was.
+    const x = c.dests[di];
+    if(x){
+      x.frac  = (d.destProgress != null) ? Math.max(0, Math.min(1, d.destProgress)) : pass;
+      // A destination that reached the end of its files while the card is
+      // carrying errors says COPIED, not VERIFIED. The engine reports errors per
+      // card, not per destination, so "verified" is a claim we cannot make.
+      x.phase = x.frac < 0.999 ? 'verify' : (c.errors > 0 ? 'copied' : 'done');
+      x.speed = d.destSpeed || 0;
+      x.seg   = x.frac >= 0.999 ? 2 : 1;
+    }
+    // A destination still showing the copy phase has been written and is
+    // waiting for, or running, its own verification.
+    c.dests.forEach((y,i) => { if(i !== di && y.phase === 'copy'){ y.phase='copied'; y.frac=1; } });
+  }
+
+  // In a retry the destinations are redone one after the other, so the card
+  // figure is how far through its OWN destinations it is — otherwise the card
+  // bar dropped back to zero every time the next destination started.
+  if(S.tf.retry){
+    const per = (S.tf.hasV1 ? 2 : 1) + (S.tf.hasV2 ? 1 : 0);
+    const dn  = c.dests.length || 1;
+    let f = c.dests.reduce((a,x)=>a + Math.min(1, ((x.seg||0) + (x.seg>=2?0:x.frac))/per), 0) / dn;
+    // Destinations are redone one at a time, and the card-level source pass
+    // touches none of their segments, so the raw figure can dip when the next
+    // destination starts. A progress figure that goes backwards is read as a
+    // fault; hold the high-water mark instead.
+    f = Math.max(0, Math.min(1, f));
+    c._hi = Math.max(c._hi || 0, f);
+    c.frac = c._hi;
+  }
+
+  // Speed, smoothed PER PHASE. Copying and verifying do not run at the same
+  // rate — on a network destination the verify is often half the copy — so a
+  // single average made the estimate jump every time the phase changed.
+  { const k = d.phase === 'copy' ? 'copy' : (d.pass === 'source' ? 'source' : 'dest');
+    const v = d.speed || 0;
+    if(v > 0) S.spd[k] = S.spd[k] ? S.spd[k]*0.7 + v*0.3 : v; }
+  S.tfSpd = S.tfSpd ? S.tfSpd*0.7 + (d.speed||0)*0.3 : (d.speed||0);
+  tfPaint();
+}
+
+// How far this card is through ITS OWN work, every segment counted: the copy,
+// one verification per destination, and the source re-read when PRO has it on.
+//
+// This is the figure in the card's ring. The BAR underneath keeps showing the
+// phase in progress — that is what its colour names — because the two answer
+// different questions: the bar says "what is happening", the ring says "where
+// is this card". Before 2.5.1 the ring repeated the bar, so a card with only
+// its source re-read left to do displayed 16%.
+//
+// Same arithmetic as the queue ring below, deliberately: the card figures and
+// the queue figure can never drift apart.
+function tfCardDone(c){
+  if(!S.tf) return 0;
+  // A retry's c.frac already spans that card's whole job.
+  if(S.tf.retry) return Math.max(0, Math.min(1, c.frac || 0));
+  const { nD, hasV1, segs } = S.tf;
+  if(c.phase === 'queued') return 0;
+  if(c.phase === 'done' || c.phase === 'err') return 1;
+  let d = 0;
+  if(c.phase === 'copy')        d = c.frac;
+  else if(c.phase === 'verify') d = 1 + nD * c.frac;
+  else if(c.phase === 'source') d = 1 + (hasV1 ? nD : 0) + c.frac;
+  return segs > 0 ? Math.max(0, Math.min(1, d / segs)) : 0;
+}
+
+// Queue progress, weighted by BYTES over every segment of work: one copy per
+// card, one verify per destination, plus the source re-read when it is on.
+// Weighting cards equally would make a 2 GB card finishing look like as much
+// work as a 30 GB card still queued.
+function tfGlobal(){
+  if(!S.tf) return { frac:0, phase:'copy', left:0, bytes:0, eta:0 };
+  const { nD, hasV1, hasV2, segs, cards } = S.tf;
+
+  // Work left is counted SEPARATELY for each kind of segment, because they do
+  // not run at the same speed. One average across copying and verifying made
+  // the estimate lurch at every phase change; splitting it means the figure
+  // settles after the first card and stays put.
+  if(S.tf.retry){
+    // c.frac already covers this card's whole retry (copy + verify, every
+    // destination), so the queue is simply the weighted average of the cards.
+    let t = 0, dn = 0, cur = 'copy', left = 0;
+    for(const c of cards){
+      const w = c.w || 1; t += w;
+      if(c.phase === 'queued'){ left++; continue; }
+      if(c.phase !== 'done' && c.phase !== 'err') cur = c.phase;
+      dn += w * tfCardDone(c);
+    }
+    // No ETA on a retry: the list carries file names, not sizes, so any time
+    // estimate would be invented rather than measured.
+    return { frac: t > 0 ? Math.max(0, Math.min(1, dn/t)) : 0,
+             phase: cur, left, bytes: 0, eta: 0,
+             files: cards.reduce((a,c)=>a+(c.files||0), 0) };
+  }
+
+  let total = 0, done = 0, cur = 'copy', left = 0, bytes = 0;
+  let remCopy = 0, remDest = 0, remSrc = 0;
+  for(const c of cards){
+    const w = c.w || 1;
+    const dw = hasV1 ? w * nD : 0;      // all the destination verifies
+    const sw = hasV2 ? w : 0;           // the source re-read
+    total += w * segs;
+    bytes += c.bytes || 0;
+    if(c.phase === 'queued'){ left++; remCopy += w; remDest += dw; remSrc += sw; continue; }
+    // One definition of "done" for this card, shared with its own ring.
+    done += w * segs * tfCardDone(c);
+    if(c.phase === 'done' || c.phase === 'err') continue;
+    cur = c.phase;
+    if(c.phase === 'copy'){
+      remCopy += w * (1 - c.frac); remDest += dw; remSrc += sw;
+    } else if(c.phase === 'verify'){
+      // c.frac is the destination pass as a whole, so it already spans the nD
+      // verify segments — no per-destination bookkeeping to add on top.
+      remDest += dw * (1 - c.frac); remSrc += sw;
+    } else if(c.phase === 'source'){
+      remSrc += sw * (1 - c.frac);
+    }
+  }
+  const frac = total > 0 ? Math.max(0, Math.min(1, done / total)) : 0;
+
+  // A phase never seen yet borrows the closest speed we do have, so the very
+  // first estimate is approximate rather than absent — and corrects itself as
+  // soon as that phase actually starts.
+  const sp = S.spd || {};
+  const any = sp.copy || sp.dest || sp.source || S.tfSpd || 0;
+  const vCopy = sp.copy || any, vDest = sp.dest || sp.copy || any, vSrc = sp.source || sp.dest || sp.copy || any;
+  let eta = 0;
+  if(any > 0){
+    if(vCopy > 0) eta += remCopy / vCopy;
+    if(vDest > 0) eta += remDest / vDest;
+    if(vSrc  > 0) eta += remSrc  / vSrc;
+  }
+  return { frac, phase: cur, left, bytes, eta };
+}
+
+function tfBar(phase, frac, thin){
+  return `<div class="tf-bar${thin?' thin':''}"><i style="width:${(frac*100).toFixed(1)}%;`
+       + `background:${TF_COL[phase]||'transparent'}"></i></div>`;
+}
+
+// Per-card ring. The bar underneath says WHICH phase by its colour; the ring
+// says HOW FAR, as a figure — the number the operator actually asks for.
+const TF_CR = 14, TF_CC = 2*Math.PI*TF_CR;    // radius / circumference
+// A full ring shows a tick rather than "100%" — the figure has served its
+// purpose by then, and the mark reads from further away.
+const TF_TICK = (px) => `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="none"`
+  + ` stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"`
+  + ` style="display:block"><path d="M20 6 9 17l-5-5"/></svg>`;
+// …but ONLY when the card is genuinely clean. A card that reported errors has
+// also reached the end of its work, and a green tick over it would be the one
+// lie this application cannot afford: its figure stays 100%, in red.
+function tfDoneClean(c){ return !c.errors && c.phase !== 'err'; }
+function tfRingInner(frac, clean, px){
+  return (frac >= 0.999 && clean) ? TF_TICK(px) : Math.round(frac*100)+'%';
+}
+function tfCardRing(i, phase, frac, clean){
+  const col = TF_COL[phase] && TF_COL[phase] !== 'transparent' ? TF_COL[phase] : 'var(--text3)';
+  return `<div class="tf-cring">
+    <svg width="34" height="34" viewBox="0 0 34 34">
+      <circle cx="17" cy="17" r="${TF_CR}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3.5"/>
+      <circle cx="17" cy="17" r="${TF_CR}" fill="none" stroke="${col}" stroke-width="3.5"
+        stroke-linecap="round" stroke-dasharray="${TF_CC.toFixed(2)}"
+        stroke-dashoffset="${(TF_CC*(1-frac)).toFixed(2)}" id="tfcring-${i}"/>
+    </svg>
+    <div class="cp" id="tfcpct-${i}" style="color:${col}">${tfRingInner(frac, clean, 15)}</div>
+  </div>`;
+}
+
+// Full rebuild, only when the structure or a phase actually changed — the
+// in-between updates just move the bars, so the list never flickers.
+function tfRender(){
+  const list = document.getElementById('tf-list');
+  if(!list || !S.tf) return;
+  const multi = S.tf.multi;
+  // The frozen run, never the live selector: the mode can be changed between
+  // the summary and a retry, which relabelled merely-copied files as VERIFIED.
+  const verifies = S.tf.hasV1;
+
+  list.innerHTML = S.tf.cards.map((c,i) => {
+    const chip = c.phase === 'done' && !verifies ? 'COPIED ✓' : TF_LBL[c.phase];
+    const plur = (n,w) => `${n} ${w}${n>1?'s':''}`;
+    const sub  = [ c.files ? plur(c.files,'file') : '', c.bytes ? fmtSize(c.bytes) : '' ]
+                   .filter(Boolean).join(' · ');
+    const meta = c.phase === 'queued' ? 'waiting'
+               : c.phase === 'done'   ? 'complete'
+               : `${fmtSpd(c.speed)}`;
+    const dst0 = c.dests[0];
+
+    const ring = tfCardRing(i, c.phase, tfCardDone(c), tfDoneClean(c));
+
+    const head = multi
+      ? `<div class="tf-hd">${ring}<span class="tf-nm">${esc(c.name)}</span>
+           <span class="tf-sub">${sub}${sub?' · ':''}${plur(c.dests.length,'destination')}</span>
+           <span class="tf-chip ${c.phase}" id="tfchip-${i}">${chip}</span></div>`
+      : `<div class="tf-hd">${ring}<span class="tf-nm">${esc(c.name)}</span><span class="tf-arrow">→</span>
+           <span class="tf-nm">${esc(dst0 ? dst0.name : '—')}</span>
+           ${dst0 && dst0.net ? '<span class="tf-net">NETWORK</span>' : ''}
+           <span class="tf-chip ${c.phase}" id="tfchip-${i}">${chip}</span></div>`;
+
+    const kids = multi ? `<div class="tf-kids">` + c.dests.map((x,j) => `
+        <div class="tf-kid">
+          <div class="tf-hd" style="margin-bottom:5px;"><span class="tf-dot"></span>
+            <span class="tf-nm" style="font-size:12.5px;">${esc(x.name)}</span>
+            ${x.net ? '<span class="tf-net">NETWORK</span>' : ''}
+            <span class="tf-kspd" id="tfdspd-${i}-${j}">${x.speed>0?fmtSpd(x.speed):''}</span>
+            <span class="tf-chip ${x.phase}" id="tfdchip-${i}-${j}">${
+              x.phase==='done' && !verifies ? 'COPIED ✓' : TF_LBL[x.phase]}</span>
+            <span class="tf-kpct" id="tfdpct-${i}-${j}"
+              style="color:${TF_COL[x.phase]&&TF_COL[x.phase]!=='transparent'?TF_COL[x.phase]:'var(--text3)'}"
+              >${Math.round(x.frac*100)}%</span></div>
+          <div id="tfdbar-${i}-${j}">${tfBar(x.phase, x.frac, true)}</div>
+        </div>`).join('') + `</div>` : '';
+
+    return `<div class="tf-card ${multi?'multi ':''}${c.phase==='queued'?'queued':c.phase==='done'?'done':''}" id="tfc-${i}">
+      ${head}
+      <div id="tfbar-${i}">${tfBar(c.phase, c.frac)}</div>
+      <div class="tf-ft"><span class="tf-file" id="tffile-${i}">${esc(c.file)}</span>
+        <span class="tf-meta" id="tfmeta-${i}">${meta}</span></div>
+      ${kids}
+    </div>`;
+  }).join('');
+}
+
+// Cheap path: move the bars and refresh the labels, no DOM rebuild.
+function tfPaint(){
+  if(!S.tf) return;
+  const sig = S.tf.cards.map(c => c.phase + '/' + c.dests.map(x=>x.phase).join(',') + '/' + c.files).join('|');
+  if(sig !== S._tfSig){ S._tfSig = sig; tfRender(); }
+  else {
+    S.tf.cards.forEach((c,i) => {
+      const b = document.querySelector(`#tfbar-${i} i`);
+      if(b) b.style.width = (c.frac*100).toFixed(1)+'%';
+      const f = document.getElementById(`tffile-${i}`);
+      if(f) f.textContent = c.file;
+      const m = document.getElementById(`tfmeta-${i}`);
+      if(m && c.phase!=='queued' && c.phase!=='done') m.textContent = fmtSpd(c.speed);
+      const cd = tfCardDone(c);
+      const cr = document.getElementById(`tfcring-${i}`);
+      if(cr) cr.setAttribute('stroke-dashoffset', (TF_CC*(1-cd)).toFixed(2));
+      const cp = document.getElementById(`tfcpct-${i}`);
+      // innerHTML only when the tick has to appear or disappear; the rest of
+      // the time this runs several times a second on every card.
+      if(cp){
+        const want = tfRingInner(cd, tfDoneClean(c), 15);
+        if(cp.innerHTML !== want) cp.innerHTML = want;
+      }
+      c.dests.forEach((x,j) => {
+        const k = document.querySelector(`#tfdbar-${i}-${j} i`);
+        if(k) k.style.width = (x.frac*100).toFixed(1)+'%';
+        const kp = document.getElementById(`tfdpct-${i}-${j}`);
+        if(kp) kp.textContent = Math.round(x.frac*100)+'%';
+        const ks = document.getElementById(`tfdspd-${i}-${j}`);
+        if(ks) ks.textContent = x.speed>0 ? fmtSpd(x.speed) : '';
+      });
+    });
+  }
+
+  // The heading carries the total number of cards in this ingest — a figure
+  // fixed at START, not a countdown; "left" is on the line underneath.
+  const ttl = document.getElementById('tf-ring-title');
+  if(ttl) ttl.textContent = `${S.tf.retry ? 'RETRY QUEUE' : 'INGEST QUEUE'} (${S.tf.cards.length})`;
+
+  const g = tfGlobal();
+  const arc = document.getElementById('tf-ring-arc');
+  const pct = document.getElementById('tf-ring-pct');
+  const lbl = document.getElementById('tf-ring-lbl');
+  if(arc){
+    const C = 2*Math.PI*26;
+    arc.setAttribute('stroke-dasharray', C.toFixed(2));
+    arc.setAttribute('stroke-dashoffset', (C*(1-g.frac)).toFixed(2));
+    arc.style.stroke = TF_COL[g.phase] || 'var(--green)';
+  }
+  if(pct){
+    // The queue tick waits for every card to be clean — one card in error and
+    // the figure stays a figure.
+    const clean = S.tf.cards.every(c => tfDoneClean(c));
+    const want = tfRingInner(g.frac, clean, 26);
+    if(pct.innerHTML !== want) pct.innerHTML = want;
+    pct.style.color = TF_COL[g.phase] || 'var(--green)';
+  }
+  if(lbl){
+    // Each figure says what it is. The volume is the size of the WHOLE job;
+    // sitting unlabelled between "2 cards left" and the time remaining, it read
+    // as "245 GB still to go".
+    const bits = [];
+    if(g.left > 0) bits.push(`${g.left} card${g.left>1?'s':''} left`);
+    if(g.files > 0) bits.push(`${g.files} file${g.files>1?'s':''} total`);
+    if(g.bytes > 0) bits.push(fmtSize(g.bytes)+' total');
+    if(g.eta > 0) bits.push('~'+fmtEta(g.eta)+' left');
+    lbl.textContent = bits.join(' · ') || '—';
+  }
+}
+
+// TRANSFERS | VOLUMES. The volumes stay one click away during an ingest —
+// handy when another drive has to be ejected mid-copy.
+function setCenterView(v){
+  S.centerView = v;
+  const onTf = (v === 'transfers') && S.copying;
+  document.getElementById('tf-list').classList.toggle('on', onTf);
+  document.getElementById('vols-grid').style.display = onTf ? 'none' : '';
+  // During an ingest the heading is the one beside the ring — INGEST QUEUE (N).
+  // Keeping "Transfers" here as well repeated the same word twice in 20 pixels.
+  { const ct = document.getElementById('center-title');
+    ct.textContent = 'Mounted Volumes';
+    ct.style.display = onTf ? 'none' : ''; }
+  { const vc = document.getElementById('vcnt');
+    if(vc) vc.style.display = onTf ? 'none' : ''; }
+  const t = document.getElementById('tf-sw-t'), b = document.getElementById('tf-sw-v');
+  if(t) t.classList.toggle('sel', onTf);
+  if(b) b.classList.toggle('sel', !onTf);
+  ['fb-system','fb-network','fb-showhidden','refresh-btn','vcnt-hidden'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.style.display = onTf ? 'none' : '';
+  });
+  if(onTf) tfPaint(); else renderVolumes();
+}
+
+// Sources and Destinations are locked for the whole ingest. The engine works
+// from the list, the template, the counter and the mode as they were at START;
+// a control that still answers a click during a run is a control that promises
+// a change the copy will never make. Cancel, Pause and the view switch stay
+// live — they are the two things the operator legitimately needs mid-run.
+function setIngestLock(on){
+  document.body.classList.toggle('ingesting', !!on);
+  applyIngestLock();
+}
+// The CSS (body.ingesting .lockable) is what actually stops the clicks, and it
+// keeps working on rows redrawn mid-ingest. Setting `disabled` on top of it is
+// belt and braces — keyboard focus and Enter cannot reach a locked field
+// either — so it is re-applied after every redraw of a locked area.
+function applyIngestLock(){
+  const on = document.body.classList.contains('ingesting');
+  document.querySelectorAll('.lockable').forEach(root => {
+    const els = root.matches('input,textarea,button,select')
+      ? [root] : root.querySelectorAll('input,textarea,button,select');
+    els.forEach(el => { el.disabled = on; });
+    root.querySelectorAll('[draggable]').forEach(el => el.setAttribute('draggable', on ? 'false' : 'true'));
+  });
+}
+
+function tfEnter(){
+  tfInit();
+  document.getElementById('tf-switch').classList.add('on');
+  document.getElementById('tf-ring').style.display = '';
+  document.getElementById('tf-stats').classList.add('on');
+  setCenterView('transfers');
+}
+
+function tfExit(){
+  S.tf = null; S._tfSig = ''; S.centerView = 'volumes';
+  const sw = document.getElementById('tf-switch'); if(sw) sw.classList.remove('on');
+  const rg = document.getElementById('tf-ring');   if(rg) rg.style.display = 'none';
+  const st = document.getElementById('tf-stats');  if(st) st.classList.remove('on');
+  const tl = document.getElementById('tf-list');   if(tl) tl.classList.remove('on');
+  const vg = document.getElementById('vols-grid'); if(vg) vg.style.display = '';
+  const ct = document.getElementById('center-title');
+  if(ct){ ct.textContent = 'Mounted Volumes'; ct.style.display = ''; }
+  const vc = document.getElementById('vcnt'); if(vc) vc.style.display = '';
+  ['fb-system','fb-network','fb-showhidden','refresh-btn'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.style.display = '';
+  });
+  renderVolumes();
+}
+
+function onProgress(d){
+  // The model FIRST: the kiosk ring and the header ring both read the queue
+  // figure straight out of it. Updating it afterwards left them one event
+  // behind, and the ring never reached 100% on the last card.
+  tfProgress(d);
+  if(S.kioskMode) kioskProgress(d);
+  pushSpark(d.speed);
+
+  const phase = d.phase==='verify' ? (d.pass==='source'?'Double source read':'Verifying') : 'Copying';
+  const col   = d.phase==='verify' ? (d.pass==='source'?'var(--pro)':'var(--blue)') : 'var(--green)';
+  const strip = document.getElementById('tf-stats');
+  if(strip) strip.style.setProperty('--pb-color', col);
+
+  const set = (id, html) => { const el=document.getElementById(id); if(el) el.innerHTML = html; };
+  const txt = (id, t)    => { const el=document.getElementById(id); if(el) el.textContent = t; };
+
+  { const t=document.getElementById('h-title');
+    if(t){ t.textContent = phase; t.style.color = col; } }
+  txt('h-file', d.currentFile || '—');
+  set('h-files', `${d.remainingFiles} <span class="stot">(${d.totalFiles})</span>`);
+  set('h-size',  fmtSizePair(d.totalBytes-d.copiedBytes, d.totalBytes));
+  txt('h-spd', fmtSpd(d.speed));
+  txt('h-eta', fmtEta(d.eta));
+  txt('h-err', String(d.errors||0));
+  const eb = document.getElementById('h-errbox');
+  if(eb) eb.style.display = d.errors>0 ? '' : 'none';
 }
 
 function onComplete(R){
   S.copying=false;
-  // mark all card bars as done
-  S.sources.forEach((s,i)=>{ s._prog={frac:1,kind:'done'}; setCardFill(i,1,'done'); });
+  setIngestLock(false);
+  // Back to the volumes: the ingest is over, and the summary takes the stage.
+  tfExit();
   // Increment counter by number of sources (not multiplied by destinations).
   // Count by PATH so two identically-named cards still advance it by two.
   const srcCount=[...new Set(R.map(r=>r.sourcePath||r.sourceName))].length;
-  const reportBase=S.counter;   // counter values used by this batch (before increment)
-  S.counter+=srcCount;
+  // The numbers actually written on disk, not whatever the field holds now.
+  const reportBase=(S.run && S.run.base!=null) ? S.run.base : S.counter;
+  S.counter=reportBase+srcCount;
   // If user had not overridden, keep auto mode
   renderCounter();
-  document.getElementById('bottombar').classList.remove('open');
   updateBtn();persistPrefs();
   window.ingesto.setPowerBlock(false);
-  if(S.writeReport) updateReports(R, reportBase);
-  sendIngestNotification(R, reportBase);
+  if(S.writeReport) updateReports(R, reportBase, S.run);
+  // Both read S.run.dests / S.run.sources and are asynchronous, so the snapshot
+  // is handed to them explicitly and released only once they hold it.
+  const run = S.run;
+  sendIngestNotification(R, reportBase, run);
   runPostHook(R);
+  S.run = null;
   if(S.kioskMode) kioskAfterIngest(R); else showSummary(R);
 }
 
@@ -3385,7 +4153,11 @@ function showSummary(R){
   const ICO_X='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>';
   const ICO_STOP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="5" y="5" rx="2"/></svg>';
   ico.innerHTML=canceled?ICO_STOP:ok?ICO_CHECK:ICO_X;
-  const modeLabel={fast:'Fast',normal:'Verified',slow:'Secure (XXHash)',pro:'PRO'}[S.mode]||'';
+  // The mode the run actually used, taken from the results, not the selector —
+  // which can be changed by importing settings mid-ingest, and used to headline
+  // a FAST run as "Secure Transfer Complete".
+  const runMode = (R && R[0] && R[0].mode) || (S.run && S.run.mode) || S.mode;
+  const modeLabel={fast:'Fast',normal:'Verified',slow:'Secure (XXHash)',pro:'PRO'}[runMode]||'';
   document.getElementById('s-title').textContent=canceled?'Transfer Canceled':ok?(modeLabel+' Transfer Complete!'):'Finished with Errors';
   document.getElementById('s-sub').textContent=[...new Set(R.map(r=>r.sourceName))].join(', ')+(S.dests.length>1?` → ${S.dests.length} destinations`:'');
   const copyMs=sum(g=>g[0].copyMs);
@@ -3548,7 +4320,17 @@ async function recopyFailed(){
   S._clearSrcOnClose=false;
   document.getElementById('sum-ov').classList.remove('open');
   S.copying=true; S.recopyCanceled=false; updateBtn();
-  document.getElementById('bottombar').classList.add('open');
+  setIngestLock(true);
+  // Same view as a normal ingest. A retry over a slow network destination can
+  // run for a long time, and watching it through a one-line strip told the
+  // operator nothing about which card or which drive was being redone.
+  tfInitFromGroups(groups);
+  document.getElementById('tf-switch').classList.add('on');
+  document.getElementById('tf-ring').style.display = '';
+  document.getElementById('tf-stats').classList.add('on');
+  setCenterView('transfers');
+  { const t=document.getElementById('h-title'); if(t){ t.textContent='Re-copying failed files'; t.style.color=''; } }
+  resetSpark();
   const results=[];
   for(const g of groups){
     // A cancel during the retry must stop the remaining groups. Each
@@ -3559,15 +4341,28 @@ async function recopyFailed(){
     try{
       const r = await window.ingesto.recopyFailed({
         sourcePath:g.sourcePath, sourceName:g.sourceName,
-        destPath:g.destPath, destName:g.destName, destIndex:0,
+        destPath:g.destPath, destName:g.destName, destIndex:g._di||0,
         mode:g.mode, proAlgo:S.proAlgo, proDoubleRead:S.proDoubleRead, files:g.files,
         destRelMap:g.destRelMap||{},
       });
       if(r) results.push(r);
-    }catch(e){ console.error('recopyFailed', e); }
+    }catch(e){
+      // A group that rejects used to vanish from the results, so a retry where
+      // one destination failed outright still showed "Transfer Complete" and
+      // the re-copy button disappeared for the destination never retried.
+      console.error('recopyFailed', e);
+      results.push({ success:false, canceled:false, sourceName:g.sourceName, sourcePath:g.sourcePath,
+        destPath:g.destPath, mode:g.mode, totalFiles:g.files.length, copiedFiles:0,
+        totalBytes:0, copiedBytes:0, errors:g.files.length,
+        errorList:[{ file:'(retry)', phase:'retry',
+          error:'this destination could not be retried: '+((e&&e.message)||'unexpected error') }],
+        failedFiles:g.files.slice(), failedMap:g.destRelMap||{}, unstableFiles:[],
+        copyMs:0, verify1Ms:0, verify2Ms:0, duration:0 });
+    }
   }
   S.copying=false;
-  document.getElementById('bottombar').classList.remove('open');
+  setIngestLock(false);
+  tfExit();
   updateBtn();
   // Fresh summary of the retry (no counter increment — this is a fix-up pass)
   showSummary(results);
@@ -3724,7 +4519,7 @@ function onReportFmt(){
 function onChecksumToggle(el){
   S.writeChecksum=el.checked;
   // Re-enabling the master with no format selected → turn on the default (Checksum list)
-  if(el.checked && !(S.cksumList||S.cksumMhl)){
+  if(el.checked && !(S.cksumList||S.cksumMhl||S.ascMhl)){
     S.cksumList=true;
     const l=document.getElementById('cf-list'); if(l) l.checked=true;
   }
@@ -3732,10 +4527,11 @@ function onChecksumToggle(el){
   updateSettingsDetails();
 }
 function onChecksumFmt(){
-  const wasAny=S.cksumList||S.cksumMhl;
+  const wasAny=S.cksumList||S.cksumMhl||S.ascMhl;
   S.cksumList=!!document.getElementById('cf-list')?.checked;
   S.cksumMhl =!!document.getElementById('cf-mhl')?.checked;
-  syncMaster('cksum-toggle', (S.cksumList||S.cksumMhl), wasAny, v=>S.writeChecksum=v);
+  S.ascMhl   =!!document.getElementById('cf-ascmhl')?.checked;
+  syncMaster('cksum-toggle', (S.cksumList||S.cksumMhl||S.ascMhl), wasAny, v=>S.writeChecksum=v);
   persistPrefs();
 }
 // Keep a master (Ingest Report / Write Checksum) consistent with its formats,
@@ -3809,7 +4605,7 @@ async function exportSettingsFile(){
   if (inc.namingPresets)  d.presets = S.presets;
   if (inc.copyMode)       { d.mode=S.mode; d.proAlgo=S.proAlgo; d.proDoubleRead=S.proDoubleRead; }
   if (inc.cardTracking)   d.writeSentinel = S.writeSentinel;
-  if (inc.writeChecksum)  { d.writeChecksum=S.writeChecksum; d.cksumList=S.cksumList; d.cksumMhl=S.cksumMhl; }
+  if (inc.writeChecksum)  { d.writeChecksum=S.writeChecksum; d.cksumList=S.cksumList; d.cksumMhl=S.cksumMhl; d.ascMhl=S.ascMhl; }
   if (inc.ingestReport)   { d.writeReport=S.writeReport; d.reportHtml=S.reportHtml; d.reportCsv=S.reportCsv; d.reportJson=S.reportJson; d.reportFull=S.reportFull; }
   if (inc.fileFilter)     { d.fileFilterFormats=S.fileFilterFormats; d.copyEmptyFolders=S.copyEmptyFolders; d.reorganizeFiles=S.reorganizeFiles; }
   try{
@@ -3819,6 +4615,13 @@ async function exportSettingsFile(){
   }catch(_){ showToast('Export failed.', 'warn'); }
 }
 async function importSettingsFile(){
+  // Settings can be opened mid-ingest to read the ntfy topic; importing a file
+  // there used to change the copy mode, the template and the algorithm under a
+  // run already in flight — headlining a FAST ingest "Secure Transfer Complete".
+  if(S.copying){
+    showToast('An ingest is running — settings cannot be imported until it completes.','warn',5000);
+    return;
+  }
   let r=null;
   try{ r = await window.ingesto.importSettings(); }catch(_){}
   if (!r || !r.ok) { if (r && r.error) showToast('Import failed: '+r.error, 'warn'); return; }
@@ -3848,9 +4651,11 @@ async function importSettingsFile(){
     S.writeChecksum = d.writeChecksum !== false;
     S.cksumList = d.cksumList !== false;
     S.cksumMhl  = d.cksumMhl === true;
+    S.ascMhl    = d.ascMhl === true;
     const a=document.getElementById('cksum-toggle'); if(a) a.checked=S.writeChecksum;
     const b=document.getElementById('cf-list'); if(b) b.checked=S.cksumList;
     const c=document.getElementById('cf-mhl');  if(c) c.checked=S.cksumMhl;
+    const c2=document.getElementById('cf-ascmhl'); if(c2) c2.checked=S.ascMhl;
   }
   if (inc.ingestReport){
     S.writeReport = d.writeReport === true;
@@ -3934,51 +4739,112 @@ async function testNtfy(){
     else { res.textContent='✗ Failed'+(r&&r.error?': '+r.error:''); res.style.color='var(--red)'; }
   }catch(_){ res.textContent='✗ Failed'; res.style.color='var(--red)'; }
 }
-async function sendIngestNotification(R, base){
-  if(!S.ntfyEnabled || !S.ntfyTopic) return;
-  const canceled=R.length>0 && R.every(r=>r.canceled);
-  const uniq=[...new Set(R.map(r=>r.sourceName))];
-  let title, msg, tags, priority='default';
-  if(canceled){
-    title='INGESTO - Ingest canceled'; msg='Ingest was canceled'; tags='x';
-  } else if(uniq.length===1){
-    // Detailed single-card notification
-    const name=uniq[0], rs=R.filter(r=>r.sourceName===name), r0=rs[0], src=S.sources.find(s=>s.name===name)||{};
-    const errors=rs.reduce((a,r)=>a+(r.errors||0),0);
-    const failed=rs.reduce((a,r)=>a+((r.failedFiles&&r.failedFiles.length)||0),0);
-    const unstable=rs.reduce((a,r)=>a+((r.unstableFiles&&r.unstableFiles.length)||0),0);
-    const num=String((base!=null?base:S.counter)).padStart(3,'0');
-    let result;
-    if(unstable>0){ result='⚠ suspect card'; tags='warning'; priority='high'; }
-    else if(errors||failed){ const n=errors||failed; result=`⚠ ${n} error${n>1?'s':''}`; tags='warning'; priority='high'; }
-    else { result='✓ all verified'; tags='white_check_mark'; }
-    title=`#${num} - ${name}`;
-    const lines=[];
-    const l1=[src.operator,src.camera].filter(Boolean).join(' · '); if(l1) lines.push(l1);
-    lines.push(`${r0.totalFiles||0} files · ${fmtSize(r0.totalBytes||0)} · ${reportModeLabel(r0)}`);
-    lines.push(result);
-    if(src.note) lines.push('Note: '+src.note);
-    msg=lines.join('\n');
-  } else {
-    // Summary for multiple cards
-    const er=R.reduce((a,r)=>a+(r.errors||0),0);
-    const failed=R.reduce((a,r)=>a+((r.failedFiles&&r.failedFiles.length)||0),0);
-    const unstable=R.reduce((a,r)=>a+((r.unstableFiles&&r.unstableFiles.length)||0),0);
-    const bytes=[...new Map(R.map(r=>[r.sourceName,r.totalBytes])).values()].reduce((a,b)=>a+(b||0),0);
-    if(er||failed||unstable){
-      title='INGESTO - Finished with issues';
-      const bits=[]; const ne=er||failed; if(ne) bits.push(`${ne} error${ne>1?'s':''}`); if(unstable) bits.push('suspect card');
-      msg=`${uniq.length} cards · ${fmtSize(bytes)}\n⚠ ${bits.join(', ')}`; tags='warning'; priority='high';
+// ── ntfy ─────────────────────────────────────────────────────────────────
+// ONE COMPLETE NOTIFICATION PER CARD, then a closing line for the batch.
+// The old single message described a multi-destination run as one anonymous
+// blob: no card name, no destinations, no timings. On a shoot the phone is
+// often the only screen the DIT looks at, so each card gets its own card sheet.
+function ntfyDur(ms){ return ms>0 ? fmtEta(ms/1000) : '—'; }
+
+// Everything known about one card, phrased for a phone lock screen.
+function ntfyCard(rs, num, runSources, runDests){
+  const r0   = rs[0];
+  const name = r0.sourceName || '—';
+  const src  = runSources.find(x => x.path === r0.sourcePath)
+            || runSources.find(x => x.name === name) || {};
+  const errors   = rs.reduce((a,r)=>a+(r.errors||0),0);
+  const failed   = rs.reduce((a,r)=>a+((r.failedFiles&&r.failedFiles.length)||0),0);
+  const unstable = rs.reduce((a,r)=>a+((r.unstableFiles&&r.unstableFiles.length)||0),0);
+  const canceled = rs.every(r=>r.canceled);
+
+  let result, tags, priority='default';
+  if(canceled){ result='■ canceled — card incomplete'; tags='x'; priority='high'; }
+  else if(unstable>0){ result='⚠ suspect card — do not erase it'; tags='warning'; priority='high'; }
+  else if(errors||failed){ const n=errors||failed; result=`⚠ ${n} error${n>1?'s':''}`; tags='warning'; priority='high'; }
+  else if(r0.mode==='fast'){ result='✓ copied (no verification)'; tags='white_check_mark'; }
+  else { result='✓ all verified'; tags='white_check_mark'; }
+
+  const L = [];
+  // Who shot it.
+  { const l=[src.operator, src.camera].filter(Boolean).join(' · '); if(l) L.push(l); }
+  // What was moved, and how.
+  L.push(`${r0.totalFiles||0} files · ${fmtSize(r0.totalBytes||0)} · ${reportModeLabel(r0)}`);
+  // Where it came from — the mount point, which is not always the card label.
+  if(r0.sourcePath) L.push(`From: ${r0.sourcePath}`);
+  // Where it went. One line per destination, each with its own outcome, so a
+  // run that succeeded on the local disk and failed on the NAS says exactly that.
+  rs.forEach((r,j) => {
+    const dn = (runDests[j] && runDests[j].name) || (r.destPath||'').split(/[\\/]/).slice(-2)[0] || '—';
+    const bad = (r.errors||0) + ((r.failedFiles&&r.failedFiles.length)||0);
+    const mark = r.canceled ? '■' : bad ? `⚠ ${bad}` : '✓';
+    L.push(`→ ${dn}  ${mark}`);
+  });
+  // How long it took, phase by phase — the figure that tells you whether the
+  // next card will fit before the next setup.
+  const t = [`Copy ${ntfyDur(r0.copyMs)}`];
+  if(r0.verify1Ms>0) t.push(`Verify ${ntfyDur(r0.verify1Ms)}`);
+  if(r0.verify2Ms>0) t.push(`Source re-read ${ntfyDur(r0.verify2Ms)}`);
+  L.push(t.join(' · '));
+  L.push(`Total ${ntfyDur(r0.duration)}`);
+  L.push(result);
+  if(src.note) L.push('Note: '+src.note);
+
+  return { title:`#${num} - ${name}`, message:L.join('\n'), tags, priority };
+}
+
+async function ntfyPush(payload){
+  const full = { server:S.ntfyServer, topic:S.ntfyTopic, ...payload };
+  try{
+    const r = await window.ingesto.ntfySend(full);
+    if(!(r&&r.ok)){ await new Promise(z=>setTimeout(z,2000)); await window.ingesto.ntfySend(full); }
+  }catch(_){}
+}
+
+async function sendIngestNotification(R, base, run){
+  if(!S.ntfyEnabled || !S.ntfyTopic || !R || !R.length) return;
+  // Pushed one card at a time with a gap between them, long after the operator
+  // may have cleared the sources: without the snapshot, cards 2 and beyond lost
+  // their operator, camera and note, and the per-destination lines could name
+  // drives that had since been removed.
+  const runDests   = (run && run.dests)   || S.dests;
+  const runSources = (run && run.sources) || S.sources;
+
+  // Group by source PATH, not name: two cards both labelled "NO NAME" are two
+  // cards, and each deserves its own message.
+  const byCard = new Map();
+  R.forEach(r => { const k=r.sourcePath||r.sourceName||''; if(!byCard.has(k)) byCard.set(k,[]); byCard.get(k).push(r); });
+  const cards = [...byCard.values()];
+
+  if(R.every(r=>r.canceled) && cards.length>1){
+    await ntfyPush({ title:'INGESTO - Ingest canceled', message:'Ingest was canceled — no card is complete.', tags:'x', priority:'high' });
+    return;
+  }
+
+  const start = (base!=null) ? base : S.counter;
+  for(let i=0;i<cards.length;i++){
+    await ntfyPush(ntfyCard(cards[i], String(start+i).padStart(3,'0'), runSources, runDests));
+    // ntfy servers throttle a burst from one client; a short gap keeps the
+    // last card's message from being the one that gets dropped.
+    if(i < cards.length-1) await new Promise(z=>setTimeout(z,400));
+  }
+
+  // One closing line for the batch — only worth sending when there were several.
+  if(cards.length>1){
+    const er   = R.reduce((a,r)=>a+(r.errors||0),0);
+    const fl   = R.reduce((a,r)=>a+((r.failedFiles&&r.failedFiles.length)||0),0);
+    const uns  = R.reduce((a,r)=>a+((r.unstableFiles&&r.unstableFiles.length)||0),0);
+    // Count each card's volume once, not once per destination.
+    const bytes = cards.reduce((a,rs)=>a+(rs[0].totalBytes||0),0);
+    const dur   = cards.reduce((a,rs)=>a+(rs[0].duration||0),0);
+    const nd    = runDests.length;
+    const head  = `${cards.length} cards · ${fmtSize(bytes)} · ${nd} destination${nd>1?'s':''}\n${ntfyDur(dur)} total`;
+    if(er||fl||uns){
+      const bits=[]; const ne=er||fl; if(ne) bits.push(`${ne} error${ne>1?'s':''}`); if(uns) bits.push('suspect card');
+      await ntfyPush({ title:'INGESTO - Finished with issues', message:`${head}\n⚠ ${bits.join(', ')}`, tags:'warning', priority:'high' });
     } else {
-      title='INGESTO - Ingest complete';
-      msg=`${uniq.length} cards · ${fmtSize(bytes)} · all verified`; tags='white_check_mark';
+      await ntfyPush({ title:'INGESTO - Ingest complete', message:`${head}\n✓ all verified`, tags:'white_check_mark' });
     }
   }
-  const payload={server:S.ntfyServer,topic:S.ntfyTopic,title,message:msg,tags,priority};
-  try{
-    const r=await window.ingesto.ntfySend(payload);
-    if(!(r&&r.ok)){ await new Promise(z=>setTimeout(z,2000)); await window.ingesto.ntfySend(payload); }
-  }catch(_){}
 }
 // ── Eject source (summary, clean success only, removable-or-camera only) ──
 let _ejectPaths=[];
@@ -4074,7 +4940,11 @@ function fmtReportDate(iso){
     return `${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }catch(_){ return iso||'—'; }
 }
-async function updateReports(R, base){
+async function updateReports(R, base, run){
+  // The destinations and the card metadata of THE RUN, not whatever is on
+  // screen by the time this async function gets there.
+  const runDests   = (run && run.dests)   || S.dests;
+  const runSources = (run && run.sources) || S.sources;
   // Group by source PATH, not name: two cards labelled the same ("Untitled",
   // "NO NAME") used to collapse into one record, dropping the second card from
   // the client-facing report entirely.
@@ -4084,7 +4954,7 @@ async function updateReports(R, base){
   const isoNow=now.toISOString();
   const newRecs=uniq.map((sp,i)=>{
     const rs=R.filter(r=>(r.sourcePath||r.sourceName)===sp), r0=rs[0], name=r0.sourceName;
-    const src=S.sources.find(s=>s.path===sp)||S.sources.find(s=>s.name===name)||{};
+    const src=runSources.find(s=>s.path===sp)||runSources.find(s=>s.name===name)||{};
     const errors=rs.reduce((a,r)=>a+(r.errors||0),0);
     const failed=rs.reduce((a,r)=>a+((r.failedFiles&&r.failedFiles.length)||0),0);
     const unstable=rs.reduce((a,r)=>a+((r.unstableFiles&&r.unstableFiles.length)||0),0);
@@ -4108,7 +4978,7 @@ async function updateReports(R, base){
       // already in the report are carried over untouched.
       fileList:S.reportFull?(r0.fileList||[]).map(f=>({path:f.path,size:f.size,mtime:f.mtime})):[] };
   });
-  for(const d of S.dests){
+  for(const d of runDests){
     let created=isoNow, records=[], unreadable=false;
     try{
       const existing=await window.ingesto.reportRead(d.path);
@@ -4399,7 +5269,9 @@ function renderKioskCounter(){
 async function checkDiskSpace(){
   let need=0;
   for(const s of S.sources){
-    try{ const sz=await window.ingesto.folderSize(s.path); if(typeof sz==='number') need+=sz; }catch(_){}
+    // The size is measured here anyway: keep it, the queue ring weights each
+    // card by its bytes rather than treating them all as equal.
+    try{ const sz=await window.ingesto.folderSize(s.path); if(typeof sz==='number'){ need+=sz; s._bytes=sz; } }catch(_){}
   }
   if(need<=0) return {ok:true};
   for(const d of S.dests){
@@ -4533,10 +5405,17 @@ async function kioskStart(){
 }
 function kioskProgress(d){
   document.getElementById('kiosk-run-ov').classList.add('on');
-  const three=(S.mode==='pro'&&S.proDoubleRead), hasV=S.mode!=='fast';
+  // The ring follows the WHOLE queue, like the one in the header. It used to be
+  // computed from the current card only: with several cards it filled up, went
+  // back to zero, filled up again — and someone watching from across the room
+  // read that as the ingest restarting.
   let f;
-  if(three) f = d.phase==='verify' ? (1/3+d.progress*2/3) : d.progress/3;
-  else      f = d.phase==='verify' ? (hasV?0.5+d.progress*0.5:1) : (hasV?d.progress*0.5:d.progress);
+  if(S.tf){ f = tfGlobal().frac; }
+  else {
+    const three=(S.mode==='pro'&&S.proDoubleRead), hasV=S.mode!=='fast';
+    if(three) f = d.phase==='verify' ? (1/3+d.progress*2/3) : d.progress/3;
+    else      f = d.phase==='verify' ? (hasV?0.5+d.progress*0.5:1) : (hasV?d.progress*0.5:d.progress);
+  }
   const phase = d.phase==='verify' ? (d.pass==='source'?'Double source read…':'Verifying…') : 'Copying…';
   const phaseCol = d.phase==='verify' ? (d.pass==='source'?'var(--pro)':'var(--blue)') : 'var(--green)';
   { const kp=document.getElementById('krun-phase'); kp.textContent=phase; kp.style.color=phaseCol; }
@@ -4545,6 +5424,13 @@ function kioskProgress(d){
   ring.style.strokeDashoffset = (RING_C * (1 - f)).toFixed(1);
   ring.style.stroke = phaseCol;
   document.getElementById('krun-pct').textContent=(f*100).toFixed(0)+'%';
+  // Which card the figure covers, so the ring is never read as one card's own.
+  { const el=document.getElementById('krun-card');
+    if(el){
+      const n = S.tf ? S.tf.cards.length : (S.sources.length||1);
+      const i = S.tf ? S.tf.cards.findIndex(c => d.sourcePath ? c.path===d.sourcePath : c.name===d.sourceName) : -1;
+      el.textContent = (n>1 && i>=0) ? `Card ${i+1} of ${n} · ${d.sourceName||''}` : (d.sourceName||'');
+    } }
   document.getElementById('krun-spd').textContent = d.speed>0 ? fmtSpd(d.speed) : '—';
   document.getElementById('krun-eta').textContent = d.speed>0 ? fmtEta(d.eta) : '—';
   document.getElementById('krun-file').textContent=d.currentFile||'';

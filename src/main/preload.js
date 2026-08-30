@@ -43,6 +43,7 @@ const ingestoAPI = {
   ntfySend:             (opts)          => ipcRenderer.invoke('ntfy-send', opts),
   diskFree:             (p)             => ipcRenderer.invoke('disk-free', p),
   folderSize:           (p)             => ipcRenderer.invoke('folder-size', p),
+  checkPaths:           (entries)       => ipcRenderer.invoke('check-paths', entries),
   reportRead:           (p)             => ipcRenderer.invoke('report-read', p),
   reportWrite:          (p,html,keep)   => ipcRenderer.invoke('report-write', p, html, keep===true),
   reportOpen:           (p)             => ipcRenderer.invoke('report-open', p),

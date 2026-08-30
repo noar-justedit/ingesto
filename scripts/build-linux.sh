@@ -119,9 +119,11 @@ fi
 echo "→ Installing dependencies"
 npm install
 
-# Start from a clean dist/, so a failed build cannot leave the previous
-# version's packages behind and have them listed as this build's output.
-rm -rf dist
+# Start from a clean slate for THIS platform, so a failed build cannot leave
+# the previous version's packages behind and have them listed as this build's
+# output. Only the Linux artefacts go — removing the whole dist/ also destroyed
+# a Mac or Windows build sitting beside them.
+rm -rf dist/*.AppImage dist/*.deb dist/linux-unpacked dist/linux-* dist/latest-linux.yml
 
 echo "→ Building AppImage + deb"
 npx electron-builder --linux AppImage deb
@@ -130,8 +132,15 @@ npx electron-builder --linux AppImage deb
 # verification. If packaging drops it, koffi reports "unavailable", verification
 # silently reads from memory instead of the medium, and NOTHING says so at
 # runtime. Refuse to claim success without it.
+# Search only this platform's own output: since 2.5.0 a Mac or Windows build
+# may sit beside it in dist/, and those packages bundle every koffi triplet —
+# finding linux_x64 in one of them would pass a Linux build that lost it.
+if [ ! -d dist/linux-unpacked ]; then
+  echo "✗ Packaging problem: no packaged app found in dist/linux-unpacked"
+  exit 1
+fi
 for TRIPLET in linux_x64 musl_x64; do
-  if [ -z "$(find dist -path "*app.asar.unpacked/node_modules/koffi/build/koffi/$TRIPLET/koffi.node" 2>/dev/null | head -1)" ]; then
+  if [ -z "$(find dist/linux-unpacked -path "*app.asar.unpacked/node_modules/koffi/build/koffi/$TRIPLET/koffi.node" 2>/dev/null | head -1)" ]; then
     echo "✗ Packaging problem: the cache-control binary (koffi, $TRIPLET) is missing"
     echo "  from the packaged app. Verification would silently stop reading the"
     echo "  medium and read from memory instead. Check asarUnpack/files for linux"
