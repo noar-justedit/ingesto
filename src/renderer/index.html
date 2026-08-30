@@ -3659,7 +3659,13 @@ function tfProgress(d){
   // to whatever is being redone right now. The figures fixed at the start are
   // the ones that describe the card.
   if(!S.tf.retry){
-    if(d.totalFiles) c.files = d.totalFiles;
+    // ONLY during the copy. In the verify phase the engine's `totalFiles` is
+    // the number of verification STEPS — files × destinations, plus the source
+    // pass — because that is what its own progress counts. Adopting it made
+    // the card heading say 168 files while copying and 336 the moment
+    // verification started (504 on three destinations): a figure that
+    // describes the work, printed on the line that describes the card.
+    if(d.phase === 'copy' && d.totalFiles) c.files = d.totalFiles;
     // The displayed size follows what is really being copied (a filter or
     // "new files only" makes it smaller than the card); the RING WEIGHT does
     // not move, or the total would shrink under a run in progress and the
