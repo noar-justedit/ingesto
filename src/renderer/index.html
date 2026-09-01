@@ -1038,7 +1038,7 @@ value="1" oninput="onCounterInput()">
      belongs next to the queue it describes, not two panes away. -->
 <div id="tf-stats">
 <div class="sbox sbox-file"><div class="slabel" id="h-title">Copying</div><div class="sval" id="h-file">—</div></div>
-<div class="sbox"><div class="slabel">Files Remaining</div><div class="sval" id="h-files">—</div></div>
+<div class="sbox"><div class="slabel" id="h-files-label">Files Remaining</div><div class="sval" id="h-files">—</div></div>
 <div class="sbox sbox-size"><div class="slabel">Datas Remaining</div><div class="sval" id="h-size">—</div></div>
 <div class="sbox sbox-spd">
 <svg class="tf-spark" id="h-spark" viewBox="0 0 100 28" preserveAspectRatio="none"></svg>
@@ -2180,7 +2180,7 @@ function addToZone(z,entry){
   // would sit in the column looking loaded, never be copied, and throw the
   // "cards left" count off. Refusing is the only honest answer until the job
   // queue exists.
-  if(S.copying){
+  if(S.copying || S._starting){
     showToast(z==='src'
       ? 'An ingest is running — this card was not added. Load it when the current ingest completes.'
       : 'An ingest is running — this destination was not added. Add it when the current ingest completes.',
@@ -2289,7 +2289,7 @@ function removeFromZone(z,p){
   // Symmetrical with addToZone: the engine works from the list frozen at
   // START, so removing an entry now would only desync what is on screen from
   // what is actually being written.
-  if(S.copying){
+  if(S.copying || S._starting){
     showToast(z==='src'
       ? 'An ingest is running — this card cannot be removed until it completes.'
       : 'An ingest is running — this destination cannot be removed until it completes.',
@@ -3136,11 +3136,19 @@ function updateBtn(){
 function folderKey(name){
   let n = String(name || '');
   try { n = n.normalize('NFC'); } catch(_) {}
-  return n.trim().toLowerCase();
+  // Windows silently drops trailing dots and spaces from a directory name, so
+  // "REEL1." and "REEL1" are ONE folder there. Fold them here too — erring on
+  // the side of refusing is the right direction for a guard against overwrite.
+  return n.trim().replace(/[. ]+$/,'').toLowerCase();
 }
 
-function folderNameFromTemplate(src, i){
-  const now=new Date(),p=x=>String(x).padStart(2,'0');
+// `refDate` lets one preflight pass resolve EVERY card's name from the same
+// clock reading. Without it, a loop crossing a minute (or, with {SS}, a second)
+// boundary gave two homonymous cards different keys — and the collision guard
+// waved through a run that the engine, resolving names its own way, could still
+// write into a single folder.
+function folderNameFromTemplate(src, i, refDate){
+  const now=refDate||new Date(),p=x=>String(x).padStart(2,'0');
   const cam = (src.operator || document.getElementById('meta-cam')?.value   || '').trim();
   const mdl = (src.camera   || document.getElementById('meta-model')?.value || '').trim();
   const cnt = String((S.counter||1)+i).padStart(3,'0');
@@ -3183,9 +3191,11 @@ function pathContains(parent, child){
 }
 // Returns an error message, or null when everything is fine.
 function preflightIngest(){
+  // One clock reading for the whole preflight — see folderNameFromTemplate.
+  const pfNow=new Date();
   // 1. Folder-name template
   for(let i=0;i<S.sources.length;i++){
-    const name=folderNameFromTemplate(S.sources[i], i);
+    const name=folderNameFromTemplate(S.sources[i], i, pfNow);
     if(!isSafeFolderName(name)){
       return { title:'Invalid folder name',
         body:`The folder-name template produces ${name?`"<b>${esc(name)}</b>"`:'<b>an empty name</b>'} for card `+
@@ -3216,7 +3226,7 @@ function preflightIngest(){
   //    are called.
   { const byKey = new Map();
     for(let i=0;i<S.sources.length;i++){
-      const nm = folderNameFromTemplate(S.sources[i], i);
+      const nm = folderNameFromTemplate(S.sources[i], i, pfNow);
       const k  = folderKey(nm);
       if(byKey.has(k)){
         const first = S.sources[byKey.get(k)], second = S.sources[i];
@@ -3312,7 +3322,19 @@ function showBlockingError(title, bodyHtml){
 }
 
 async function startCopy(){
-  if(S.copying)return;
+  // `_starting` covers the window this function opens BEFORE `S.copying` is
+  // set: the volume check, the counter scans and the disk-space dialog are all
+  // awaited, and during those seconds the interface was still fully live. A
+  // second press of Start slipped past the `S.copying` test and launched a
+  // parallel ingest into the same folders; a card dropped in during the scan
+  // joined the run without ever being seen by the preflight. Everything that
+  // refuses input during an ingest now refuses it from the first click.
+  if(S.copying || S._starting)return;
+  S._starting=true;
+  // try/finally spans the whole run: whatever path leaves this function —
+  // preflight refusal, a rejected engine call, or normal completion — the
+  // flag cannot stay stuck and lock the Start button for ever.
+  try{
   S._batchSuppress=false;   // re-arm: a batch may have left it set
   S.recopyCanceled=false;   // and so may a cancel from the previous run
 
@@ -3360,6 +3382,15 @@ async function startCopy(){
       if(!go) return;   // user chose not to force
     }
   } catch(e){ console.warn('Disk space check failed:', e); }
+
+  // The checks above are awaited, and the template panel stayed editable while
+  // they ran: a template emptied of {counter} during the counter scan would
+  // have been captured into the frozen run below, validated against a version
+  // of itself that no longer exists. One last synchronous preflight on the
+  // final state closes that window — it costs nothing and reads what will
+  // actually be frozen.
+  { const problem=preflightIngest();
+    if(problem){ showBlockingError(problem.title, problem.body); return; } }
 
   S.copying=true;updateBtn();
   window.ingesto.setPowerBlock(true);
@@ -3476,6 +3507,7 @@ async function startCopy(){
     }
     onComplete(batchResults);   // the single, real completion for the whole batch
   }
+  } finally { S._starting=false; }
 }
 
 async function doCancelCopy(){
@@ -4097,6 +4129,12 @@ function onProgress(d){
   { const t=document.getElementById('h-title');
     if(t){ t.textContent = phase; t.style.color = col; } }
   txt('h-file', d.currentFile || '—');
+  // During verification the engine counts CHECKS — one per file per
+  // destination, plus the source pass — because that is what its progress
+  // measures. Labelling that figure "Files" made a 168-file card read as 504
+  // files; the card heading now keeps the card's own count (2.5.4), and this
+  // tile says what it is actually counting.
+  txt('h-files-label', d.phase === 'verify' ? 'Checks Remaining' : 'Files Remaining');
   set('h-files', `${d.remainingFiles} <span class="stot">(${d.totalFiles})</span>`);
   set('h-size',  fmtSizePair(d.totalBytes-d.copiedBytes, d.totalBytes));
   txt('h-spd', fmtSpd(d.speed));

@@ -25,6 +25,14 @@ files:
   - build-resources/*.plist
   - "LICENSE"
 
+# Apple notarization, run as a hook rather than through electron-builder's own
+# `notarize` option, so that the ticket is stapled INTO THE APP before the disk
+# image is built around it. An app carrying its own ticket opens on a machine
+# that has never been online — the situation on a shoot. The hook is a no-op on
+# a machine with no Developer ID certificate, so building from source without an
+# Apple account still works. See scripts/notarize.js.
+afterSign: scripts/notarize.js
+
 mac:
   # Keep only the koffi binary this platform can run. koffi ships one for
   # 16 platforms (~62 MB) and they sit OUTSIDE the asar, so compression
@@ -46,6 +54,14 @@ mac:
         - arm64
 
 dmg:
+  # Sign the disk image itself, not only the app inside it. Apple recommends it
+  # for direct distribution, and it is what lets Gatekeeper name the publisher
+  # before the image is even mounted. electron-builder leaves this OFF by
+  # default (dmg-builder only calls signDmg when sign === true), which is why a
+  # perfectly notarized 2.5.5 image was still reported as "no usable signature".
+  # Signed here, notarized and stapled afterwards by scripts/build-mac.sh —
+  # that is the order Apple's own workflow uses.
+  sign: true
   title: "ingesto"
   writeUpdateInfo: false
   icon: null

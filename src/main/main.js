@@ -1807,6 +1807,21 @@ async function performCopyMulti(source, destinations, options, onProgress) {
   { const why = emptyRunReason(seenFiles, skippedAlready, totalFiles);
     if (why) for (const r of R) { r.errors++; r.errorList.push({ file:'(card)', error: why, phase:'scan' }); } }
 
+  // A card whose files were ALL legitimately skipped as already ingested does
+  // no work at all — and therefore used to emit no progress event whatsoever.
+  // The queue view marks a card it never heard from as an ERROR (that rule is
+  // what keeps a card the engine refused from being painted verified), so a
+  // perfectly healthy "nothing new on this card" run showed up in red while
+  // the summary called it a success. One event saying "seen, and complete" is
+  // all the view needs to tell those two silences apart.
+  if (totalFiles === 0 && skippedAlready > 0 && scanErrors.length === 0) {
+    try {
+      onProgress({ sourceName: source.name, sourcePath: source.path, currentFile: '',
+        phase: 'copy', destIndex: 0, copiedFiles: 0, totalFiles: 0, remainingFiles: 0,
+        copiedBytes: 0, totalBytes: 0, progress: 1, speed: 0, eta: 0, errors: 0 });
+    } catch (_) {}
+  }
+
   // Surface the scan failures on every destination result: they must count as
   // errors so the run can never come back success:true, and so the sentinel is
   // not written on a card whose content was only partially seen.

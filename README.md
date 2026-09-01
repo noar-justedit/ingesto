@@ -48,6 +48,13 @@ macOS · Windows · Linux.
 
 ## Quick install (no coding knowledge required)
 
+**The easiest way:** download the ready-made installer from the
+[Releases page](https://github.com/noar-justedit/ingesto/releases/latest).
+Since v2.5.5 the macOS app is **signed and notarized by Apple** — it opens with
+a normal double-click, no security warning, no workaround.
+
+Prefer building it yourself? Follow the steps below.
+
 ### Step 1 — Install Node.js
 1. Open your browser and go to **https://nodejs.org**
 2. Click the green **"LTS"** button (recommended version)
@@ -78,8 +85,10 @@ the Mac app and the Windows installer one after the other and keep both.
 ### Step 4 — Install the app
 1. In the `dist/` folder, open the `.dmg` file
 2. Drag **ingesto** into your **Applications** folder
-3. **First launch**: right-click the app → **"Open"**
-   (macOS will otherwise block it, since it isn't signed through the App Store)
+3. A build you made yourself is unsigned (signing requires an Apple Developer
+   certificate). If macOS ever blocks it on first launch, right-click the app →
+   **"Open"**. The installers on the Releases page don't have this issue — they
+   are signed and notarized.
 
 ---
 
@@ -286,8 +295,10 @@ ingesto/
 **"ingesto can't be opened because Apple cannot check it for malicious software"
 / "...because the developer cannot be verified" (macOS, first launch)**
 
-ingesto isn't signed with an Apple Developer certificate, so macOS blocks it
-on first launch. Two ways to fix it, either works — you only need to do this once:
+You should not see this with a release from v2.5.5 onward — those are signed
+and notarized, and open normally. This message means you are running an older
+release, or a copy you built yourself, which is unsigned. Two ways to fix it,
+either works — you only need to do this once:
 
 - **Right-click method (easiest)**: right-click (or Control+click) ingesto in
   Applications → **Open** → **Open** again in the dialog that appears.
