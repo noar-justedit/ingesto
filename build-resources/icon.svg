@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  syncto — app icon
+  Artwork supplied by Just Edit (syncto.svg, 24x24 grid).
+  Scaled x38.169 and centred on the 1024 canvas so the shape sits inside the
+  macOS safe area (840px wide). Styles are inlined rather than in a <style>
+  block: qlmanage / rsvg / electron-builder handle attributes reliably, CSS
+  classes not always.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="folder" x1="1" y1="12" x2="23" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5936d8"/>
+      <stop offset="1" stop-color="#3b2491"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(53.98,51.97) scale(38.169)">
+    <path fill="url(#folder)"
+          d="M20.8,21.4c1.2,0,2.2-1,2.2-2.2v-11c0-1.2-1-2.2-2.2-2.2h-8.7c-.8,0-1.5-.4-1.9-1l-.9-1.3c-.4-.6-1.1-1-1.8-1H3.2c-1.2,0-2.2,1-2.2,2.2v14.3c0,1.2,1,2.2,2.2,2.2h17.7Z"/>
+    <g fill="none" stroke="#ff0062" stroke-width="1.5"
+       stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6.3,13.6c0-3.2,2.6-5.7,5.7-5.7,1.6,0,3.1.6,4.3,1.7l1.4,1.4"/>
+      <path d="M17.7,7.8v3.2h-3.2"/>
+      <path d="M17.7,13.6c0,3.2-2.6,5.7-5.7,5.7h0c-1.6,0-3.1-.6-4.3-1.7l-1.4-1.4"/>
+      <path d="M9.5,16.1h-3.2v3.2"/>
+    </g>
+  </g>
+</svg>

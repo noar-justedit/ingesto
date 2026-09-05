@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# ingesto — Professional Camera Media Ingest
+# syncto — Folder comparison and synchronization
 # Copyright (C) 2026 Just Edit (Arnaud Augst)
 #
 # This program is free software: you can redistribute it and/or modify
@@ -17,22 +17,17 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 
-# ingesto — Quick dev preview (no build needed)
-# Run this to preview the app in development mode
+# syncto — Quick dev preview (no build needed). Double-clickable.
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR/.."
+set -e
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-echo "🎬 Starting ingesto in dev mode…"
-
-if ! command -v node &> /dev/null; then
-  echo "❌ Node.js not found! Please install from https://nodejs.org"
-  exit 1
+if ! command -v node &>/dev/null; then
+  echo "Node.js not found. Install it from https://nodejs.org"
+  read -p "Press Enter to exit..."; exit 1
 fi
-
 if [ ! -d "node_modules" ]; then
-  echo "📦 Installing dependencies first…"
+  echo "First run — downloading dependencies…"
   npm install
 fi
-
-npm start
+npm run dev

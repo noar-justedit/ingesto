@@ -1,68 +1,67 @@
-appId: fr.just-edit.ingesto
-productName: ingesto
+appId: fr.just-edit.syncto
+productName: syncto
 copyright: "Copyright © 2026 Just Edit"
 compression: maximum
 asar: true
-# koffi ships a native .node binary that must live outside the asar archive to
-# be loadable at runtime. It also ships one for SIXTEEN platforms in the same
-# package (~62 MB), and none of them can be stripped by compression because they
-# live outside the archive — so each platform below keeps only the binary it can
-# actually run and drops the rest.
+
+# syncto's own code compiles nothing: hash-wasm is WebAssembly and ssh2 is
+# JavaScript. But ssh2 declares TWO optional native modules — cpu-features and
+# nan — and npm installs them whenever the machine happens to have a compiler,
+# which every Mac with Xcode command line tools does.
 #
-# GET THIS WRONG AND CACHE CONTROL FAILS SILENTLY: koffi falls back to "not
-# available", verification quietly stops bypassing the OS cache, and nothing
-# says so at runtime. Every build script therefore checks the packaged app for
-# the expected koffi.node and REFUSES to report success if it is missing.
-asarUnpack:
-  - "**/node_modules/koffi/**"
+# That is enough to break the Windows build from a Mac: electron-builder runs
+# @electron/rebuild before packaging, @electron/rebuild finds cpu-features and
+# tries to rebuild it for win32-x64, and node-gyp cannot cross-compile:
+#
+#   ⨯ node-gyp does not support cross-compiling native modules from source.
+#
+# Nothing needs rebuilding here, so the pass is turned off, and the two modules
+# are kept out of the package below — otherwise a macOS .node binary would ship
+# inside a Windows application. ssh2 loads perfectly without them (it wraps the
+# require in a try/catch and falls back to its JavaScript implementation); it
+# only loses a CPU-feature probe used to pick an accelerated cipher.
+npmRebuild: false
+
 directories:
   buildResources: build-resources
 files:
   - src/**/*
   - package.json
+  - version.json
   - build-resources/*.ico
   - build-resources/*.icns
   - build-resources/*.plist
   - "LICENSE"
-
-# Apple notarization, run as a hook rather than through electron-builder's own
-# `notarize` option, so that the ticket is stapled INTO THE APP before the disk
-# image is built around it. An app carrying its own ticket opens on a machine
-# that has never been online — the situation on a shoot. The hook is a no-op on
-# a machine with no Developer ID certificate, so building from source without an
-# Apple account still works. See scripts/notarize.js.
-afterSign: scripts/notarize.js
+  - "!node_modules/cpu-features/**"
+  - "!node_modules/nan/**"
 
 mac:
-  # Keep only the koffi binary this platform can run. koffi ships one for
-  # 16 platforms (~62 MB) and they sit OUTSIDE the asar, so compression
-  # cannot help. Written as an EXCLUSION and nothing else: for files under
-  # node_modules, electron-builder keeps only the '!' patterns and silently
-  # discards positive ones, so an exclude-all-then-re-include pair dropped
-  # every binary — including the right one — and broke the build outright.
-  files:
-    - "!**/node_modules/koffi/build/koffi/!(darwin_arm64)/**"
-  category: public.app-category.photography
+  category: public.app-category.utilities
   icon: build-resources/icon.icns
+  darkModeSupport: true
+  minimumSystemVersion: "11.0"
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build-resources/entitlements.mac.plist
   entitlementsInherit: build-resources/entitlements.mac.plist
+  # macOS asks the user before letting an app read a card, a NAS share or the
+  # Desktop — and it shows THIS sentence in the prompt. Without one it shows a
+  # blank, alarming dialog, and on some releases refuses outright. A folder
+  # synchronizer lives on removable and network volumes, so every location it
+  # can legitimately be pointed at gets a line that says why.
+  extendInfo:
+    NSRemovableVolumesUsageDescription: "syncto needs this to compare and copy files on cards and external drives."
+    NSNetworkVolumesUsageDescription: "syncto needs this to compare and copy files on a NAS or a network share."
+    NSDesktopFolderUsageDescription: "syncto needs this to synchronize a folder on your Desktop."
+    NSDocumentsFolderUsageDescription: "syncto needs this to synchronize a folder in your Documents, and to write its reports there."
+    NSDownloadsFolderUsageDescription: "syncto needs this to synchronize a folder in your Downloads."
   target:
     - target: dmg
       arch:
         - arm64
 
 dmg:
-  # Sign the disk image itself, not only the app inside it. Apple recommends it
-  # for direct distribution, and it is what lets Gatekeeper name the publisher
-  # before the image is even mounted. electron-builder leaves this OFF by
-  # default (dmg-builder only calls signDmg when sign === true), which is why a
-  # perfectly notarized 2.5.5 image was still reported as "no usable signature".
-  # Signed here, notarized and stapled afterwards by scripts/build-mac.sh —
-  # that is the order Apple's own workflow uses.
-  sign: true
-  title: "ingesto"
+  title: "syncto ${version}"
   writeUpdateInfo: false
   icon: null
   window:
@@ -80,62 +79,16 @@ dmg:
       y: 320
       type: file
       path: "LICENSE"
-
-linux:
-  # Keep only the koffi binary this platform can run. koffi ships one for
-  # 16 platforms (~62 MB) and they sit OUTSIDE the asar, so compression
-  # cannot help. Written as an EXCLUSION and nothing else: for files under
-  # node_modules, electron-builder keeps only the '!' patterns and silently
-  # discards positive ones, so an exclude-all-then-re-include pair dropped
-  # every binary — including the right one — and broke the build outright.
-  files:
-    - "!**/node_modules/koffi/build/koffi/!(linux_x64|musl_x64)/**"
-  icon: build-resources/icons
-  category: AudioVideo;Video;
-  maintainer: "Just Edit <contact@just-edit.fr>"
-  vendor: "Just Edit"
-  synopsis: "Professional camera media ingest"
-  description: "Checksum-verified offload of camera cards to one or more destinations, with MHL manifests, ingest reports and card tracking."
-  desktop:
-    entry:
-      Name: ingesto
-      Terminal: "false"
-      Type: Application
-      Categories: "AudioVideo;Video;Utility;"
-  target:
-    - target: AppImage
-      arch:
-        - x64
-    - target: deb
-      arch:
-        - x64
-
-deb:
-  depends:
-    - libgtk-3-0
-    - libnotify4
-    - libnss3
-    - libxss1
-    - libxtst6
-    - xdg-utils
-    - libatspi2.0-0
-    - libsecret-1-0
-    - util-linux
-    - udisks2
+  artifactName: "syncto-${version}-mac-${arch}.dmg"
 
 win:
-  # Keep only the koffi binary this platform can run. koffi ships one for
-  # 16 platforms (~62 MB) and they sit OUTSIDE the asar, so compression
-  # cannot help. Written as an EXCLUSION and nothing else: for files under
-  # node_modules, electron-builder keeps only the '!' patterns and silently
-  # discards positive ones, so an exclude-all-then-re-include pair dropped
-  # every binary — including the right one — and broke the build outright.
-  files:
-    - "!**/node_modules/koffi/build/koffi/!(win32_x64)/**"
   icon: build-resources/icon.ico
   requestedExecutionLevel: asInvoker
   target:
     - target: nsis
+      arch:
+        - x64
+    - target: zip
       arch:
         - x64
 
@@ -144,10 +97,19 @@ nsis:
   perMachine: false
   allowElevation: false
   allowToChangeInstallationDirectory: true
-  license: build-resources/license_en.txt
-  installerLanguages:
-    - en_US
-    - fr_FR
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: ingesto
+  shortcutName: syncto
+  artifactName: "syncto-Setup-${version}.exe"
+
+linux:
+  icon: build-resources/icons
+  category: Utility;
+  maintainer: "Just Edit <contact@just-edit.fr>"
+  vendor: "Just Edit"
+  synopsis: "Folder comparison and synchronization"
+  description: "Compare and synchronize folders with checksum-verified copies, versioning and detailed reports."
+  target:
+    - target: AppImage
+      arch:
+        - x64

@@ -1,112 +1,109 @@
-// ingesto — Professional Camera Media Ingest
-// Copyright (C) 2026 Just Edit (Arnaud Augst)
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
+/*
+ * syncto — Folder comparison and synchronization
+ * Copyright (C) 2026 Just Edit (Arnaud Augst)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
-const ingestoAPI = {
-  getVolumes:           ()              => ipcRenderer.invoke('get-volumes'),
-  browseFolder:         ()              => ipcRenderer.invoke('browse-folder'),
-  exportPresets:        (data)          => ipcRenderer.invoke('export-presets', data),
-  importPresets:        ()              => ipcRenderer.invoke('import-presets'),
-  pauseCopy:            ()              => ipcRenderer.invoke('pause-copy'),
-  resumeCopy:           ()              => ipcRenderer.invoke('resume-copy'),
-  onPauseHeld: (cb) => {
-    ipcRenderer.on('pause-held', () => cb());
-    return () => ipcRenderer.removeAllListeners('pause-held');
-  },
-  exportSettings:       (data)          => ipcRenderer.invoke('export-settings', data),
-  importSettings:       ()              => ipcRenderer.invoke('import-settings'),
-  resolvePath:          (p)             => ipcRenderer.invoke('resolve-path', p),
-  startCopy:            (args)          => ipcRenderer.invoke('start-copy', args),
-  cancelCopy:           ()              => ipcRenderer.invoke('cancel-copy'),
-  recopyFailed:         (args)          => ipcRenderer.invoke('recopy-failed', args),
-  openExternal:         (url)           => ipcRenderer.invoke('open-external', url),
-  revealPath:           (p)             => ipcRenderer.invoke('reveal-path', p),
-  ejectVolume:          (p)             => ipcRenderer.invoke('eject-volume', p),
-  redoDoubleRead:       (args)          => ipcRenderer.invoke('redo-double-read', args),
-  isRemovable:          (p)             => ipcRenderer.invoke('is-removable', p),
-  setPowerBlock:        (on)            => ipcRenderer.invoke('set-power-block', on),
-  ntfySend:             (opts)          => ipcRenderer.invoke('ntfy-send', opts),
-  diskFree:             (p)             => ipcRenderer.invoke('disk-free', p),
-  folderSize:           (p)             => ipcRenderer.invoke('folder-size', p),
-  checkPaths:           (entries)       => ipcRenderer.invoke('check-paths', entries),
-  reportRead:           (p)             => ipcRenderer.invoke('report-read', p),
-  reportWrite:          (p,html,keep)   => ipcRenderer.invoke('report-write', p, html, keep===true),
-  reportOpen:           (p)             => ipcRenderer.invoke('report-open', p),
-  reportWriteNamed:     (p,name,c)      => ipcRenderer.invoke('report-write-named', p, name, c),
-  runHook:              (cmd)           => ipcRenderer.invoke('run-hook', cmd),
-  getVersion:           ()              => ipcRenderer.invoke('get-version'),
-  loadPrefs:            ()              => ipcRenderer.invoke('load-prefs'),
-  savePrefs:            (p)             => ipcRenderer.invoke('save-prefs', p),
-  scanDestCounter:      (paths, tpl)    => ipcRenderer.invoke('scan-dest-counter', paths, tpl),
-  scanDestCounterFull:  (paths, tpl)    => ipcRenderer.invoke('scan-dest-counter-full', paths, tpl),
-  checkCounterCollision:(paths, counter, tpl)=> ipcRenderer.invoke('check-counter-collision', paths, counter, tpl),
-  detectCamera:         (p)             => ipcRenderer.invoke('detect-camera', p),
-  inspectCard:          (p, probeWrite) => ipcRenderer.invoke('inspect-card', p, probeWrite),
-  verifyFolder:         (p)             => ipcRenderer.invoke('verify-folder', p),
-  cancelVerify:         ()              => ipcRenderer.invoke('cancel-verify'),
-  onVerifyProgress: (cb) => {
-    ipcRenderer.on('verify-progress', (_, d) => cb(d));
-    return () => ipcRenderer.removeAllListeners('verify-progress');
-  },
-  onCopyProgress: (cb) => {
-    ipcRenderer.on('copy-progress', (_, d) => cb(d));
-    return () => ipcRenderer.removeAllListeners('copy-progress');
-  },
-  onCopyComplete: (cb) => {
-    ipcRenderer.on('copy-complete', (_, d) => cb(d));
-    return () => ipcRenderer.removeAllListeners('copy-complete');
-  },
-  onFinderDrop: (cb) => {
-    ipcRenderer.on('finder-drop', (_, p, clientX) => cb(p, clientX));
-    return () => ipcRenderer.removeAllListeners('finder-drop');
-  },
-  onVolumesChanged: (cb) => {
-    ipcRenderer.on('volumes-changed', () => cb());
-    return () => ipcRenderer.removeAllListeners('volumes-changed');
-  },
-  onUpdateAvailable: (cb) => {
-    ipcRenderer.on('update-available', (_, d) => cb(d));
-    return () => ipcRenderer.removeAllListeners('update-available');
-  },
-  platform: process.platform,
+const api = {
+  platform  : process.platform,
+  getVersion: ()        => ipcRenderer.invoke('get-version'),
+
+  loadPrefs : ()        => ipcRenderer.invoke('load-prefs'),
+  savePrefs : (p)       => ipcRenderer.invoke('save-prefs', p),
+
+  browseFolder : (title, startIn) => ipcRenderer.invoke('browse-folder', title, startIn),
+  checkJobPaths: (job)   => ipcRenderer.invoke('check-job-paths', job),
+  clearLocks   : (job, items) => ipcRenderer.invoke('clear-locks', job, items),
+  revealPath   : (p)    => ipcRenderer.invoke('reveal-path', p),
+  openExternal : (u)    => ipcRenderer.invoke('open-external', u),
+  openPath     : (p)    => ipcRenderer.invoke('open-path', p),
+  copyText     : (t)    => ipcRenderer.invoke('copy-text', t),
+  diskFree     : (p)    => ipcRenderer.invoke('disk-free', p),
+  folderExists : (p)    => ipcRenderer.invoke('folder-exists', p),
+
+  jobNew     : ()        => ipcRenderer.invoke('job-new'),
+  jobOpen    : ()        => ipcRenderer.invoke('job-open'),
+  jobOpenPath: (p)       => ipcRenderer.invoke('job-open-path', p),
+  jobSave    : (job, as) => ipcRenderer.invoke('job-save', job, as),
+  jobClose   : (p)       => ipcRenderer.invoke('job-close', p),
+  getOverview: (view)    => ipcRenderer.invoke('get-overview', view),
+  revealNode : (idx, side)=> ipcRenderer.invoke('reveal-node', idx, side),
+  preflight  : (job)     => ipcRenderer.invoke('preflight', job),
+  takeMigrationNotes: () => ipcRenderer.invoke('take-migration-notes'),
+
+  // After the run, and phone notifications. `ntfyGet` never returns the
+  // access token — only whether one is stored.
+  afterSync : (action)      => ipcRenderer.invoke('after-sync', action),
+  ntfyGet   : ()            => ipcRenderer.invoke('ntfy-get'),
+  ntfySave  : (patch)       => ipcRenderer.invoke('ntfy-save', patch),
+  ntfyTest  : (patch)       => ipcRenderer.invoke('ntfy-test', patch),
+  ntfyRun   : (res, name)   => ipcRenderer.invoke('ntfy-run', res, name),
+
+  // Connect-to-a-server window. No method here ever returns a password: the
+  // renderer learns that one is remembered, never what it is.
+  serverListSaved : ()            => ipcRenderer.invoke('server-list-saved'),
+  serverConnect   : (conn)        => ipcRenderer.invoke('server-connect', conn),
+  serverList      : (dir)         => ipcRenderer.invoke('server-list', dir),
+  serverMkdir     : (dir, name)   => ipcRenderer.invoke('server-mkdir', dir, name),
+  serverSave      : (conn)        => ipcRenderer.invoke('server-save', conn),
+  serverForget    : (id)          => ipcRenderer.invoke('server-forget', id),
+  serverDisconnect: ()            => ipcRenderer.invoke('server-disconnect'),
+  serverUrl       : (conn, folder)=> ipcRenderer.invoke('server-url', conn, folder),
+  browseKey       : ()            => ipcRenderer.invoke('browse-key'),
+
+  compare      : (job)  => ipcRenderer.invoke('compare', job),
+  compareCancel: ()     => ipcRenderer.invoke('compare-cancel'),
+  getRows      : (o,l,v)=> ipcRenderer.invoke('get-rows', o, l, v),
+  setDirection : (i,d)  => ipcRenderer.invoke('set-direction', i, d),
+  setActive    : (i,a)  => ipcRenderer.invoke('set-active', i, a),
+  toggleActive : (i)    => ipcRenderer.invoke('toggle-active', i),
+  invertAll    : ()     => ipcRenderer.invoke('invert-all'),
+  visibleIndices:(v)    => ipcRenderer.invoke('visible-indices', v),
+
+  sync        : (job)   => ipcRenderer.invoke('sync', job),
+  syncCancel  : ()      => ipcRenderer.invoke('sync-cancel'),
+  syncPause   : ()      => ipcRenderer.invoke('sync-pause'),
+  syncResume  : ()      => ipcRenderer.invoke('sync-resume'),
+
+  verifyFolder: (p)     => ipcRenderer.invoke('verify-folder', p),
+  verifyCancel: ()      => ipcRenderer.invoke('verify-cancel'),
+
+  onCompareProgress: cb => sub('compare-progress', cb),
+  onLockProgress   : cb => sub('lock-progress', cb),
+  onSyncProgress   : cb => sub('sync-progress', cb),
+  onVerifyProgress : cb => sub('verify-progress', cb),
+  onMenu           : cb => sub('menu', cb),
+  onUpdateAvailable: cb => sub('update-available', cb),
+
+  winMinimize: () => ipcRenderer.send('win-minimize'),
+  winMaximize: () => ipcRenderer.send('win-maximize'),
+  winClose   : () => ipcRenderer.send('win-close'),
+
   getPathForFile: (file) => {
     try { return webUtils ? webUtils.getPathForFile(file) : (file.path || ''); }
-    catch(_) { return file.path || ''; }
+    catch (_) { return file.path || ''; }
   },
-  winMinimize:  () => ipcRenderer.send('win-minimize'),
-  winMaximize:  () => ipcRenderer.send('win-maximize'),
-  winClose:     () => ipcRenderer.send('win-close'),
-  onMaximizeChange: (cb) => {
-    ipcRenderer.on('win-maximized',   () => cb(true));
-    ipcRenderer.on('win-unmaximized', () => cb(false));
-    return () => {
-      ipcRenderer.removeAllListeners('win-maximized');
-      ipcRenderer.removeAllListeners('win-unmaximized');
-    };
-  }
 };
 
-// With contextIsolation:false (Windows), contextBridge still works
-// but we also expose directly on window as fallback
-if (process.contextIsolated) {
-  contextBridge.exposeInMainWorld('ingesto', ingestoAPI);
-} else {
-  // contextIsolation:false — expose directly on window
-  window.ingesto = ingestoAPI;
+function sub(channel, cb) {
+  const handler = (_, payload) => cb(payload);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.removeListener(channel, handler);
 }
 
+if (process.contextIsolated) contextBridge.exposeInMainWorld('syncto', api);
+else window.syncto = api;

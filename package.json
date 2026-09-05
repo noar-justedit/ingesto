@@ -1,38 +1,36 @@
 {
-  "name": "ingesto",
-  "version": "2.5.5",
-  "description": "Professional camera media ingest application",
+  "name": "syncto",
+  "version": "0.6.2",
+  "description": "Folder comparison and synchronization for video professionals",
   "main": "src/main/main.js",
   "author": "Just Edit <contact@just-edit.fr>",
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "https://github.com/noar-justedit/ingesto.git"
+    "url": "https://github.com/noar-justedit/syncto.git"
   },
-  "homepage": "https://github.com/noar-justedit/ingesto",
+  "homepage": "https://github.com/noar-justedit/syncto",
   "bugs": {
-    "url": "https://github.com/noar-justedit/ingesto/issues"
+    "url": "https://github.com/noar-justedit/syncto/issues"
   },
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node scripts/test-p0.js && node scripts/test-parallel-verify.js && node scripts/test-ascmhl.js && node scripts/test-volume-check.js",
-    "build": "electron-builder --config electron-builder.yml --mac --arm64",
-    "build:dmg": "electron-builder --mac dmg",
-    "pack": "electron-builder --dir",
-    "build:universal": "electron-builder --config electron-builder.yml --mac --universal",
+    "test": "node test/run-tests.js",
+    "build:mac": "electron-builder --config electron-builder.yml --mac --arm64",
+    "build:mac-universal": "electron-builder --config electron-builder.yml --mac",
     "build:win": "electron-builder --config electron-builder.yml --win --x64",
-    "build:all": "electron-builder --config electron-builder.yml --mac --arm64 && electron-builder --config electron-builder.yml --win --x64",
-    "build:linux": "electron-builder --config electron-builder.yml --linux"
+    "build:linux": "electron-builder --config electron-builder.yml --linux",
+    "pack": "electron-builder --config electron-builder.yml --dir",
+    "shots": "bash scripts/shots-linux.sh"
   },
   "devDependencies": {
     "electron": "^43.4.1",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "ws": "^8.18.0"
   },
   "dependencies": {
-    "hash-wasm": "^4.12.0"
-  },
-  "optionalDependencies": {
-    "koffi": "^2.10.0"
+    "hash-wasm": "^4.12.0",
+    "ssh2": "^1.15.0"
   }
 }
