@@ -32,7 +32,7 @@ const handlers = {};
 const userData = fresh('userData');
 const electron = {
   app: { whenReady: () => new Promise(() => {}), on: () => {}, requestSingleInstanceLock: () => true, quit: () => {},
-         getVersion: () => '2.6.1', getPath: () => userData, getName: () => 'ingesto', isPackaged: false, setAboutPanelOptions: () => {} },
+         getVersion: () => '2.6.2', getPath: () => userData, getName: () => 'ingesto', isPackaged: false, setAboutPanelOptions: () => {} },
   BrowserWindow: class { static getAllWindows() { return []; } },
   Menu: { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) },
   ipcMain: { handle: (ch, fn) => { handlers[ch] = fn; }, on: (ch, fn) => { handlers[ch] = fn; } },

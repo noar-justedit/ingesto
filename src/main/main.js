@@ -2651,6 +2651,12 @@ function resolveTemplateVars(tpl, src, now) {
     .replaceAll('{operator}',  cameraman)   // canonical name
     .replaceAll('{cameraman}', cameraman)   // legacy alias — keeps old saved templates working
     .replaceAll('{camera}',    camera)
+    // {YYYY} is listed before {YY} for the reader only: "{YY}" is not a
+    // substring of "{YYYY}" — there is no closing brace after the second Y — so
+    // the two substitutions cannot interfere whatever their order.
+    // (A lone brace in a comment inside this function would also break the
+    // brace-matching the test suites use to extract it. Keep them paired.)
+    .replaceAll('{YYYY}', String(n.getFullYear()))
     .replaceAll('{YY}',  String(n.getFullYear()).slice(-2))
     .replaceAll('{MM}',  p(n.getMonth()+1))
     .replaceAll('{DD}',  p(n.getDate()))
@@ -2712,6 +2718,13 @@ function templateLeaf(tpl) {
 }
 const MAX_FOLDER_DEPTH = 4;
 
+// The variables whose value comes from the CLOCK. Each contributes a fixed
+// number of digits to a folder name, which is what lets a pattern know where the
+// counter starts — and, below, what makes a whole level predictable.
+// One list, used by both: a token added here and forgotten there is the failure
+// the round-trip test in scripts/test-template-parity.js exists to catch.
+const CLOCK_TOKENS = { '{YYYY}':'\\d{4}', '{YY}':'\\d{2}', '{MM}':'\\d{2}', '{DD}':'\\d{2}', '{HH}':'\\d{2}', '{MIN}':'\\d{2}', '{SS}':'\\d{2}' };
+
 // Build a matcher that extracts the counter from a folder name, given the SAME
 // template used to create the folders. Without this, the old code only saw a
 // counter when it was the FIRST thing in the name — so moving {counter} behind
@@ -2727,8 +2740,13 @@ function makeCounterMatcher(tpl) {
   if (tpl && typeof tpl === 'string' && tpl.includes('/')) tpl = templateSegments(tpl).pop();
   if (!tpl || typeof tpl !== 'string' || !tpl.includes('{counter}')) return { extract: leading };
 
-  const FIXED = { '{YY}':'\\d{2}', '{MM}':'\\d{2}', '{DD}':'\\d{2}',
-                  '{HH}':'\\d{2}', '{MIN}':'\\d{2}', '{SS}':'\\d{2}' };
+  // A date token contributes a FIXED number of digits to the folder name, so
+  // the pattern knows exactly where the counter starts. {YYYY} is four of
+  // them: without this entry it would fall through to the literal branch and
+  // the whole pattern would stop matching — the scan would then find no card
+  // at all, restart the counter at 001, and the folder guard would be the
+  // only thing left between an ingest and an existing reel.
+  const FIXED = CLOCK_TOKENS;
   // {operator} is the canonical name; {cameraman} the legacy alias. BOTH must be
   // here: a token missing from this set falls through to the literal branch and
   // the counter scan then never matches any folder — reintroducing the
@@ -2812,7 +2830,12 @@ function makeCounterMatcher(tpl) {
 // Depth: a card can never be deeper than the number of levels the template
 // describes, so that is where the walk stops — one readdir for a template with
 // no "/", exactly as before, and never deeper than the template asks for.
-function walkCardFolders(root, matcher, onCard, maxDepth) {
+// `structural` is the list of patterns from structuralLevelPatterns(): a folder
+// whose name matches one of them is a level the template always creates, not a
+// card. Without it "{YYYY}/{counter}_{cardname}" read the year folder "2026" as
+// card 2026 and numbered the first ingest of the day 2027.
+function walkCardFolders(root, matcher, onCard, maxDepth, structural) {
+  const levels = Array.isArray(structural) ? structural : [];
   let stopped = false;
   (function walk(dir, depth, rel) {
     if (stopped) return;
@@ -2829,8 +2852,10 @@ function walkCardFolders(root, matcher, onCard, maxDepth) {
       if (!isDir) continue;
       if (e.name === 'ascmhl') continue;          // our own manifest history
       const childRel = rel ? rel + '/' + e.name : e.name;
-      const n = matcher.extract(e.name);
-      if (n != null && onCard(n, childRel) === false) { stopped = true; return; }
+      if (!levels.some(rx => rx.test(e.name))) {
+        const n = matcher.extract(e.name);
+        if (n != null && onCard(n, childRel) === false) { stopped = true; return; }
+      }
       if (depth < maxDepth) walk(path.join(dir, e.name), depth + 1, childRel);
     }
   })(root, 1, '');
@@ -2840,6 +2865,50 @@ function walkCardFolders(root, matcher, onCard, maxDepth) {
 // for a given card makes it shallower, never deeper.
 function templateDepth(tpl) {
   return Math.min(MAX_FOLDER_DEPTH, Math.max(1, templateSegments(tpl).length));
+}
+// A SUBFOLDER level built only from the clock, fixed text and separators is the
+// same folder for every card of that moment: it is structure, not a card. This
+// builds one pattern per such level, so the walk can recognise those folders by
+// NAME wherever they turn up.
+//
+// Why by name and not by depth: a level that resolves to nothing creates no
+// folder, so the card moves UP — and the levels that vanish are not necessarily
+// the ones nearest the card. "{camera}/{YYYY}{MM}{DD}/{counter}_{cardname}"
+// with no camera writes the card at "20260907/001_A001", two levels up from
+// where the template puts it. A depth floor got that wrong and stopped seeing
+// the card at all; a name does not move.
+//
+// The pattern is built exactly as makeCounterMatcher builds the card pattern, so
+// the two agree on what a level looks like. A level containing a variable the
+// OPERATOR fills in — {cardname}, {operator}, {camera} — gets no pattern at all:
+// it could be anything, and a pattern that matches anything would hide real
+// cards. Those levels keep the old, permissive behaviour, where a subfolder that
+// looks like a card only ever pushes the counter forward.
+//
+// The card's own level (the last one) never gets a pattern: that is the level we
+// are looking for.
+//
+// Known gap, in the safe direction only: a level ending in a dot or a space
+// ("{YYYY}." ) builds a pattern for the name with it, while cleanSegment strips
+// the character before creating the folder. The level is then not recognised and
+// is counted as a card — the old over-count, never a miss.
+function structuralLevelPatterns(tpl) {
+  const segs = templateSegments(tpl);
+  const esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const out = [];
+  for (let i = 0; i < segs.length - 1; i++) {
+    const parts = String(segs[i]).split(/(\{[a-zA-Z]+\})/).filter(x => x !== '');
+    if (!parts.length) continue;
+    let re = '^', clockOnly = true;
+    for (const p of parts) {
+      if (CLOCK_TOKENS[p]) { re += CLOCK_TOKENS[p]; continue; }
+      if (/^\{[a-zA-Z]+\}$/.test(p)) { clockOnly = false; break; }   // an operator-filled variable
+      re += esc(p.replace(/[<>:"|?*\/\\]/g, '_')).replace(/[_\-]+/g, '[_\\-]*');
+    }
+    if (!clockOnly) continue;
+    try { out.push(new RegExp(re + '$')); } catch (_) {}
+  }
+  return out;
 }
 // Walk one destination, EXACTLY as deep as the template describes — no deeper.
 //
@@ -2858,7 +2927,7 @@ function templateDepth(tpl) {
 // is overwritten. Inventing a counter out of a project folder, on the other
 // hand, happens on the first real drive.
 function walkDestination(destPath, matcher, tpl, onCard) {
-  walkCardFolders(destPath, matcher, onCard, templateDepth(tpl));
+  walkCardFolders(destPath, matcher, onCard, templateDepth(tpl), structuralLevelPatterns(tpl));
 }
 
 // ─── IPC: Check if a counter already exists in any destination ──────────────

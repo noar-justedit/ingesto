@@ -249,6 +249,7 @@ anything again.
 | `{operator}` | Operator name entered | `JohnDoe` |
 | `{camera}` | Camera model entered/detected | `SonyFX3` |
 | `{YY}` | Short year | `26` |
+| `{YYYY}` | Full year | `2026` |
 | `{MM}` | Month | `04` |
 | `{DD}` | Day | `29` |
 | `{HH}` | Hour | `14` |
@@ -256,6 +257,7 @@ anything again.
 
 `{cameraman}` is kept as a legacy alias of `{operator}`, so older templates
 still load.
+`{SS}` (seconds) works too, by typing it — it has no chip.
 
 **Example**: `001_A001_JohnDoe_SonyFX3_260429_1435`
 
@@ -283,6 +285,13 @@ Rules, all enforced before anything is written:
   days and cameras, and a gap in the numbering still means a card is missing.
 - A `/` typed into a card name, an operator or a camera field never creates a
   folder: only the template decides the structure.
+- A **subfolder level built from the clock or from fixed text** — `{YYYY}`,
+  `{YYYY}{MM}{DD}`, `DAY1` — is never counted as a card, wherever it sits in the
+  tree. Without this a `{YYYY}` level was read as card 2026 and the next ingest
+  was numbered 2027; `{YY}` did the same, more quietly, as card 26. A level you
+  fill in yourself (`{camera}`, `{operator}`) is not recognisable this way and
+  keeps the old behaviour: it may be counted, which only pushes the counter
+  forward and is visible on screen.
 - A **subfolder** level that resolves to nothing (a card with no camera)
   creates no folder: that card simply lands one level up. The **last** level
   may never vanish — the card would land in the folder it shares with every

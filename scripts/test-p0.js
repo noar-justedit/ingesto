@@ -57,6 +57,7 @@ vm.runInContext([
   extractFn('nfc'),
   extractFn('isoSec'),
   extractFn('xmlEsc'),
+  extractConst('CLOCK_TOKENS'),
   extractFn('makeCounterMatcher'),
   extractFn('isAppleDouble'),
   // 2.6.0: a template can carry "/" and buildFolderName is the LAST level of

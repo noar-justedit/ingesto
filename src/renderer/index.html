@@ -1142,6 +1142,7 @@ oninput="onRawInput()" onfocus="rawFocused=true" onblur="rawFocused=false">
 <button class="chip" onclick="addTok('var','operator')">operator</button>
 <button class="chip" onclick="addTok('var','camera')">camera</button>
 <button class="chip" onclick="addTok('var','YY')">YY</button>
+<button class="chip" onclick="addTok('var','YYYY')">YYYY</button>
 <button class="chip" onclick="addTok('var','MM')">MM</button>
 <button class="chip" onclick="addTok('var','DD')">DD</button>
 <button class="chip" onclick="addTok('var','HH')">HH</button>
@@ -3317,6 +3318,7 @@ function resolveTplSegs(tplStr, src, i, refDate){
   return String(tplStr==null?'':tplStr)
     .replaceAll('{counter}',cnt).replaceAll('{cardname}',v(src.name)||'CARD')
     .replaceAll('{operator}',cam).replaceAll('{cameraman}',cam).replaceAll('{camera}',mdl)
+    .replaceAll('{YYYY}',String(now.getFullYear()))
     .replaceAll('{YY}',String(now.getFullYear()).slice(-2))
     .replaceAll('{MM}',p(now.getMonth()+1)).replaceAll('{DD}',p(now.getDate()))
     .replaceAll('{HH}',p(now.getHours())).replaceAll('{MIN}',p(now.getMinutes()))

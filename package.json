@@ -1,6 +1,6 @@
 {
   "name": "ingesto",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "engines": {
     "node": ">=20.19"
   },
@@ -19,7 +19,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node scripts/test-p0.js && node scripts/test-parallel-verify.js && node scripts/test-ascmhl.js && node scripts/test-volume-check.js && node scripts/test-folders.js && node scripts/test-verify.js && node scripts/test-safety.js && node scripts/test-win-volumes.js",
+    "test": "node scripts/test-p0.js && node scripts/test-parallel-verify.js && node scripts/test-ascmhl.js && node scripts/test-volume-check.js && node scripts/test-folders.js && node scripts/test-template-parity.js && node scripts/test-verify.js && node scripts/test-safety.js && node scripts/test-win-volumes.js",
     "build": "electron-builder --config electron-builder.yml --mac --arm64",
     "build:dmg": "electron-builder --mac dmg",
     "pack": "electron-builder --dir",

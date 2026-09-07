@@ -52,6 +52,8 @@ vm.runInContext([
   extractFn('buildFolderName'),
   extractFn('templateSegments'),
   extractFn('makeCounterMatcher'),
+  extractConst('CLOCK_TOKENS'),
+  extractFn('structuralLevelPatterns'),
   extractFn('isSafeFolderName'),
 ].join('\n'), ctx);
 
@@ -89,6 +91,19 @@ ok(segs('DAY1 /{counter}').join('|') === 'DAY1|007',
    'a trailing space on a level is trimmed (Windows drops it silently)');
 ok(segs('{counter}_{cardname}\\x/y').join('|') === '007_A001_x|y',
    'a backslash inside a level becomes "_" — only "/" makes a folder');
+
+// {YYYY} — the four-digit year, asked for by a user and added in 2.6.2.
+// {YY} keeps its meaning: every template saved before this version is untouched.
+{
+  const CLK = new Date(2026, 0, 5, 3, 4, 5);
+  const y = (tpl) => ctx.buildFolderSegments(tpl, CARD, CLK).join('|');
+  ok(y('{YYYY}_{counter}') === '2026_007', '{YYYY} resolves to the four-digit year');
+  ok(y('{YY}_{counter}') === '26_007', 'and {YY} still resolves to two digits');
+  ok(y('{YYYY}{MM}{DD}/{counter}_{cardname}') === '20260105|007_A001',
+     'the two live side by side in one template');
+  ok(y('{YY}{YYYY}{YY}_{counter}') === '26202626_007',
+     'and neither substitution eats the other: "{YY}" is not inside "{YYYY}"');
+}
 
 console.log('\ncounter matcher');
 {
@@ -363,6 +378,27 @@ const opts = (extra) => ({ mode: 'slow', writeSentinel: false, writeChecksum: tr
        'and still reads when the camera was empty');
     ok(m('{cardname}{counter}').extract('A0011') === 11,
        'a template with NO separator keeps its old looser pattern (missing a card is worse)');
+    // {YYYY} contributes four fixed digits. Missing from the matcher's FIXED set
+    // it would fall through to the literal branch, the pattern would stop
+    // matching ANY folder, and the scan would answer next=001 forever — with the
+    // folder guard as the only thing left between an ingest and an existing reel.
+    ok(m('{YYYY}_{counter}_{cardname}').extract('2026_001_A001') === 1,
+       'the counter is read after a four-digit year, not inside it');
+    ok(m('{YYYY}_{counter}_{cardname}').extract('2026_012_A001') === 12,
+       'and a two-digit counter behind it reads as 12, not as part of the year');
+    ok(m('{YYYY}{counter}').extract('2026001') === 1,
+       'glued to the year with no separator, the year still takes exactly four digits');
+    ok(m('{counter}_{cardname}').extract('20260105') === null,
+       'an eight-digit day folder is not counter 2026 for a flat template');
+    // The case where the four-digit WIDTH is what decides: the year is glued to
+    // the month and day inside the CARD folder, so the pattern has to know
+    // exactly how many digits to consume before the counter starts.
+    ok(m('{YYYY}{MM}{DD}_{counter}_{cardname}').extract('20260105_007_A001') === 7,
+       'a {YYYY}{MM}{DD} prefix glued inside the card folder still yields counter 7');
+    ok(m('{YY}{MM}{DD}_{counter}_{cardname}').extract('260105_007_A001') === 7,
+       'and the two-digit form is unchanged');
+    ok(m('{counter}_{cardname}_{YYYY}{MM}{DD}').extract('007_A001_20260105') === 7,
+       'and a date suffix does not become the counter');
   }
   {
     // End to end: day two of the most natural 2.6.0 template.
@@ -377,6 +413,212 @@ const opts = (extra) => ({ mode: 'slow', writeSentinel: false, writeChecksum: tr
        'and the next counters are not refused');
     const hit = await call('check-counter-collision', [dst], [2], tpl);
     ok(hit && hit.folder === '260902/002_A002', 'a real collision is still caught');
+  }
+  {
+    // End to end with a four-digit year level: scan, collision check and a real
+    // ingest, on real folders, through the real IPC handlers. The level is built
+    // from the real clock, because the ingest below resolves the template at run
+    // time and has to land in the same one.
+    const n = new Date(), p2 = x => String(x).padStart(2, '0');
+    const day = String(n.getFullYear()) + p2(n.getMonth() + 1) + p2(n.getDate());
+    const card = fresh('card10b'), dst = fresh('dst10b');
+    mk(card, { 'A.MOV': 'a' });
+    fs.mkdirSync(path.join(dst, day, '001_A001'), { recursive: true });
+    fs.mkdirSync(path.join(dst, day, '002_A002'), { recursive: true });
+    const tpl = '{YYYY}{MM}{DD}/{counter}_{cardname}';
+    const scan = await call('scan-dest-counter-full', [dst], tpl);
+    ok(scan.max === 2 && scan.next === 3,
+       'a {YYYY} day level is not counted as a card (next ' + scan.next + ')');
+    const hit = await call('check-counter-collision', [dst], [2], tpl);
+    ok(hit && hit.folder === day + '/002_A002',
+       'and a real collision under it is still caught');
+    const R = await call('start-copy', {
+      sources: [{ name: 'A003', path: card, counter: '003', cameraman: '', camera: '' }],
+      destinations: [{ name: 'D', path: dst }],
+      options: opts({ folderTemplate: tpl }) });
+    ok(R[0] && R[0].success === true && R[0].relFolder === day + '/003_A003',
+       'and a real ingest lands under the four-digit day level (' +
+       (R[0] && (R[0].relFolder || ((R[0].errorList || [{}])[0] || {}).error)) + ')');
+  }
+  console.log('\na subfolder level the template always creates is not a card');
+  {
+    // The counter is read from a folder NAME and the matcher is permissive, so a
+    // level made of digits used to be indistinguishable from a card: the year
+    // folder "2026" read as card 2026, and the first ingest of the day was
+    // numbered 2027. Nothing was ever overwritten — the counter only ever moved
+    // forward — but the numbering, and the gap that signals a missing card, were
+    // worthless. A level that can never resolve to nothing can never hold a card.
+    const lv = (tpl, name) => ctx.structuralLevelPatterns(tpl).some(rx => rx.test(name));
+    ok(ctx.structuralLevelPatterns('{counter}_{cardname}').length === 0 &&
+       ctx.structuralLevelPatterns('{YYYY}{MM}{DD}').length === 0,
+       'a flat template has no subfolder level at all — not even one made of dates');
+    ok(lv('{YYYY}/{counter}_{cardname}', '2026'), 'a bare year folder is a level, not a card');
+    ok(!lv('{YYYY}/{counter}_{cardname}', '001_A001'), 'and a real card folder is not');
+    ok(lv('{YYYY}-{MM}-{DD}/{counter}_{cardname}', '2026-01-05'), 'so is a dated level with separators');
+    ok(lv('{YYYY}{MM}{DD}/{counter}_{cardname}', '20260105'), 'and a glued one');
+    ok(lv('DAY1/{counter}_{cardname}', 'DAY1'), 'so is a level of fixed text');
+    ok(!lv('DAY1/{counter}_{cardname}', 'DAY2'), 'but not a different fixed text');
+    ok(ctx.structuralLevelPatterns('{camera}/{counter}_{cardname}').length === 0,
+       'a level the OPERATOR fills in gets no pattern — it could be anything, and a pattern ' +
+       'matching anything would hide real cards');
+    ok(ctx.structuralLevelPatterns('DAY1/{camera}/{counter}').length === 1,
+       'a template mixing the two describes exactly one structural level');
+    ok(ctx.structuralLevelPatterns('{YYYY}/{counter}').every(rx => !rx.test('2026_001_A001')),
+       'a level pattern is anchored: it never matches a name that merely starts with it');
+    ok(!lv('{counter}_{YYYY}', '2026'),
+       'so a flat template matches nothing at all, whatever the folder is called');
+    ok(ctx.structuralLevelPatterns('{YYYY}/{HH}/{counter}_{cardname}').length === 2,
+       'a template with two structural levels describes both, not just the first');
+    ok(!lv('A.B/{counter}_{cardname}', 'AXB') && lv('A.B/{counter}_{cardname}', 'A.B'),
+       'the fixed text is escaped: a "." in a level is a dot, not "any character"');
+    ok(lv('{YYYY}-{MM}-{DD}/{counter}', '20260105') && lv('{YYYY}-{MM}-{DD}/{counter}', '2026_01_05'),
+       'and separator runs stay flexible, exactly as the card pattern treats them');
+    // The card's own level must NEVER get a pattern, or every card folder would
+    // be excluded and the scan would find nothing. It is invisible for an
+    // ordinary template (the leaf holds {counter}, so no pattern is built for it
+    // either way) — this pins the one shape where the bound is what decides.
+    ok(ctx.structuralLevelPatterns('{YYYY}/{MM}{DD}').length === 1,
+       'a template whose LAST level is built from the clock alone still describes only ONE structural level');
+    // The one limit of a rule that works on names: a CARD whose folder name has
+    // the exact shape of a structural level is not counted either. It takes a
+    // counter of four digits under a bare {YYYY} level. The consequence is a
+    // counter that stays too low, never an overwrite — the "folder already
+    // exists" guard is checked below, on real folders.
+    ok(lv('{YYYY}/{counter}', '2026'),
+       'a card folder that looks exactly like a structural level is not counted (counter 2026 under a year level)');
+  }
+  {
+    // The limit named above, played out for real: the engine must still refuse to
+    // write into the folder, whatever the scan concluded.
+    const tpl = '{YYYY}/{counter}';
+    const y = String(new Date().getFullYear());
+    const card = fresh('card2026'), dst = fresh('dst2026');
+    // The card must hold a file of the SAME name as the one already on the
+    // destination, or "the footage is untouched" could not fail even with the
+    // guard removed — it would be testing that two different names do not
+    // collide, which is not the promise.
+    mk(card, { 'ORIGINAL.MOV': 'new data' });
+    fs.mkdirSync(path.join(dst, y, '2026'), { recursive: true });
+    fs.writeFileSync(path.join(dst, y, '2026', 'ORIGINAL.MOV'), 'precious');
+    const scan = await call('scan-dest-counter-full', [dst], tpl);
+    ok(scan.next === 1, 'the scan does not see it, so it proposes counter 001 (' + scan.next + ')');
+    const R = await call('start-copy', {
+      sources: [{ name: 'A001', path: card, counter: '2026', cameraman: '', camera: '' }],
+      destinations: [{ name: 'D', path: dst }],
+      options: opts({ folderTemplate: tpl }) });
+    ok(R[0].success === false, 'and forcing counter 2026 anyway is REFUSED by the engine');
+    ok(fs.readFileSync(path.join(dst, y, '2026', 'ORIGINAL.MOV'), 'utf8') === 'precious',
+       'the footage already there is untouched');
+  }
+  {
+    // The case a first attempt at this got WRONG, and the reason the rule is by
+    // name and not by depth. "{camera}/{YYYY}{MM}{DD}/{counter}_{cardname}":
+    // ingest a card without typing a camera and the camera level vanishes — the
+    // card is written two levels up, at "20260907/001_A001", while the template
+    // describes three. A depth floor stopped reading there and the scan answered
+    // next=001 with 001 already on the drive; the collision check went blind at
+    // the same time. Missing a card is the one direction that must never happen.
+    const n = new Date(), p2 = x => String(x).padStart(2, '0');
+    const day = String(n.getFullYear()) + p2(n.getMonth() + 1) + p2(n.getDate());
+    const tpl = '{camera}/{YYYY}{MM}{DD}/{counter}_{cardname}';
+    const card = fresh('cardnocam'), dst = fresh('dst-nocam');
+    mk(card, { 'A.MOV': 'a' });
+    const R1 = await call('start-copy', {
+      sources: [{ name: 'A001', path: card, counter: '001', cameraman: '', camera: '' }],
+      destinations: [{ name: 'D', path: dst }],
+      options: opts({ folderTemplate: tpl }) });
+    ok(R1[0].success === true && R1[0].relFolder === day + '/001_A001',
+       'a card with no camera lands two levels up, not three (' + R1[0].relFolder + ')');
+    const scan = await call('scan-dest-counter-full', [dst], tpl);
+    ok(scan.max === 1 && scan.next === 2,
+       'and the scan still sees it there (next ' + scan.next + ', must not be 1)');
+    const hit = await call('check-counter-collision', [dst], [1], tpl);
+    ok(hit && hit.folder === day + '/001_A001',
+       'and so does the collision check — the guard that stops a second card taking its number');
+    ok(ctx.structuralLevelPatterns(tpl).some(rx => rx.test(day)),
+       'and the day level itself is recognised as structure, so it is never counted as a card');
+  }
+  {
+    // Same shape with a fixed text instead of a date, and a card WITH a camera
+    // this time: both depths must be readable at once.
+    const tpl = '{camera}/RUSHES/{counter}_{cardname}';
+    const dst = fresh('dst-mixed');
+    fs.mkdirSync(path.join(dst, 'RUSHES', '001_A001'), { recursive: true });        // no camera that day
+    fs.mkdirSync(path.join(dst, 'FX6', 'RUSHES', '002_A002'), { recursive: true }); // with one
+    const scan = await call('scan-dest-counter-full', [dst], tpl);
+    ok(scan.max === 2 && scan.next === 3,
+       'cards at two different depths are both counted (next ' + scan.next + ')');
+    ok(((await call('check-counter-collision', [dst], [1], tpl)) || {}).folder === 'RUSHES/001_A001',
+       'the shallow one is found by the collision check');
+    ok(((await call('check-counter-collision', [dst], [2], tpl)) || {}).folder === 'FX6/RUSHES/002_A002',
+       'and so is the deep one');
+    ok(await call('check-counter-collision', [dst], [3], tpl) === null,
+       'and the "RUSHES" levels themselves are never counted, at either depth');
+  }
+  {
+    const day = (dst, lvl) => { fs.mkdirSync(path.join(dst, lvl, '001_A001'), { recursive: true });
+                                fs.mkdirSync(path.join(dst, lvl, '002_A002'), { recursive: true }); };
+    const nextOf = async (lvl, tpl) => {
+      const dst = fresh('lvl-' + lvl.replace(/[^0-9A-Za-z]/g, ''));
+      day(dst, lvl);
+      return [dst, await call('scan-dest-counter-full', [dst], tpl)];
+    };
+    let [d1, s1] = await nextOf('2026', '{YYYY}/{counter}_{cardname}');
+    ok(s1.max === 2 && s1.next === 3, 'a bare {YYYY} level is not card 2026 (next ' + s1.next + ')');
+    let [, s2] = await nextOf('2026-01-05', '{YYYY}-{MM}-{DD}/{counter}_{cardname}');
+    ok(s2.max === 2 && s2.next === 3, 'nor is "2026-01-05" card 2026 (next ' + s2.next + ')');
+    let [, s3] = await nextOf('26', '{YY}/{counter}_{cardname}');
+    ok(s3.max === 2 && s3.next === 3, 'nor is a bare {YY} level card 26 (next ' + s3.next + ')');
+    let [, s4] = await nextOf('03', '{HH}/{counter}_{cardname}');
+    ok(s4.max === 2 && s4.next === 3, 'nor is an hour level card 3 (next ' + s4.next + ')');
+    ok(((await call('check-counter-collision', [d1], [1], '{YYYY}/{counter}_{cardname}')) || {}).folder === '2026/001_A001',
+       'and the real cards under the level are still found by the collision check');
+  }
+  {
+    // The other direction, which matters more: a card that legitimately sits one
+    // level UP because its level vanished must still be counted. Missing it is
+    // what lets a second card take its number.
+    const dst = fresh('lvl-up');
+    fs.mkdirSync(path.join(dst, 'DAY1', '001_noar'), { recursive: true });     // no camera
+    fs.mkdirSync(path.join(dst, 'DAY1', 'FX6', '002_noar'), { recursive: true }); // with one
+    const tpl = 'DAY1/{camera}/{counter}_{operator}';
+    const scan = await call('scan-dest-counter-full', [dst], tpl);
+    ok(scan.max === 2 && scan.next === 3,
+       'a card whose camera level vanished is still counted (next ' + scan.next + ')');
+    ok(((await call('check-counter-collision', [dst], [1], tpl)) || {}).folder === 'DAY1/001_noar',
+       'and it is still found by the collision check, one level above its siblings');
+  }
+  {
+    // Switching an existing project from {YY} to {YYYY}: what happens to the
+    // counter? The scan reads the CARD folder, and the day level is only walked
+    // through — so as long as the year stays in a SUBFOLDER level, yesterday's
+    // cards are still counted and the numbering continues. This is the upgrade
+    // path every user asking for {YYYY} will take, so it is pinned here.
+    const n = new Date(), p2 = x => String(x).padStart(2, '0');
+    const dst = fresh('dst10c');
+    fs.mkdirSync(path.join(dst, '260902', '001_A001'), { recursive: true });   // written with {YY}
+    fs.mkdirSync(path.join(dst, '260902', '002_A002'), { recursive: true });
+    const scan = await call('scan-dest-counter-full', [dst], '{YYYY}{MM}{DD}/{counter}_{cardname}');
+    ok(scan.max === 2 && scan.next === 3,
+       'moving the year from {YY} to {YYYY} keeps the counter running (next ' + scan.next + ')');
+  }
+  {
+    // The other half of the same question, and the honest answer: when the year
+    // is in the CARD folder itself, the folder name changes shape and the older
+    // reels no longer read as cards — the counter restarts at 001. Nothing is
+    // overwritten (the new name differs), but the numbering breaks, so this is
+    // documented rather than silently discovered.
+    const dst = fresh('dst10d');
+    fs.mkdirSync(path.join(dst, '26_001_A001'), { recursive: true });          // written with {YY}
+    fs.mkdirSync(path.join(dst, '26_002_A002'), { recursive: true });
+    const same = await call('scan-dest-counter-full', [dst], '{YY}_{counter}_{cardname}');
+    ok(same.max === 2 && same.next === 3, 'unchanged template: the counter continues');
+    const moved = await call('scan-dest-counter-full', [dst], '{YYYY}_{counter}_{cardname}');
+    ok(moved.max === 0 && moved.next === 1,
+       'year widened INSIDE the card folder: earlier reels no longer read as cards, ' +
+       'the counter restarts at 001 (next ' + moved.next + ') — and the new name differs, so nothing is overwritten');
+    ok(await call('check-counter-collision', [dst], [1], '{YYYY}_{counter}_{cardname}') === null,
+       'and the collision check agrees: "2026_001_A003" does not clash with "26_001_A001"');
   }
 
   console.log(`\n${pass} passed, ${fail} failed${skip ? `, ${skip} skipped` : ''}`);
