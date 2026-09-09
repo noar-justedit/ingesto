@@ -1,5 +1,6 @@
 # ingesto
-### Professional Camera Media Ingest — by Just Edit
+### Professional Camera Media Ingest
+by just edit
 
 Free, open-source ingest tool for video and audio professionals (DITs, camera
 operators, editors) — copy footage off cards and drives to as many destinations
@@ -19,8 +20,6 @@ macOS · Windows · Linux.
 ## See it work — 60 seconds
 
 [![ingesto — 60-second overview](https://img.youtube.com/vi/_rSURz65jlo/maxresdefault.jpg)](https://youtu.be/_rSURz65jlo)
-
-*Click to watch on YouTube. Subtitles available in English, French, German and Spanish.*
 
 ---
 
