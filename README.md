@@ -16,7 +16,11 @@ macOS · Windows · Linux.
 
 ---
 
-![ingesto during an ingest](docs/screenshots/ingesto-ingest.png)
+## See it work — 60 seconds
+
+[![ingesto — 60-second overview](https://img.youtube.com/vi/_rSURz65jlo/maxresdefault.jpg)](https://youtu.be/_rSURz65jlo)
+
+*Click to watch on YouTube. Subtitles available in English, French, German and Spanish.*
 
 ---
 
@@ -52,6 +56,8 @@ macOS · Windows · Linux.
 ---
 
 ## Screenshots
+
+![ingesto during an ingest](docs/screenshots/ingesto-ingest.png)
 
 | Main window | Kiosk mode | Report |
 |---|---|---|
