@@ -353,6 +353,178 @@ const refused = (r) => r && r.success === false && r.copiedFiles === 0 &&
        read(path.join(dst, 'INGESTO_report-2.csv')) === '#,Card,Folder\n003,C,DAY1\n004,D,DAY1\n', 'the next run appends to that sibling');
   }
 
+  console.log('\na skip needs the file to be IN the manifest, not just on the drive');
+  {
+    // The record says the file was copied and verified, and a file of exactly
+    // the right size is sitting there. Neither says THIS file is there: a
+    // truncated file repadded to its old length, a file replaced by another of
+    // the same size, a folder restored from an incomplete backup all pass both
+    // tests. What INGESTO would check tomorrow, with Verify, is the manifest.
+    const A = fresh('d30'), card = fresh('c30');
+    mk(card, { 'KEPT.MOV': 'k'.repeat(2048), 'DROPPED.MOV': 'd'.repeat(2048) });
+    const r = (await ingest(card, 'A030', A))[0];
+    ok(r.success === true, 'the card is ingested and verified');
+    ok((await call('inspect-card', card, false, [A])).counts.skippable === 2,
+       'both files are skippable while the manifest covers them');
+
+    // Someone rewrites the checksum list with one file missing: a partial
+    // restore, another tool re-hashing a subset, a hand-edited list.
+    const ckName = fs.readdirSync(r.destPath).find(n => /\.xxh$/.test(n));
+    const kept = read(path.join(r.destPath, ckName)).split('\n')
+      .filter(l => !/DROPPED\.MOV/.test(l)).join('\n');
+    fs.writeFileSync(path.join(r.destPath, ckName), kept);
+    const after = await call('inspect-card', card, false, [A]);
+    ok(after.counts.skippable === 1, 'the file the manifest dropped is copied again');
+    ok(after._skippableKeys.some(k => /KEPT\.MOV/.test(k)) &&
+       !after._skippableKeys.some(k => /DROPPED\.MOV/.test(k)), 'and it is the right one');
+    // What this does NOT claim: the bytes are correct. Proving that needs a
+    // re-hash of every file on every card insertion, which would make plugging
+    // a card in cost as much as an ingest.
+  }
+  {
+    // A folder verified with ASC MHL only: no <folder>.xxh at the root, the
+    // whole proof lives in ascmhl/. Read it, or those users copy everything
+    // twice for ever.
+    const A = fresh('d31'), card = fresh('c31');
+    mk(card, { 'A.MOV': 'a'.repeat(2048) });
+    const r = (await ingest(card, 'A031', A, { cksumList: false, cksumMhl: false, ascMhl: true }))[0];
+    ok(r.success === true && fs.existsSync(path.join(r.destPath, 'ascmhl')),
+       'the ingest leaves an ASC MHL history and no checksum list');
+    ok(!fs.readdirSync(r.destPath).some(n => /\.(xxh|xxh3|md5|mhl)$/.test(n)),
+       'nothing else vouches for the folder');
+    ok((await call('inspect-card', card, false, [A])).counts.skippable === 1,
+       'and the file is still skippable, on the strength of the ASC MHL alone');
+  }
+  {
+    // A folder with NO manifest at all is a different question from a folder
+    // whose manifest dropped the file. The checksum list is a switch the
+    // operator can turn off, and a manifest write can fail: demanding an entry
+    // from a folder that never had a manifest would re-copy a 512 GB card in
+    // full, which buys no safety. There, the record decides, and only a record
+    // that SAYS it was verified.
+    const A = fresh('d32'), card = fresh('c32');
+    mk(card, { 'A.MOV': 'a'.repeat(2048) });
+    const r = (await ingest(card, 'A032', A, { cksumList: false, cksumMhl: false, ascMhl: false }))[0];
+    ok(r.success === true, 'a SECURE ingest with every sidecar switched off');
+    ok(!fs.readdirSync(r.destPath).some(n => /\.(xxh|xxh3|md5|mhl)$/.test(n)) &&
+       !fs.existsSync(path.join(r.destPath, 'ascmhl')), 'really leaves no manifest');
+    ok((await call('inspect-card', card, false, [A])).counts.skippable === 1,
+       'and its files are still skippable, on the record');
+
+    // But only on a record that says so. A record written before 2.6.1 does
+    // not, and there is nothing else in the folder to ask.
+    const sp = path.join(card, '.ingesto.json'); const j = JSON.parse(fs.readFileSync(sp, 'utf8'));
+    delete j.ingests[0].mode; delete j.ingests[0].verified; fs.writeFileSync(sp, JSON.stringify(j));
+    ok((await call('inspect-card', card, false, [A])).counts.skippable === 0,
+       'a record that does not say it was verified vouches for nothing');
+  }
+  {
+    // And the folder that HAS a manifest is held to it, even when the record
+    // says verified: that is the case the manifest can actually settle.
+    const A = fresh('d32b'), card = fresh('c32b');
+    mk(card, { 'A.MOV': 'a'.repeat(2048) });
+    const r = (await ingest(card, 'A032B', A))[0];
+    const ck = fs.readdirSync(r.destPath).find(n => /\.xxh$/.test(n));
+    fs.writeFileSync(path.join(r.destPath, ck), '# emptied by another tool\n');
+    ok((await call('inspect-card', card, false, [A])).counts.skippable === 0,
+       'a manifest that no longer lists the file overrides the record');
+  }
+
+  {
+    // And the default for a caller that hands over no way to read a manifest
+    // at all. This is the check that decides what happens when someone adds a
+    // new call site in two years: copying a file twice costs time, skipping
+    // one that is not really there costs the shot.
+    const { inspectCard } = require(path.join(__dirname, '..', 'src', 'main', 'sentinel.js'));
+    const A = fresh('d33'), card = fresh('c33');
+    mk(card, { 'A.MOV': 'a'.repeat(2048) });
+    await ingest(card, 'A033', A);
+    ok(inspectCard(card, false, [A]).skippable.length === 0,
+       'with no manifest reader, nothing is skippable');
+    ok(inspectCard(card, false, [A], { any: () => true, has: () => true }).skippable.length === 1,
+       'and with one, the same file is skippable again');
+  }
+
+  console.log('\na mode the engine does not know is treated as SECURE, never as FAST');
+  {
+    // Where an unknown mode comes from: the preferences file on disk, which
+    // anything can edit, truncate or sync. It went straight into the copy
+    // options, matched none of the mode branches, and the run copied without
+    // verifying anything while the interface showed no mode at all.
+    const A = fresh('d44'), card = fresh('c44');
+    mk(card, { 'A.MOV': 'a'.repeat(4096) });
+    const r = (await ingest(card, 'A044', A, { mode: 'secure' }))[0];
+    ok(r.success === true, 'the ingest runs');
+    ok(r.mode === 'slow', 'and reports itself as SECURE, so the window cannot claim otherwise');
+    ok(r.verify1Ms > 0 || fs.readdirSync(r.destPath).some(n => /\.xxh$/.test(n)),
+       'the files really were verified');
+    ok((await call('inspect-card', card, false, [A])).counts.skippable === 1,
+       'and the copy counts as verified next time the card is plugged in');
+  }
+
+  console.log('\nthe ingest report is read defensively');
+  {
+    // The report sits on a shared drive, in a folder anyone on the production
+    // can write to. INGESTO reads it back before every ingest to keep the
+    // history. Reading it must never be the thing that stops a shoot.
+    const zlib = require('zlib');
+    const wrap = (b64) => '<html><script id="ingesto-report-data" type="application/gzip+base64">' +
+                          b64 + '</script></html>';
+    const D = fresh('d40');
+    const good = { created: '2026-09-10', records: [{ card: 'A001', files: 12 }] };
+    fs.writeFileSync(path.join(D, 'INGESTO_report.html'),
+                     wrap(zlib.gzipSync(Buffer.from(JSON.stringify(good))).toString('base64')));
+    const back = await call('report-read', D);
+    ok(back && Array.isArray(back.records) && back.records[0].card === 'A001',
+       'a real report still reads back');
+
+    // A small block that expands to hundreds of megabytes. Decompressing it
+    // whole is how a station with a card in the reader runs out of memory.
+    const E = fresh('d41');
+    const gz = zlib.createGzip();
+    const chunks = [];
+    gz.on('data', c => chunks.push(c));
+    const done = new Promise(res => gz.on('end', res));
+    const MB = Buffer.alloc(1024 * 1024, 0);
+    for (let i = 0; i < 400; i++) gz.write(MB);
+    gz.end(); await done;
+    const bomb = Buffer.concat(chunks);
+    ok(bomb.length < 2 * 1024 * 1024, `400 MB compresses to ${Math.round(bomb.length/1024)} KB`);
+    fs.writeFileSync(path.join(E, 'INGESTO_report.html'), wrap(bomb.toString('base64')));
+    const t0 = Date.now();
+    const r41 = await call('report-read', E);
+    ok(r41 && r41.unreadable === true && r41.blockFound === true,
+       'it is refused, and reported as a report that exists but cannot be read');
+    ok(r41 && r41.tooBig === true,
+       'refused on its SIZE, before the memory is allocated, not after parsing failed');
+    ok(Date.now() - t0 < 20000, 'without hanging');
+
+    // Which matters because THAT is what makes the next ingest preserve the
+    // existing file instead of starting the client's history over.
+    ok(Array.isArray(r41.records) && r41.records.length === 0, 'and it hands back no records');
+
+    // A file too big to be one of ours at all.
+    const F = fresh('d42');
+    const fp = path.join(F, 'INGESTO_report.html');
+    fs.writeFileSync(fp, wrap('x'));
+    fs.truncateSync(fp, 128 * 1024 * 1024);
+    const r42 = await call('report-read', F);
+    ok(r42 && r42.unreadable === true && r42.tooBig === true,
+       'a 128 MB report is not read at all');
+
+    // The CSV takes the same treatment: appending to it means reading it back
+    // whole first.
+    const G = fresh('d43');
+    const cp = path.join(G, 'INGESTO_report.csv');
+    fs.writeFileSync(cp, '#,Card,Folder\n001,A,DAY1\n');
+    fs.truncateSync(cp, 128 * 1024 * 1024);
+    ok(await call('report-write-named', G, 'INGESTO_report.csv', '#,Card,Folder\n002,B,DAY1\n', true) === true,
+       'a 128 MB CSV does not stop the run');
+    ok(fs.statSync(cp).size === 128 * 1024 * 1024, 'the oversized file is left exactly as it was');
+    ok(read(path.join(G, 'INGESTO_report-2.csv')) === '#,Card,Folder\n002,B,DAY1\n',
+       'and the row goes to a sibling');
+  }
+
   console.log(`\n${pass} passed, ${fail} failed`);
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (_) {}
   process.exit(fail ? 1 : 0);

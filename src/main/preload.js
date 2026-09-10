@@ -45,6 +45,7 @@ const ingestoAPI = {
   folderSize:           (p)             => ipcRenderer.invoke('folder-size', p),
   checkPaths:           (entries)       => ipcRenderer.invoke('check-paths', entries),
   reportRead:           (p)             => ipcRenderer.invoke('report-read', p),
+  handoff:              (doc, argv, keep) => ipcRenderer.invoke('handoff', doc, argv, keep),
   reportWrite:          (p,html,keep)   => ipcRenderer.invoke('report-write', p, html, keep===true),
   reportOpen:           (p)             => ipcRenderer.invoke('report-open', p),
   reportWriteNamed:     (p,name,c,app)  => ipcRenderer.invoke('report-write-named', p, name, c, app),
@@ -82,6 +83,12 @@ const ingestoAPI = {
   onUpdateAvailable: (cb) => {
     ipcRenderer.on('update-available', (_, d) => cb(d));
     return () => ipcRenderer.removeAllListeners('update-available');
+  },
+  // A second launch is refused so two windows cannot give two cards the same
+  // counter. It used to disappear without a word.
+  onSecondInstance: (cb) => {
+    ipcRenderer.on('second-instance-blocked', () => cb());
+    return () => ipcRenderer.removeAllListeners('second-instance-blocked');
   },
   platform: process.platform,
   getPathForFile: (file) => {

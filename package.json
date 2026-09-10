@@ -1,6 +1,6 @@
 {
   "name": "ingesto",
-  "version": "2.6.2",
+  "version": "2.6.5",
   "engines": {
     "node": ">=20.19"
   },
@@ -19,7 +19,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node scripts/test-p0.js && node scripts/test-parallel-verify.js && node scripts/test-ascmhl.js && node scripts/test-volume-check.js && node scripts/test-folders.js && node scripts/test-template-parity.js && node scripts/test-verify.js && node scripts/test-safety.js && node scripts/test-win-volumes.js",
+    "test": "node scripts/test-markup.js && node scripts/test-p0.js && node scripts/test-parallel-verify.js && node scripts/test-ascmhl.js && node scripts/test-volume-check.js && node scripts/test-folders.js && node scripts/test-template-parity.js && node scripts/test-verify.js && node scripts/test-verify-window.js && node scripts/test-mode-palette.js && node scripts/test-summary-window.js && node scripts/test-unformatted-window.js && node scripts/test-refusal-window.js && node scripts/test-no-emdash.js && node scripts/test-kiosk-window.js && node scripts/test-start-gate.js && node scripts/test-prefs-guard.js && node scripts/test-counter-width.js && node scripts/test-post-hook.js && node scripts/test-handoff.js && node scripts/test-report-freeze.js && node scripts/test-name-guards.js && node scripts/test-live-source.js && node scripts/test-safety.js && node scripts/test-win-volumes.js",
     "build": "electron-builder --config electron-builder.yml --mac --arm64",
     "build:dmg": "electron-builder --mac dmg",
     "pack": "electron-builder --dir",

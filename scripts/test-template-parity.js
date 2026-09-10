@@ -61,9 +61,14 @@ vm.runInContext([
 // input — the same input the engine gets.
 const ren = vm.createContext({
   console,
-  S: { counter: 7 },
+  S: { counter: 7, counterWidth: 3 },
+  // A const inside a vm script never lands on the context object, so the list
+  // is written out here. It is the contract, and a test that read it from the
+  // source could never disagree with the source.
+  COUNTER_WIDTHS: [2,3,4],
   document: { getElementById: () => null },
 });
+vm.runInContext(extractFn(REND, 'padCounter', 'index.html'), ren);
 vm.runInContext(extractFn(REND, 'resolveTplSegs', 'index.html'), ren);
 
 // A fixed clock: the two functions each call new Date() otherwise, and a run
@@ -113,6 +118,36 @@ for (const tpl of TEMPLATES) {
     }, 0, CLOCK).join('/');
     ok(a === b, `${JSON.stringify(tpl)} · ${label} → ${a === b ? a || '(nothing)' : `engine "${a}" vs interface "${b}"`}`);
   }
+}
+
+// ── The counter width (issue #9) ────────────────────────────────────────────
+// The interface pads the counter for the PREVIEW, and then sends the engine an
+// already padded string for the FOLDER. If the two ever disagree, the operator
+// is shown a folder name that is not the one created.
+console.log('\nthe preview and the folder agree on the width of the counter');
+for (const w of [2, 3, 4]) {
+  ren.S.counterWidth = w;
+  const padded = String(7).padStart(w, '0');
+  const tpl = '{counter}_{cardname}';
+  const c = CARDS.plain || Object.values(CARDS)[0];
+  // The engine receives the string the interface built.
+  const a = eng.buildFolderSegments(tpl, {
+    counter: ren.padCounter(7), name: c.name, cameraman: c.operator, camera: c.camera,
+  }, CLOCK).join('/');
+  const b = ren.resolveTplSegs(tpl, {
+    name: c.name, operator: c.operator, camera: c.camera,
+  }, 0, CLOCK).join('/');
+  ok(a === b, `${w} digits · engine "${a}" vs interface "${b}"`);
+  ok(b.startsWith(padded + '_'), `${w} digits · the preview really shows ${padded} ("${b}")`);
+}
+// A minimum, not a maximum: two digits must not truncate 100 to 00, which would
+// put two reels in one folder.
+{
+  ren.S.counterWidth = 2;
+  ren.S.counter = 100;
+  const b = ren.resolveTplSegs('{counter}_{cardname}', { name: 'A001' }, 0, CLOCK).join('/');
+  ok(b.startsWith('100_'), `past 99 a two-digit counter goes to 100, not 00 ("${b}")`);
+  ren.S.counter = 7; ren.S.counterWidth = 3;
 }
 
 // ── The token sets themselves ───────────────────────────────────────────────

@@ -183,15 +183,35 @@ function ingestVerified(ing, folder) {
 // went there, was verified, and EACH file is still in that folder at the
 // recorded size. A folder that is there but has been emptied vouches for
 // nothing; a record proves the folder, never the file, unless it is checked.
-function usableKeysOnRoot(ing, root) {
+function usableKeysOnRoot(ing, root, manifestHas) {
   const keys = new Set();
   const folder = ingestFolderUnder(ing, root);
   if (!folder || !ingestVerified(ing, folder)) return keys;
+  // No way to read a manifest, no skipping. Copying a file twice costs time;
+  // skipping one that is not really there costs the shot.
+  if (!manifestHas || typeof manifestHas.has !== 'function' || typeof manifestHas.any !== 'function')
+    return keys;
+  // Does this folder carry a manifest at all? A folder that has one is held to
+  // it, entry by entry. A folder that has none can only fall back on the
+  // record, and then only on a record that SAYS it was verified: not every
+  // verified ingest leaves a manifest (the checksum list is a switch, and a
+  // manifest write can fail), and demanding one from those folders would
+  // re-copy the whole card every time for no gain in safety.
+  const folderHasManifest = manifestHas.any(folder);
   for (const f of (ing.files || [])) {
     const rel = String(f.d || f.p || '');
     if (!rel || rel.includes('..')) continue;
     let st = null; try { st = fs.statSync(path.join(folder, rel)); } catch (_) { continue; }
-    if (st.isFile() && st.size === f.s) keys.add(`${f.p}|${f.s}|${f.m}`);
+    if (!st.isFile() || st.size !== f.s) continue;
+    // The record says it was copied and verified; the size says something of
+    // that length is there. Neither says THIS file is there: a truncated file
+    // repadded to its old length, a file replaced by another of the same size,
+    // a folder restored from an incomplete backup all pass both tests. The
+    // manifest is what a Verify run would consult tomorrow, so where there is
+    // one, it is what decides here: a manifest that does not list the file
+    // does not vouch for it, whatever the record says.
+    if (folderHasManifest ? !manifestHas.has(folder, rel) : ing.verified !== true) continue;
+    keys.add(`${f.p}|${f.s}|${f.m}`);
   }
   return keys;
 }
@@ -206,7 +226,7 @@ function ingestUsable(ing, destRoots) {
 // `destRoots` — the destination roots selected for the coming ingest. Without
 // them, `skippable` stays empty: a file may only be skipped for a destination
 // that is known to hold a verified copy of it.
-function inspectCard(root, probeWrite = false, destRoots = null) {
+function inspectCard(root, probeWrite = false, destRoots = null, manifestHas = null) {
   const result = {
     writable: null,
     sentinel: null,
@@ -244,7 +264,7 @@ function inspectCard(root, probeWrite = false, destRoots = null) {
     if (Array.isArray(destRoots) && destRoots.length) {
       const perRoot = destRoots.map(root => {
         const keys = new Set();
-        for (const ing of result.sentinel.ingests) for (const k of usableKeysOnRoot(ing, root)) keys.add(k);
+        for (const ing of result.sentinel.ingests) for (const k of usableKeysOnRoot(ing, root, manifestHas)) keys.add(k);
         return keys;
       });
       usableKeys = perRoot.reduce((acc, keys) => new Set([...acc].filter(k => keys.has(k))));

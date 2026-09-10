@@ -178,6 +178,94 @@ const run = (card, dst, o) => call('start-copy', {
        'and nothing is set aside');
   }
 
+  // ── The files INGESTO writes itself are not "extra files" ────────────────
+  // Reported from the field: a user ingests with a card note, runs Verify a
+  // day later, and gets the red cross of a failed verification because
+  // "001_note.txt" is not in the manifest. Same for the whole ascmhl folder:
+  // the sidecar test received a basename, so its "^ascmhl/" pattern could
+  // never match anything.
+  console.log('\nINGESTO\'s own files are not reported as unknown');
+  {
+    const card = fresh('c7'), dst = fresh('d7');
+    mk(card, { 'A001C001.MOV': 'a'.repeat(4096), 'A001C002.MOV': 'b'.repeat(4096) });
+    const R = await call('start-copy', {
+      sources: [{ name: 'A001', path: card, counter: '001', cameraman: 'noar', camera: 'FX6',
+                  note: 'Jour 3, plateau B.' }],
+      destinations: [{ name: 'D', path: dst }],
+      options: opts({ mode: 'pro', proAlgo: 'xxh64', ascMhl: true }) });
+    const leaf = R[0].destPath;
+
+    // The fixture must really contain what the test claims to be about.
+    ok(fs.existsSync(path.join(leaf, '001_note.txt')), 'the shooting note was written');
+    ok(fs.existsSync(path.join(leaf, 'ascmhl')), 'the ASC MHL history was written');
+
+    const v = await call('verify-folder', leaf);
+    ok(v.matched === 2 && v.corrupted.length === 0 && v.missing.length === 0,
+       'the two clips verify clean');
+    ok(!v.extra.includes('001_note.txt'),
+       'the shooting note is not listed as an unknown file');
+    ok(!v.extra.some(f => f.startsWith('ascmhl/')),
+       'no ASC MHL file is listed as an unknown file (' + JSON.stringify(v.extra) + ')');
+    ok(v.extra.length === 0, 'and the folder comes back with nothing unknown at all');
+
+    // A text file that merely LOOKS like a note is still an unknown file: the
+    // name alone must never be enough to wave a file through.
+    fs.writeFileSync(path.join(leaf, '002_note.txt'), 'not an ingesto note at all');
+    const v2 = await call('verify-folder', leaf);
+    ok(v2.extra.includes('002_note.txt'),
+       'a *_note.txt without the INGESTO header is still reported');
+    fs.unlinkSync(path.join(leaf, '002_note.txt'));
+
+    // Only at the root. A note-looking file inside a card subfolder is media
+    // territory and stays visible.
+    fs.mkdirSync(path.join(leaf, 'CLIP'), { recursive: true });
+    fs.writeFileSync(path.join(leaf, 'CLIP', '003_note.txt'),
+                     'ingesto - Shooting Note\n----\nfake');
+    const v3 = await call('verify-folder', leaf);
+    ok(v3.extra.includes('CLIP/003_note.txt'),
+       'a note-looking file in a subfolder is still reported');
+    fs.rmSync(path.join(leaf, 'CLIP'), { recursive: true, force: true });
+
+    // And the reason the "extra" list exists in the first place still holds.
+    fs.writeFileSync(path.join(leaf, 'A001C003.MOV'), 'c'.repeat(4096));
+    const v4 = await call('verify-folder', leaf);
+    ok(v4.extra.length === 1 && v4.extra[0] === 'A001C003.MOV',
+       'a real unlisted clip is still reported, alone');
+  }
+
+  console.log('\naccented names: the two ways a name can be stored');
+  {
+    // "É" can be one character or two (E plus a combining accent). macOS writes
+    // the two-character form, everything else the one-character form, and they
+    // look identical on screen. Manifest entries are normalised one way; the
+    // name on a Linux, Windows or NAS volume keeps the bytes it was given.
+    //
+    // Verify used to build each path by joining the normalised name onto the
+    // folder, find nothing, and report the file as MISSING: the loudest thing
+    // it can say about a delivered rush, on a folder that is perfectly fine.
+    const NFC = 'CLIP_ÉTÉ.MOV';        // É as one character
+    const NFD = NFC.normalize('NFD');                        // E + combining accent
+    ok(NFC !== NFD && NFC.length !== NFD.length, 'the fixture really holds two different forms');
+    const card = fresh('c-nfd'), dst = fresh('d-nfd');
+    mk(card, { [NFC]: 'e'.repeat(4096), 'PLAIN.MOV': 'p'.repeat(4096) });
+    const leaf = (await run(card, dst, { mode: 'slow' }))[0].destPath;
+
+    const ckName = fs.readdirSync(leaf).find(n => /\.xxh$/.test(n));
+    ok(/CLIP_ÉTÉ\.MOV/.test(fs.readFileSync(path.join(leaf, ckName), 'utf8')),
+       'the manifest holds the one-character form');
+
+    // Now the delivered file carries the OTHER form, as it would on a volume
+    // written by a Mac and read anywhere else.
+    fs.renameSync(path.join(leaf, NFC), path.join(leaf, NFD));
+    ok(fs.readdirSync(leaf).includes(NFD), 'and the file on disk holds the two-character form');
+
+    const v = await call('verify-folder', leaf);
+    ok(v.missing.length === 0, 'nothing is reported missing (' + JSON.stringify(v.missing) + ')');
+    ok(v.corrupted.length === 0, 'nothing is reported corrupt');
+    ok(v.matched === 2, 'both files verify, the accented one included');
+    ok(v.extra.length === 0, 'and it is not listed as an unknown file either');
+  }
+
   fs.renameSync = realRename;
   console.log(`\n${pass} passed, ${fail} failed`);
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (_) {}
