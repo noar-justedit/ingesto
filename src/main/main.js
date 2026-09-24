@@ -137,11 +137,23 @@ function writeFileAtomic(target, content) {
   // manifest temp would then be reported to the user as a lost clip.
   const tmp = target + ATOMIC_TMP_SUFFIX;
   try {
-    fs.writeFileSync(tmp, content, 'utf8');
-    fs.renameSync(tmp, target);
+    safeWriteTarget(target); safeWriteTarget(tmp);
+    // Atomic was not enough: the rename cannot be undone, but the CONTENT can
+    // still be in the drive's cache when the power goes. The footage is flushed
+    // file by file (F_FULLFSYNC); the checksum list, the MHL, the ASC MHL, the
+    // report and the shooting note went through here and were not. After a
+    // power cut, a green run could leave a drive with its rushes and no list.
+    // Flush the file, then the directory entry that names it.
+    const fd = fs.openSync(tmp, 'w');
+    try {
+      fs.writeFileSync(fd, content, 'utf8');
+      try { if (!nocache.fullFsync(fd)) fs.fsyncSync(fd); } catch (_) {}
+    } finally { try { fs.closeSync(fd); } catch (_) {} }
+    safeRename(tmp, target);
+    try { const dfd = fs.openSync(path.dirname(target), 'r'); try { fs.fsyncSync(dfd); } finally { fs.closeSync(dfd); } } catch (_) {}
     return true;
   } catch (e) {
-    try { fs.unlinkSync(tmp); } catch (_) {}
+    try { safeUnlink(tmp); } catch (_) {}
     throw e;
   }
 }
@@ -1338,6 +1350,19 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
   pauseCopy = false;
   resetFsyncBusyState();   // a new ingest gets a fresh chance at flushing
   activeCopyCount++;
+  // Every card of the batch is locked for the whole run, released in the
+  // finally below whatever happens.
+  const lockedHere = (Array.isArray(sources) ? sources : []).map(x => x && x.path).filter(Boolean);
+  lockedHere.forEach(lockSource);
+  // The preflight is told about the whole batch, so that a destination sitting
+  // inside ANY card of it is refused before the first byte rather than by the
+  // lock, mid-copy, on a card the operator was not copying.
+  //
+  // Set on the options object itself, NOT on a copy of it: the engine
+  // normalises this very object (an unknown mode becomes SECURE), and the card
+  // journal written afterwards reads it back. A copy made the two disagree,
+  // and the journal recorded "not verified" for a run that was verified.
+  if (options && typeof options === 'object') options.batchSources = lockedHere;
   try {
   const allResults = [];
   for (const source of sources) {
@@ -1369,8 +1394,14 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
       if (options.writeSentinel === true && common.length) {
         const allDests = sourceResults.map(r => r.destPath);
         try {
-          await appendIngest(source.path, allDests, common, app.getVersion(),
+          // appendIngest reports a refusal by RETURNING {ok:false} (a
+          // write-protected card is the ordinary case) and throws only on an
+          // unexpected error. Only the throw was handled, so the commonest
+          // failure of all went by in silence: green ingest, no note, and the
+          // next "copy new files only" with nothing to compare against.
+          const sent = await appendIngest(source.path, allDests, common, app.getVersion(),
             { mode: options.mode, verified: options.mode === 'slow' || options.mode === 'pro' });
+          if (!sent || sent.ok !== true) throw new Error(sent && sent.reason ? String(sent.reason) : 'unknown reason');
         } catch (e) {
           // A sentinel write failure must never break the ingest result, but it
           // must not disappear either: without this log, the next ingest's
@@ -1395,7 +1426,7 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
   });
   sendUI('copy-complete', cleaned);
   return cleaned;
-  } finally { activeCopyCount--; }
+  } finally { activeCopyCount--; lockedHere.forEach(unlockSource); }
 });
 
 ipcMain.handle('cancel-copy', async () => { cancelCopy = true; pauseCopy = false; pauseEnd(); return true; });
@@ -1407,6 +1438,7 @@ ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath
   cancelCopy = false;
   pauseCopy = false;
   activeCopyCount++;
+  lockSource(sourcePath);
   try {
   const source = { name: sourceName, path: sourcePath };
   const results = await performCopyMulti(
@@ -1484,11 +1516,11 @@ ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath
       // The good copy has to be back before its failed twin is dropped.
       const base = String(q).replace(new RegExp('(' + FAILED_SUFFIX.replace('.', '\\.') + ')(-\\d+)?$'), '');
       if (!recopied.has(base)) continue;
-      try { fs.unlinkSync(q); } catch (_) {}
+      try { safeUnlink(q); } catch (_) {}
     }
   } catch (_) {}
   return rest;
-  } finally { activeCopyCount--; }
+  } finally { activeCopyCount--; unlockSource(sourcePath); }
 });
 
 // ─── Copy engine — read the source ONCE, write to every destination ─────────
@@ -1661,7 +1693,7 @@ function sweepPartFiles(root, keep) {
       const full = path.join(dir, e.name);
       if (e.isDirectory()) walk(full);
       else if (e.isFile() && e.name.endsWith(PART_SUFFIX) && !(keep && keep.has(full))) {
-        try { fs.unlinkSync(full); n++; } catch (_) {}
+        try { safeUnlink(full); n++; } catch (_) {}
       }
     }
   })(root);
@@ -1769,7 +1801,8 @@ function copyFanOut(src, destFiles, onBytes, hasher) {
     // 22/08/2026 on the same card: 60 MB/s here vs 76-79 on Windows/Linux,
     // which only evict and then read normally, vs 91 MB/s in FAST).
     const mkWrite = hasher ? nocache.createWriteStream : fs.createWriteStream;
-    const rs = fs.createReadStream(src, { highWaterMark: 8*1024*1024 });
+    const CHUNK = 8*1024*1024;
+    const rs = fs.createReadStream(src, { highWaterMark: CHUNK });
     const N = destFiles.length;
     const wss = new Array(N);
     const state = new Array(N).fill('open');   // open | done | failed
@@ -1810,7 +1843,16 @@ function copyFanOut(src, destFiles, onBytes, hasher) {
     };
 
     for (let i = 0; i < N; i++) {
-      const ws = mkWrite(destFiles[i]);
+      // Same buffer as the read, and this is the single biggest win in the
+      // copy path. A write stream opened with the default 64 KB always answers
+      // "full" to an 8 MB chunk, so rs.pause() fired on EVERY chunk: the card
+      // was never read while a destination was being written, and the two
+      // halves ran strictly in turn instead of overlapping.
+      // Twice the chunk, deliberately: a stream whose buffer is EQUAL to the
+      // chunk still answers "full" after taking it, so the reader stopped
+      // either way. With room for two, the card is read while the previous
+      // chunk is still being written. Bounded cost: destinations x 16 MB.
+      const ws = mkWrite(safeWriteTarget(destFiles[i]), { highWaterMark: CHUNK * 2 });
       wss[i] = ws;
       ws.on('error', e => failDest(i, e));
       // Settle on 'close', NOT on 'finish'. A WriteStream emits 'finish' when
@@ -2094,11 +2136,20 @@ async function performCopyMulti(source, destinations, options, onProgress) {
 
   // 2. A destination equal to, or inside, the source card copies the card into
   //    itself; the card is then flagged as ingested and offered for ejection.
+  //
+  // Checked against EVERY card of the batch, not only the one being copied. A
+  // destination that sits inside another card of the same batch used to pass
+  // here and be refused later by the source-card lock, in the middle of the
+  // copy, with a message about a card the operator was not copying. The answer
+  // belongs before the first byte.
+  const batchRoots = (Array.isArray(options.batchSources) && options.batchSources.length)
+    ? options.batchSources : [source.path];
   for (const d of destinations) {
     const dp = options.fixedDestPath || d.path;
-    if (pathContains(source.path, dp) || pathContains(dp, source.path)) {
+    const clash = batchRoots.find(sp => pathContains(sp, dp) || pathContains(dp, sp));
+    if (clash) {
       return abort('PF-E6',
-        `Destination "${d.name || dp}" is the same as, or inside, the source card. Nothing was written.`,
+        `Destination "${d.name || dp}" is the same as, or inside, a card of this ingest${clash === source.path ? '' : ` ("${path.basename(clash)}")`}. Nothing was written.`,
         { card: source.name, dest: d.name || dp, destPath: dp });
     }
   }
@@ -2380,7 +2431,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
 
   // ── PHASE 1 — read once, write to every destination (green bar) ─────────
   tCopyStart = Date.now(); pausedAtCopyStart = pausedMs;
-  { let lastB=0, lastT=Date.now();
+  { let lastB=0, lastT=Date.now(), lastEmit=0;
     for (let i=0; i<allFiles.length; i++) {
       if (cancelCopy) break;
       await pauseGate(mainWindow);
@@ -2394,10 +2445,18 @@ async function performCopyMulti(source, destinations, options, onProgress) {
       const destTmpAbs   = destFilesAbs.map(p => p + PART_SUFFIX);
       act.forEach((r, k) => r._tmps.add(destTmpAbs[k]));   // what a post-copy clean-up may touch
       let fileBytes = 0;                                   // read from the CARD for this file
-      const onB = b => {
+      // One message per 8 MB chunk, unthrottled, was a full repaint of the
+      // transfer view per chunk: on a card of small files, one file = one
+      // chunk = one repaint, tens of times a second, and the serialising is
+      // done by the very process that is copying. The verify phase has always
+      // throttled to 100 ms; the copy phase now does the same. The last event
+      // of a file is never dropped, so a bar always reaches its end.
+      const onB = (b, force) => {
         copiedBytes+=b; fileBytes+=b;
         const now=Date.now();
         if (now-lastT>=150){ speedPush(copiedBytes-lastB,now-lastT); lastB=copiedBytes; lastT=now; }
+        if (!force && now-lastEmit < 100) return;
+        lastEmit = now;
         const sp=avgSpd();
         onProgress({ sourceName:source.name, sourcePath:source.path, currentFile:rel, phase:'copy',
           destIndex:0, destName:destNames,
@@ -2426,6 +2485,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
           if (!purged) copyPurgeFails++;
         }
         const { digest, failed } = await copyFanOut(file.src, destTmpAbs, onB, hasher);
+        onB(0, true);   // the end of a file always shows, whatever the throttle
         const srcHash = digest == null ? null : String(digest);
         let st=null; try { st=fs.statSync(file.src); } catch(_){}
 
@@ -2468,7 +2528,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
           if (why) {
             // Nothing has been promoted yet: the copies still carry the
             // temporary name, so dropping them leaves no half-file behind.
-            for (const tmp of destTmpAbs) { try { fs.unlinkSync(tmp); } catch(_) {} }
+            for (const tmp of destTmpAbs) { try { safeUnlink(tmp); } catch(_) {} }
             for (const r of act) {
               r.errors++;
               r.errorList.push({ file: rel, phase: 'copy', origin: 'source',
@@ -2483,7 +2543,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
           if (err) {
             // Drop the partial write. It never carried the final name, so there
             // is nothing on the destination that could pass for a good file.
-            try { fs.unlinkSync(tmp); } catch(_) {}
+            try { safeUnlink(tmp); } catch(_) {}
             // A user cancellation is not a copy error — don't inflate the count.
             // `origin` says WHICH side failed. The engine has always known,
             // and the interface has never been told: a drive that stopped
@@ -2504,14 +2564,14 @@ async function performCopyMulti(source, destinations, options, onProgress) {
                   error: `this drive did not confirm when files were fully written (common on network drives, or while antivirus is scanning). The copy completed. For extra certainty, run Verify on this folder later.` });
               }
             }
-            fs.renameSync(tmp, df);            // atomic promotion to the final name
+            safeRename(tmp, df);               // atomic promotion to the final name
             if (st) { try { fs.chmodSync(df,st.mode); fs.utimesSync(df,st.atime,st.mtime); } catch(_){} }
             r.copiedFiles++;
             r.copied.push({rel,destRel:file.destRel,src:file.src,dest:df,size:file.size,mtimeMs:file.mtimeMs,srcHash});
           } catch(e) {
             // Flush or rename failed — the file is NOT on the destination under
             // its final name, and that is now reported instead of swallowed.
-            try { fs.unlinkSync(tmp); } catch(_) {}
+            try { safeUnlink(tmp); } catch(_) {}
             r.errors++;
             r.errorList.push({file:rel,error:`could not be committed to the destination: ${e.message}`,phase:'copy',origin:'destination'});
             r.failedFiles.push(rel); r.failedMap[rel]=file.destRel;
@@ -2519,7 +2579,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
         }
       } catch(e){
         // Source read failure — the file failed for every active destination.
-        for (const tmp of destTmpAbs) { try { fs.unlinkSync(tmp); } catch(_) {} }
+        for (const tmp of destTmpAbs) { try { safeUnlink(tmp); } catch(_) {} }
         for (const r of act) { r.errors++; r.errorList.push({file:rel,error:e.message,phase:'copy',origin:'source'}); r.failedFiles.push(rel); r.failedMap[rel]=file.destRel; }
       }
     }
@@ -2546,7 +2606,12 @@ async function performCopyMulti(source, destinations, options, onProgress) {
   // file used to leave the note behind, and the folder — otherwise pure
   // residue — was then refused for ever.
   if (!cancelCopy && !options.fixedDestPath && srcNote && srcNote.trim()) {
-    const noteFileName = `${source.counter || '001'}_note.txt`;
+    // The counter comes from the interface. It names a FILE here, so it is
+    // reduced to what a name may hold: anything else (a separator, "..") would
+    // put the note outside the destination folder. Every other write of the
+    // engine already checks this; this one did not.
+    const counterSafe = String(source.counter || '001').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) || '001';
+    const noteFileName = `${counterSafe}_note.txt`;
     const sep = '-'.repeat(40);
     const noteContent = [
       'ingesto - Shooting Note', sep,
@@ -2555,6 +2620,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
       'Card    : ' + source.name,
       'Operator: ' + (source.cameraman || 'Unknown'),
       'Camera  : ' + (source.camera || 'Unknown'),
+      'Profile : ' + (source.pp || 'Unknown'),
       sep, '', srcNote.trim(), ''
     ].join('\n');
     for (const r of R) {
@@ -2570,7 +2636,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
       // called "001_note.txt-2" would be reported as a stranger for ever.
       let notePath = path.join(r.destPath, noteFileName);
       if (r.copied.some(c => c.dest === notePath)) {
-        const stem = `${source.counter || '001'}`;
+        const stem = counterSafe;
         notePath = path.join(r.destPath, `${stem}-${Date.now()}_note.txt`);
         for (let i = 2; i < 1000; i++) {
           const cand = path.join(r.destPath, `${stem}-${i}_note.txt`);
@@ -2610,7 +2676,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
     const delivered = new Set(r.copied.map(c => c.dest));
     for (const tmp of r._tmps) {
       if (delivered.has(tmp)) continue;
-      try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch (_) {}
+      try { if (fs.existsSync(tmp)) safeUnlink(tmp); } catch (_) {}
     }
   }
 
@@ -2742,7 +2808,7 @@ async function performCopyMulti(source, destinations, options, onProgress) {
             // which erased a delivered, verified file that happened to carry
             // that name on the card. Deletion is now driven by this list only.
             try { const q = freeName(c.dest + FAILED_SUFFIX);
-                  fs.renameSync(c.dest, q); c._quarantined = true;
+                  safeRename(c.dest, q); c._quarantined = true;
                   (r.quarantinedPaths || (r.quarantinedPaths = [])).push(q); }
             catch(_) {
               // The bad copy is still sitting there under its REAL name. Left
@@ -3019,6 +3085,56 @@ function pathContains(parent, child) {
   } catch (_) { return false; }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// THE SOURCE-CARD LOCK
+// ═══════════════════════════════════════════════════════════════════════════
+// Non-negotiable rule: ingesto never deletes, renames or overwrites a file on a
+// source card. The rule used to hold because every call site was written with
+// care; it now holds because every destructive call in this file goes through
+// the four functions below, and scripts/test-source-lock.js fails the build if
+// a raw fs.unlinkSync / renameSync / rmSync / rmdirSync appears anywhere else.
+//
+// A card is locked for as long as a run that reads it is in progress: an
+// ingest, or a retry of failed files. Not for the whole life of the app: a
+// shuttle drive offloaded as a source in the morning is a legitimate
+// destination in the afternoon, and a session-long lock would have refused
+// every write to it. During a run, PF-E6 already refuses a destination that
+// overlaps the card, so the lock should never fire; it is the second key,
+// the one that holds even if a future change forgets the first.
+//
+// It fails closed: a refused operation throws, and the caller's own error
+// path takes over (a leftover temp file on a destination, never a lost file
+// on a card).
+const _lockedSources = new Map();   // resolved card root -> number of runs using it
+function lockSource(root) {
+  if (!root) return;
+  const k = path.resolve(String(root));
+  _lockedSources.set(k, (_lockedSources.get(k) || 0) + 1);
+}
+function unlockSource(root) {
+  if (!root) return;
+  const k = path.resolve(String(root));
+  const n = (_lockedSources.get(k) || 0) - 1;
+  if (n > 0) _lockedSources.set(k, n); else _lockedSources.delete(k);
+}
+function onLockedSource(p) {
+  for (const root of _lockedSources.keys()) if (pathContains(root, p)) return root;
+  return null;
+}
+function refuseOnSource(op, p) {
+  const root = onLockedSource(p);
+  if (!root) return;
+  const e = new Error(`${op} refused: "${p}" is on the source card "${root}". ingesto never touches a file on a card.`);
+  e.code = 'INGESTO_SOURCE_LOCK';
+  console.error('[source-lock] ' + e.message);
+  throw e;
+}
+function safeUnlink(p) { refuseOnSource('delete', p); fs.unlinkSync(p); }
+function safeRename(from, to) { refuseOnSource('rename', from); refuseOnSource('rename', to); fs.renameSync(from, to); }
+function safeRmTree(p) { refuseOnSource('delete', p); fs.rmSync(p, { recursive: true, force: true }); }
+// Opening a file for writing truncates it: on a card, that is a deletion too.
+function safeWriteTarget(p) { refuseOnSource('write', p); return p; }
+
 // Substitute the template's variables. No cleanup here: the caller cleans each
 // destination segment separately, because a "/" in the template now means "new
 // subfolder" and the two sides of it are two independent folder names.
@@ -3034,16 +3150,30 @@ function resolveTemplateVars(tpl, src, now) {
   // template never asked for, and push the counter out of the card's own
   // folder. Values are flattened before substitution.
   const v = x => String(x == null ? '' : x).replace(/[\/\\]/g, '_');
-  // For optional fields (cameraman, camera): replace with empty string if not set
-  // so we can clean up orphan separators after
+  // For optional fields (cameraman, camera, pp): replace with empty string if
+  // not set so we can clean up orphan separators after
   const cameraman = v((src.cameraman||'').trim());
   const camera    = v((src.camera   ||'').trim());
+  // The picture profile the camera was set to (SLOG3, DLOG2, CLOG, HLG...).
+  // Optional, flattened and allowed to resolve to nothing, like the camera
+  // model, plus one rule of its own: letters and digits only, in capitals.
+  // A profile is an acronym everybody spells differently, and two spellings
+  // mean two folders for one thing on the same shoot.
+  //
+  // The interface applies the same rule as the operator types, and again on the
+  // way here. It is applied a third time at this point because this is the last
+  // line before a folder is created: a value that reached the engine by another
+  // door does not get to put a lower-case folder on a drive. Mirrored character
+  // for character in index.html resolveTplSegs(), or the preview would show a
+  // folder other than the one created.
+  const pp        = v((src.pp       ||'').trim()).replace(/[^A-Za-z0-9]/g,'').toUpperCase();
   return String(tpl == null ? '' : tpl)
     .replaceAll('{counter}',   v(src.counter)       || '001')
     .replaceAll('{cardname}',  v(src.name)          || 'CARD')
     .replaceAll('{operator}',  cameraman)   // canonical name
     .replaceAll('{cameraman}', cameraman)   // legacy alias — keeps old saved templates working
     .replaceAll('{camera}',    camera)
+    .replaceAll('{pp}',        pp)
     // {YYYY} is listed before {YY} for the reader only: "{YY}" is not a
     // substring of "{YYYY}" — there is no closing brace after the second Y — so
     // the two substitutions cannot interfere whatever their order.
@@ -3144,7 +3274,7 @@ function makeCounterMatcher(tpl) {
   // here: a token missing from this set falls through to the literal branch and
   // the counter scan then never matches any folder — reintroducing the
   // counter-reset/overwrite bug this matcher exists to fix.
-  const VAR   = new Set(['{cardname}','{cameraman}','{operator}','{camera}']);
+  const VAR   = new Set(['{cardname}','{cameraman}','{operator}','{camera}','{pp}']);
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   // Tokenize the template into {token} pieces and literal runs, then rebuild it
@@ -3179,6 +3309,20 @@ function makeCounterMatcher(tpl) {
   const begSep = s => /^[_\-]/.test(String(s));
   let re = '^';
   const parts = tpl.split(/(\{[a-zA-Z]+\})/).filter(s => s !== '');
+  // cleanSegment drops the dots and spaces at the END of a folder name (a name
+  // Windows refuses, and the Finder hides). The pattern has to drop them too:
+  // a template written "{counter}_{cardname}." creates "001_A001" on the drive
+  // but was matched against "001_A001\.$", so the scan found no card at all,
+  // answered next=001 for ever, and every later ingest was refused by the
+  // "folder already exists" guard with nothing explaining why.
+  for (let k = parts.length - 1; k >= 0; k--) {
+    const last = parts[k];
+    if (last === '{counter}' || FIXED[last] || VAR.has(last)) break;   // a value can end in anything
+    const trimmed = String(last).replace(/[. ]+$/, '');
+    if (trimmed === last) break;
+    if (trimmed) { parts[k] = trimmed; break; }
+    parts.pop();                                                        // the whole run was dots and spaces
+  }
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i];
     if (p === '{counter}') {
@@ -3606,7 +3750,12 @@ ipcMain.handle('handoff', async (_, payload, argv, keep) => {
   } finally {
     // rmSync, not rmdir: a command that wrote its own files beside the document
     // would otherwise leave the whole directory behind.
-    if (file) { try { fs.rmSync(path.dirname(file), { recursive: true, force: true }); } catch (_) {} }
+    if (file) { try {
+      const dir = path.dirname(file);
+      // Only ever the folder this call created: inside the system temp folder,
+      // named as mkdtemp named it. Anything else is left where it is.
+      if (pathContains(os.tmpdir(), dir) && path.basename(dir).startsWith('ingesto-handoff-')) safeRmTree(dir);
+    } catch (_) {} }
   }
 });
 
@@ -3692,7 +3841,7 @@ ipcMain.handle('report-write', async (_, destPath, html, preserveExisting) => {
       for (let i = 2; fs.existsSync(bak) && i < 100; i++)
         bak = path.join(destPath, `INGESTO_report.unreadable-${i}.html`);
       if (fs.existsSync(bak)) bak = path.join(destPath, `INGESTO_report.unreadable-${Date.now()}.html`);
-      try { fs.renameSync(target, bak); } catch (_) {}
+      try { safeRename(target, bak); } catch (_) {}
     }
     writeFileAtomic(target, html);
     return true;
@@ -3881,7 +4030,23 @@ ipcMain.handle('eject-volume', async (_, volPath) => {
     return { ok: false, error: 'unsupported platform' };
   } catch (e) { return { ok: false, error: e.message }; }
 });
-ipcMain.handle('reveal-path', async (_,p) => { try { await shell.openPath(p); return true; } catch(_) { return false; } });
+// Reveal, and only reveal. This used to be shell.openPath(), which does not
+// show a file: it OPENS it, with whatever application owns its extension. The
+// path can come from a record read back out of a report that lives on a shared
+// destination, so a stranger with write access to that drive could have made
+// the reveal button launch a file of their choosing. showItemInFolder opens the
+// enclosing folder and selects the item: nothing is executed.
+//
+// The path is checked as well: it has to exist, and it has to be a real path,
+// not one built with "..".
+ipcMain.handle('reveal-path', async (_, p) => {
+  try {
+    const abs = path.resolve(String(p || ''));
+    if (!abs || !fs.existsSync(abs)) return false;
+    shell.showItemInFolder(abs);
+    return true;
+  } catch (_) { return false; }
+});
 ipcMain.handle('get-version',   async ()    => app.getVersion());
 
 // ─── Camera auto-detection ───────────────────────────────────────────────

@@ -44,18 +44,37 @@ const { execFile }  = require('child_process');
 const SENTINEL_NAME = '.ingesto.json';
 
 // ──────────────────────────────────────────────────────────────────────────
-// Write-protect detection — try to create a tiny test file, then remove it.
-// Returns true if the card root is writable.
+// Write-protect detection, WITHOUT writing anything.
+//
+// It used to create a test file at the root of the card and delete it right
+// away. That is a deletion on a card, and the rule is that there is none. The
+// question is now asked of the system instead: a card with its lock switch on
+// is mounted read-only, and access() answers EROFS for it on macOS and Linux.
+//
+// Windows does not report a read-only volume through access() on a folder, so
+// there a locked card reads as writable here; the journal write at the end of
+// the ingest then fails, and that failure is reported with the results. The
+// early warning is lost on Windows, the card is never touched.
 // ──────────────────────────────────────────────────────────────────────────
 function isWritable(root) {
-  const testPath = path.join(root, '.ingesto_wtest_' + Date.now());
-  try {
-    fs.writeFileSync(testPath, '');
-    try { fs.unlinkSync(testPath); } catch (_) {}
-    return true;
-  } catch (_) {
-    return false;
+  try { fs.accessSync(root, fs.constants.W_OK); return true; }
+  catch (_) { return false; }
+}
+
+// The only files ingesto ever writes on a card, and only when Card Tracking is
+// on: its own journal, the working copy it is written through, and the copy
+// of a journal it could not read. Exactly these names, at the root of the
+// card. Anything else is refused before the filesystem is touched.
+const JOURNAL_RE = /^\.ingesto\.json(\.tmp|\.unreadable(-\d+)?)?$/;
+function journalOnly(root, p) {
+  const okDir  = path.resolve(path.dirname(p)) === path.resolve(root);
+  const okName = JOURNAL_RE.test(path.basename(p));
+  if (!okDir || !okName) {
+    const e = new Error(`refused: "${p}" is not the ingesto journal. ingesto never touches another file on a card.`);
+    e.code = 'INGESTO_SOURCE_LOCK';
+    throw e;
   }
+  return p;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -72,10 +91,21 @@ function hideOnWindows(filePath) {
 // ──────────────────────────────────────────────────────────────────────────
 // Read sentinel file from card root. Returns parsed object or null.
 // ──────────────────────────────────────────────────────────────────────────
+// A journal is a few hundred kilobytes after a long life: one line per file,
+// per ingest. Anything past this is not a journal, and reading it would freeze
+// the app at the moment a card is inserted, possibly during another ingest.
+// Every other file ingesto reads from the outside world is capped the same way.
+// Over the cap the journal reads as unreadable, never as "fresh card": the
+// difference decides whether the operator is told the history is there but
+// unreadable, or quietly shown every file as new.
+const SENTINEL_MAX_BYTES = 64 * 1024 * 1024;
+
 function readSentinel(root) {
   const sentPath = path.join(root, SENTINEL_NAME);
   if (!fs.existsSync(sentPath)) return null;
   try {
+    const st = fs.statSync(sentPath);
+    if (!st.isFile() || st.size > SENTINEL_MAX_BYTES) return null;
     const txt = fs.readFileSync(sentPath, 'utf8');
     const obj = JSON.parse(txt);
     if (obj && Array.isArray(obj.ingests)) return obj;
@@ -240,13 +270,18 @@ function inspectCard(root, probeWrite = false, destRoots = null, manifestHas = n
     if (!fs.statSync(root).isDirectory()) return result;
   } catch (_) { return result; }
 
-  // Only probe writability when explicitly asked (it creates a temp file on the card).
+  // Only probe writability when explicitly asked (Card Tracking). It writes
+  // nothing: see isWritable above.
   result.writable = probeWrite ? isWritable(root) : null;
   result.sentinel = readSentinel(root);
   // A sentinel that exists but cannot be read means "this card HAS a history we
   // can no longer see" — very different from a fresh card. The caller must be
   // able to tell the operator instead of quietly declaring every file new.
-  result.sentinelDamaged = sentinelIsDamaged(root);
+  // Read once, not twice: sentinelIsDamaged() re-read and re-parsed the same
+  // file, and that file can be several megabytes on a card that has been
+  // through a dozen ingests. "Damaged" is exactly "the file is there and we
+  // could not read it", which the line above already answers.
+  result.sentinelDamaged = result.sentinel === null && fs.existsSync(path.join(root, SENTINEL_NAME));
   result.allCurrent = listAllFiles(root);
 
   if (result.sentinel && result.sentinel.ingests.length) {
@@ -312,7 +347,7 @@ async function appendIngest(root, destination, filesIngested, ingestoVersion, me
       try {
         let bak = sentPath + '.unreadable';
         if (fs.existsSync(bak)) bak = `${bak}-${Date.now()}`;
-        fs.renameSync(sentPath, bak);
+        fs.renameSync(journalOnly(root, sentPath), journalOnly(root, bak));
       } catch (_) {}
     }
     sentinel = { ingesto_version: ingestoVersion, ingests: [] };
@@ -332,11 +367,14 @@ async function appendIngest(root, destination, filesIngested, ingestoVersion, me
     // Same discipline as the media files: write a temp file, then rename over
     // the target. writeFileSync truncates first, so a card pulled mid-write
     // used to leave a zero-length sentinel — i.e. no history at all.
+    //
+    // A write that fails leaves its .tmp where it is rather than deleting it:
+    // nothing is ever deleted on a card. The next journal write overwrites
+    // that same file, and the scanner already skips every .ingesto.json.*
+    // sibling, so it is never mistaken for footage.
     const tmp = sentPath + '.tmp';
-    try {
-      fs.writeFileSync(tmp, JSON.stringify(sentinel, null, 2), 'utf8');
-      fs.renameSync(tmp, sentPath);
-    } catch (e) { try { fs.unlinkSync(tmp); } catch (_) {} throw e; }
+    fs.writeFileSync(journalOnly(root, tmp), JSON.stringify(sentinel, null, 2), 'utf8');
+    fs.renameSync(journalOnly(root, tmp), journalOnly(root, sentPath));
     await hideOnWindows(sentPath);
     return { ok: true };
   } catch (e) {

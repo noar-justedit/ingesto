@@ -48,7 +48,11 @@ const result = (over) => Object.assign({
   success: true, canceled: false, errors: 0, failedFiles: [], unstableFiles: [],
   totalBytes: 1000,
 }, over);
-const RUN = { dests: [{ path: '/Volumes/SHUTTLE_1', name: 'SHUTTLE_1' }] };
+const RUN = { dests: [{ path: '/Volumes/SHUTTLE_1', name: 'SHUTTLE_1' }],
+              hook: { on: true, cmd: '' } };
+// The command is part of the snapshot: writing it here is what the interface
+// does when START is pressed.
+const cmd = (c) => { RUN.hook.cmd = c; };
 const flush = () => new Promise(r => setTimeout(r, 5));
 
 (async () => {
@@ -58,23 +62,59 @@ console.log('\nthe destination comes from the run, not from the screen');
   // The operator unplugs the shuttle and plugs an archive drive in while the
   // last card copies. The hook used to be handed the archive drive, for a run
   // that never wrote a byte to it.
-  ctx.S.hookCommand = '/usr/local/bin/proxy.sh "{destPath}"';
+  cmd('/usr/local/bin/proxy.sh "{destPath}"');
   ctx.S.dests = [{ path: '/Volumes/ARCHIVE_LTO', name: 'ARCHIVE_LTO' }];   // the live state, now
   launched = [];
   ctx.runPostHook([result()], RUN);
   await flush();
   ok(launched.length === 1, 'the command runs');
-  ok(launched[0][1] === '/Volumes/SHUTTLE_1',
-     `it is told the drive the run used ("${launched[0][1]}")`);
+  ok(launched.length === 1 && launched[0][1] === '/Volumes/SHUTTLE_1',
+     `it is told the drive the run used ("${launched.length ? launched[0][1] : '(nothing ran)'}")`);
 }
 
-console.log('\nand falls back to the screen only when there is no run');
+console.log('\nthe command itself is frozen, like the handoff');
 {
-  ctx.S.dests = [{ path: '/Volumes/ARCHIVE_LTO', name: 'ARCHIVE_LTO' }];
+  // The gear button is not locked during an ingest. Settings can be opened
+  // while a card copies, and the command typed there used to be the one that
+  // ran at the end, on a run started under another one.
+  cmd('/usr/local/bin/proxy.sh {card}');
+  ctx.S.hookEnabled = true;
+  ctx.S.hookCommand = '/usr/local/bin/SOMETHING_ELSE.sh {card}';   // typed mid-copy
+  launched = [];
+  ctx.runPostHook([result()], RUN);
+  await flush();
+  ok(launched.length === 1 && launched[0][0] === '/usr/local/bin/proxy.sh',
+     `the command that runs is the one frozen at START ("${launched.length ? launched[0][0] : '(nothing ran)'}")`);
+}
+
+console.log('\nand so is the switch');
+{
+  // Switched ON mid-copy: the run it belongs to started with it off.
+  ctx.S.hookEnabled = true;
+  ctx.S.hookCommand = '/usr/local/bin/proxy.sh {card}';
+  launched = [];
+  ctx.runPostHook([result()], { dests: RUN.dests, hook: { on: false, cmd: '/usr/local/bin/proxy.sh {card}' } });
+  await flush();
+  ok(launched.length === 0, 'a hook switched on during the ingest does not run');
+
+  // And switched OFF mid-copy: the run started with it on, so it runs.
+  ctx.S.hookEnabled = false;
+  launched = [];
+  ctx.runPostHook([result()], RUN);
+  await flush();
+  ok(launched.length === 1, 'a hook switched off during the ingest still runs');
+}
+
+console.log('\nwithout a snapshot, nothing runs');
+{
+  // There is one call site and it always passes the run. A call without one is
+  // a programming error, not a reason to fall back to the live screen.
+  ctx.S.hookEnabled = true;
+  ctx.S.hookCommand = '/usr/local/bin/proxy.sh {card}';
   launched = [];
   ctx.runPostHook([result()], null);
   await flush();
-  ok(launched[0][1] === '/Volumes/ARCHIVE_LTO', 'an older call site still gets an answer');
+  ok(launched.length === 0, 'no run, no command');
 }
 
 console.log('\nthe card name is data, never part of the command');
@@ -82,30 +122,30 @@ console.log('\nthe card name is data, never part of the command');
   // A card can be named by whoever formatted it, and the name reaches this
   // function as text. The command is tokenized first, then each argument has
   // its variables replaced whole, so a hostile name stays one argument.
-  ctx.S.hookCommand = '/usr/local/bin/proxy.sh {card}';
+  cmd('/usr/local/bin/proxy.sh {card}');
   ctx.S.dests = [];
   launched = [];
   ctx.runPostHook([result({ sourceName: '; rm -rf ~' })], RUN);
   await flush();
-  ok(launched[0].length === 2, 'the command still has exactly two arguments');
-  ok(launched[0][1] === '; rm -rf ~', 'and the name arrives whole, as one string');
-  ok(launched[0][0] === '/usr/local/bin/proxy.sh', 'the program is the one that was configured');
+  ok(launched.length === 1 && launched[0].length === 2, 'the command still has exactly two arguments');
+  ok(launched.length === 1 && launched[0][1] === '; rm -rf ~', 'and the name arrives whole, as one string');
+  ok(launched.length === 1 && launched[0][0] === '/usr/local/bin/proxy.sh', 'the program is the one that was configured');
 }
 
 console.log('\nand it can never choose the program');
 {
   // A hook written as "{destPath}/x" would otherwise let a drive name pick the
   // executable. argv[0] is never substituted.
-  ctx.S.hookCommand = '{destPath} something';
+  cmd('{destPath} something');
   launched = [];
   ctx.runPostHook([result()], RUN);
   await flush();
-  ok(launched[0][0] === '{destPath}', 'the first argument is left exactly as typed');
+  ok(launched.length === 1 && launched[0][0] === '{destPath}', 'the first argument is left exactly as typed');
 }
 
 console.log('\nwhat the hook is told about the result');
 {
-  ctx.S.hookCommand = '/bin/echo {result}';
+  cmd('/bin/echo {result}');
   const cases = [
     ['a clean run',                   [result()],                                              'ok'],
     ['a run with an error',           [result({ success: false, errors: 1 })],                 'errors'],
@@ -132,11 +172,11 @@ console.log('\nand the limit that issue #10 is about');
   // Stated here so nobody reads "ok" as "verified". It means the run finished
   // without errors, which a FAST copy also does, having checked nothing. This
   // is why the per card handoff exists rather than more variables here.
-  ctx.S.hookCommand = '/bin/echo {result}';
+  cmd('/bin/echo {result}');
   launched = [];
   ctx.runPostHook([result({ mode: 'fast' })], RUN);
   await flush();
-  ok(launched[0][1] === 'ok', 'a FAST copy, where nothing was verified, still reads "ok"');
+  ok(launched.length === 1 && launched[0][1] === 'ok', 'a FAST copy, where nothing was verified, still reads "ok"');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

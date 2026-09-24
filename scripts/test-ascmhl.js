@@ -48,6 +48,18 @@ vm.runInContext(
   extractConst('ASCMHL_ALGOS') + '\n' +
   extractConst('C4_ALPHABET') + '\n' +
   extractConst('ATOMIC_TMP_SUFFIX') + '\n' +
+  // 2.7.0: writeFileAtomic goes through the source-card lock.
+  'const _lockedSources = new Map();\n' +
+  extractFn('realpathAsFarAsPossible') + '\n' +
+  extractFn('pathContains') + '\n' +
+  extractFn('lockSource') + '\n' +
+  extractFn('unlockSource') + '\n' +
+  extractFn('onLockedSource') + '\n' +
+  extractFn('refuseOnSource') + '\n' +
+  extractFn('safeUnlink') + '\n' +
+  extractFn('safeRename') + '\n' +
+  extractFn('safeRmTree') + '\n' +
+  extractFn('safeWriteTarget') + '\n' +
   extractFn('writeFileAtomic') + '\n' +
   extractFn('xmlEsc') + '\n' +
   extractFn('nfc') + '\n' +

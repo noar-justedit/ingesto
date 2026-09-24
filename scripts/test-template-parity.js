@@ -76,14 +76,15 @@ vm.runInContext(extractFn(REND, 'resolveTplSegs', 'index.html'), ren);
 const CLOCK = new Date(2026, 0, 5, 3, 4, 5);
 
 const CARDS = {
-  'full':            { name: 'A001', operator: 'noar', camera: 'FX6' },
-  'no operator':     { name: 'A001', operator: '',     camera: 'FX6' },
-  'no camera':       { name: 'A001', operator: 'noar', camera: ''    },
-  'neither':         { name: 'A001', operator: '',     camera: ''    },
-  'slash in values': { name: 'A/001', operator: 'Jean/Marc', camera: 'FX6' },
-  'card named ".."': { name: '..',   operator: '',     camera: ''    },
-  'no label':        { name: '',     operator: 'noar', camera: 'FX6' },
-  'trailing dot':    { name: 'A001.', operator: 'noar', camera: 'FX6' },
+  'full':            { name: 'A001', operator: 'noar', camera: 'FX6', pp: 'SLog3' },
+  'no operator':     { name: 'A001', operator: '',     camera: 'FX6', pp: 'SLog3' },
+  'no camera':       { name: 'A001', operator: 'noar', camera: '',    pp: 'SLog3' },
+  'neither':         { name: 'A001', operator: '',     camera: '',    pp: ''      },
+  'slash in values': { name: 'A/001', operator: 'Jean/Marc', camera: 'FX6', pp: 'S/Log3' },
+  'card named ".."': { name: '..',   operator: '',     camera: '',    pp: ''      },
+  'no label':        { name: '',     operator: 'noar', camera: 'FX6', pp: 'VLog'  },
+  'trailing dot':    { name: 'A001.', operator: 'noar', camera: 'FX6', pp: ''     },
+  'profile only':    { name: '',     operator: '',     camera: '',    pp: 'DLog'  },
 };
 
 const TEMPLATES = [
@@ -105,16 +106,20 @@ const TEMPLATES = [
   '{cardname}{counter}',
   '{YYYY}{counter}',
   '{YYYY}_{counter}_{cardname}',
+  '{counter}_{cardname}_{pp}',
+  '{pp}/{counter}_{cardname}',
+  '{camera}_{pp}_{counter}',
+  '{counter}_{operator}_{camera}_{pp}',
 ];
 
 console.log('\nengine and interface resolve the same template to the same path');
 for (const tpl of TEMPLATES) {
   for (const [label, c] of Object.entries(CARDS)) {
     const a = eng.buildFolderSegments(tpl, {
-      counter: '007', name: c.name, cameraman: c.operator, camera: c.camera,
+      counter: '007', name: c.name, cameraman: c.operator, camera: c.camera, pp: c.pp,
     }, CLOCK).join('/');
     const b = ren.resolveTplSegs(tpl, {
-      name: c.name, operator: c.operator, camera: c.camera,
+      name: c.name, operator: c.operator, camera: c.camera, pp: c.pp,
     }, 0, CLOCK).join('/');
     ok(a === b, `${JSON.stringify(tpl)} · ${label} → ${a === b ? a || '(nothing)' : `engine "${a}" vs interface "${b}"`}`);
   }
@@ -132,10 +137,10 @@ for (const w of [2, 3, 4]) {
   const c = CARDS.plain || Object.values(CARDS)[0];
   // The engine receives the string the interface built.
   const a = eng.buildFolderSegments(tpl, {
-    counter: ren.padCounter(7), name: c.name, cameraman: c.operator, camera: c.camera,
+    counter: ren.padCounter(7), name: c.name, cameraman: c.operator, camera: c.camera, pp: c.pp,
   }, CLOCK).join('/');
   const b = ren.resolveTplSegs(tpl, {
-    name: c.name, operator: c.operator, camera: c.camera,
+    name: c.name, operator: c.operator, camera: c.camera, pp: c.pp,
   }, 0, CLOCK).join('/');
   ok(a === b, `${w} digits · engine "${a}" vs interface "${b}"`);
   ok(b.startsWith(padded + '_'), `${w} digits · the preview really shows ${padded} ("${b}")`);
@@ -171,23 +176,25 @@ console.log('\nboth resolvers know exactly the same variables');
   ok(a.has('{YYYY}') && b.has('{YYYY}'), 'both sides know {YYYY}');
 }
 
-// ── The chips offered in the interface ──────────────────────────────────────
-// A chip inserts a token into the template with one click. A chip for a variable
-// NO resolver knows would create a folder literally called "{XXXX}" on every
-// destination, and the user would have no way to tell why. So every chip is
-// checked against the resolvers. (The reverse is not required: {SS} is resolved
-// but deliberately has no chip — it is reachable by typing.)
-console.log('\nevery variable chip inserts a token the resolvers actually know');
+// ── The variables offered in the interface ──────────────────────────────────
+// An entry of the Insert menu puts a token into the template with one click. An
+// entry for a variable NO resolver knows would create a folder literally called
+// "{XXXX}" on every destination, and the user would have no way to tell why. So
+// every entry is checked against the resolvers. (The reverse is not required:
+// {SS} is resolved but deliberately has no entry — it is reachable by typing.)
+// Both call shapes are read: insPick() is the menu of 2.7.0, addTok() is what
+// the chips used and what the / button still uses.
+console.log('\nevery variable offered in the interface inserts a token the resolvers know');
 {
-  const chips = [...REND.matchAll(/addTok\(\s*'var'\s*,\s*'([A-Za-z]+)'\s*\)/g)].map(m => m[1]);
+  const chips = [...REND.matchAll(/(?:addTok|insPick)\(\s*'var'\s*,\s*'([A-Za-z]+)'\s*\)/g)].map(m => m[1]);
   const engSrc = extractFn(MAIN, 'resolveTemplateVars', 'main.js');
   const renSrc = extractFn(REND, 'resolveTplSegs', 'index.html');
-  ok(chips.length >= 10, `the chip row was read (${chips.length} variable chips)`);
+  ok(chips.length >= 10, `the menu was read (${chips.length} variables offered)`);
   for (const k of chips) {
     ok(engSrc.includes(`'{${k}}'`) && renSrc.includes(`'{${k}}'`),
-       `the "${k}" chip inserts a token both resolvers substitute`);
+       `the "${k}" entry inserts a token both resolvers substitute`);
   }
-  ok(chips.includes('YYYY'), 'the four-digit year is offered as a chip, not only by typing');
+  ok(chips.includes('YYYY'), 'the four-digit year is offered in the menu, not only by typing');
   ok(chips.includes('YY'), 'and the two-digit year is still offered');
 }
 
@@ -209,7 +216,11 @@ console.log('\nevery variable the engine resolves survives the round trip');
     (extractFn(MAIN, 'resolveTemplateVars', 'main.js').match(/replaceAll\(\s*'(\{[a-zA-Z]+\})'/g) || [])
       .map(m => m.replace(/^replaceAll\(\s*'/, '').replace(/'$/, ''))
   )].filter(t => t !== '{counter}');
-  const CARD = { counter: '007', name: 'A001', cameraman: 'noar', camera: 'FX6' };
+  // Every free-text variable carries a VALUE here. With an empty one the
+  // folder for "{pp}_{counter}" is just "007": the matcher would answer 7
+  // whether or not it knows the token, and a variable missing from its VAR set
+  // would sail through the very test written to catch it.
+  const CARD = { counter: '007', name: 'A001', cameraman: 'noar', camera: 'FX6', pp: 'SLog3' };
   // `const` inside a vm context is not a property of the sandbox — read it out.
   const CLOCK_WIDTHS = vm.runInContext('CLOCK_TOKENS', eng);
   ok(tokens.length >= 9, `the variable list was derived from the source (${tokens.length} besides {counter})`);

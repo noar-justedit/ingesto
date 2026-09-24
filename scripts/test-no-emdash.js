@@ -14,7 +14,10 @@ const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fail++; console.log('  FAIL ' + l); } };
 
-const BAD = /[—–]/;
+// The character itself, and every way of writing it that still draws it on
+// screen: an HTML entity in the markup (&mdash; slipped through this test in
+// the ntfy help text), a numeric reference, or a \u escape in a string.
+const BAD = /[—–]|&mdash;|&ndash;|&#821[12];|&#x201[34];|\\u201[34]/i;
 
 // ── String literals in the JavaScript ──────────────────────────────────────
 // Comment lines are skipped; everything else that is quoted can reach a screen.

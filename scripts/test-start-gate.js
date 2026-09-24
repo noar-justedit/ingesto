@@ -61,6 +61,9 @@ function harness() {
     },
     showRefusal: async () => 'recheck',
     setIngestLock(){}, updateBtn(){}, tfExit(){}, showToast(){}, resetSpark(){},
+    // 2.7.0: the preferences are written 400 ms after the last keystroke, and
+    // startCopy flushes whatever is still waiting before it freezes the run.
+    flushPrefs(){},
   });
   vm.runInContext(extractFn(REND, 'startCopy'), ctx);
   return { ctx, state };

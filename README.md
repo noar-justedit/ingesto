@@ -88,6 +88,10 @@ wherever you like (e.g. your Desktop or `~/Documents`).
 1. Open the `ingesto/scripts/` folder
 2. **Double-click `build-mac.command`**
    - If macOS asks for confirmation, click **"Open"**
+   - If double-clicking opens the file in a text editor instead of running it,
+     the download lost the executable flag. Open Terminal in the `ingesto`
+     folder and run `chmod +x scripts/*.command scripts/*.sh` once, or just
+     run the build directly with `bash scripts/build-mac.sh`.
    - A Terminal window opens and builds everything automatically
    - The first run takes 2-3 minutes (downloading dependencies)
 3. When it's done, the script offers to open the `dist/` folder
@@ -95,7 +99,7 @@ wherever you like (e.g. your Desktop or `~/Documents`).
 For Windows, use `scripts/build-win-from-mac.command` (cross-build from a Mac) —
 the resulting installer is unsigned, so Windows will show a SmartScreen warning
 on first launch (expected; click "More info" → "Run anyway").
-For Linux, run `scripts/build-linux.sh` on a Linux machine.
+For Linux, run `bash scripts/build-linux.sh` on a Linux machine.
 
 Building for one platform never erases another platform's output: you can build
 the Mac app and the Windows installer one after the other and keep both.
@@ -140,8 +144,8 @@ If you just want to try it before building:
 2. **Drag** a source volume into the **Sources** zone (left)
    — or right-click a volume → **Set as SOURCE**
 3. **Drag** one or more destination drives into the **Destinations** zone (right)
-4. Enter the **operator**, **camera model**, and notes if needed —
-   globally, or per card
+4. Enter the **operator**, **camera model**, **picture profile** and notes if
+   needed — globally, or per card
 5. Choose a **copy mode** (below)
 6. Configure the **folder name** using the variables (drag to reorder them)
 7. Click **START INGEST**
@@ -225,7 +229,7 @@ already computed during the ingest.
 ### Notifications
 
 With ntfy configured, ingesto sends **one complete message per card**: counter
-number and card name, operator and camera, file count, volume and copy mode,
+number and card name, operator, camera and picture profile, file count, volume and copy mode,
 the source path, one line per destination with its own result, the copy /
 verify / source re-read timings, the total duration, and the card note. A card
 that failed is raised to high priority and names the destination that failed.
@@ -253,6 +257,7 @@ anything again.
 | `{cardname}` | Source volume name | `A001` |
 | `{operator}` | Operator name entered | `JohnDoe` |
 | `{camera}` | Camera model entered/detected | `SonyFX3` |
+| `{pp}` | Picture profile entered | `SLOG3` |
 | `{YY}` | Short year | `26` |
 | `{YYYY}` | Full year | `2026` |
 | `{MM}` | Month | `04` |
@@ -265,6 +270,13 @@ still load.
 `{SS}` (seconds) works too, by typing it — it has no chip.
 
 **Example**: `001_A001_JohnDoe_SonyFX3_260429_1435`
+
+`{pp}` is the picture profile the camera was set to. The field suggests the
+usual ones (`SLOG3`, `DLOG2`, `CLOG`, `LOGC4`, `VLOG`, `HLG`...) and accepts
+anything else you type. Spaces and punctuation are dropped and the value is
+written in capitals, so `s-log 3` and `SLog3` both become `SLOG3`: one shoot
+never ends up with two folders for the same profile. Like every other field it
+is optional, and left empty it creates no folder and no leftover separator.
 
 ### Subfolders
 
@@ -288,13 +300,13 @@ Rules, all enforced before anything is written:
   the destination: before each ingest INGESTO walks the destination — through
   the subfolder levels your template describes — so it keeps counting across
   days and cameras, and a gap in the numbering still means a card is missing.
-- A `/` typed into a card name, an operator or a camera field never creates a
-  folder: only the template decides the structure.
+- A `/` typed into a card name, an operator, a camera or a picture profile
+  field never creates a folder: only the template decides the structure.
 - A **subfolder level built from the clock or from fixed text** — `{YYYY}`,
   `{YYYY}{MM}{DD}`, `DAY1` — is never counted as a card, wherever it sits in the
   tree. Without this a `{YYYY}` level was read as card 2026 and the next ingest
   was numbered 2027; `{YY}` did the same, more quietly, as card 26. A level you
-  fill in yourself (`{camera}`, `{operator}`) is not recognisable this way and
+  fill in yourself (`{camera}`, `{operator}`, `{pp}`) is not recognisable this way and
   keeps the old behaviour: it may be counted, which only pushes the counter
   forward and is visible on screen.
 - A **subfolder** level that resolves to nothing (a card with no camera)
