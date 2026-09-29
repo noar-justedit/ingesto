@@ -331,6 +331,38 @@ console.log('\nthe skin repairs, measured in the running app');
      'a focused field shows where the caret is, which the skin had removed');
   ok(/\.pillbtn\.on[^{]*\{[^}]*rgba\(242,85,90,\.15\)/.test(fixes), 'an active filter pill is visibly active');
   ok(/\.tpl-box\{background:var\(--ins\)/.test(fixes), 'the token strip matches the field it turns into');
+  ok(/\.modes-row \.mbtn\{container-type:inline-size;\}/.test(fixes) &&
+     /@container \(max-width:224px\)\{ \.msel\{display:none !important;\} \}/.test(fixes),
+     'the word SELECTED disappears where it does not fit, instead of being cut');
+  ok(/body\.tf-on #sess-card\{display:none !important;\}/.test(fixes),
+     'during an ingest the queue takes the whole column, the history steps aside');
+  const scv = extractFn(REND, 'setCenterView'), tfx = extractFn(REND, 'tfExit');
+  ok(/document\.body\.classList\.toggle\('tf-on', onTf\)/.test(scv) && /document\.body\.classList\.remove\('tf-on'\)/.test(tfx),
+     'and comes back the moment the ingest ends');
+  ok(/#tf-stats \.sbox-size\{flex:1\.6;\}/.test(fixes) && /class="sbox sbox-files"/.test(REND) && /class="sbox sbox-eta"/.test(REND),
+     'each figure of the queue gets the width of what it shows');
+  ok(/\.k-loaded\{background:var\(--ins\) !important;border:none !important;/.test(fixes),
+     'the kiosk card sits in an inset like the fields, without the last border of the old skin');
+}
+
+console.log('\nthe kiosk says where the camera came from, like the standard window');
+{
+  ok(!/auto-detected/.test(REND), 'no more "auto-detected" text: the same (A) as everywhere else');
+  const osa = extractFn(REND, 'onSourceAdded');
+  ok(/S\.kioskMode && S\.sources\[0\] === entry/.test(osa) && /kioskCamMark\('A'\)/.test(osa) && /renderKioskSource\(\)/.test(osa),
+     'a card inserted while locked is detected in the kiosk too, not only one picked with Browse');
+  ok(/!kc\._typed/.test(osa), 'without overwriting a camera the operator typed');
+  // Behaviour of the mark itself.
+  const el = { innerHTML:'' }, kc = { _typed:false };
+  const ctx = vm.createContext({ document:{ getElementById:(id) => id === 'k-cam-auto' ? el : kc }, MARK_A:'(A)', MARK_M:'(M)' });
+  vm.runInContext(extractFn(REND, 'kioskCamMark') + '\n' + extractFn(REND, 'kioskCamTyped'), ctx);
+  ctx.kioskCamMark('A');
+  ok(el.innerHTML === '(A)', 'detected: (A)');
+  ctx.kioskCamTyped();
+  ok(el.innerHTML === '(M)' && kc._typed === true, 'typed over: (M), and remembered');
+  ctx.kioskCamMark('');
+  ok(el.innerHTML === '' && kc._typed === false, 'the next shooter starts clean');
+  ok(/oninput="sanitizeMeta\(this\);kioskCamTyped\(\)"/.test(REND), 'and typing in the field is what turns it grey');
 }
 
 console.log('\nthe settings are written once per pause, and never lost');
@@ -355,6 +387,71 @@ console.log('\nthe settings are written once per pause, and never lost');
   ok(/^\s*flushPrefs\(\);/m.test(sc.slice(sc.indexOf('{') + 1, sc.indexOf('{') + 200)),
      'START writes what was typed a moment ago before anything else');
   ok(/addEventListener\('beforeunload', flushPrefs\)/.test(REND), 'and so does closing the window');
+}
+
+// ── 8ter. 2.7.1, issue #11 ──────────────────────────────────────────────────
+console.log('\nInsert > Text, said the way it is looked for');
+{
+  ok(/onclick="insPick\('txt'\)">Text…<span>/.test(REND), 'the entry is called Text…');
+}
+
+console.log('\nan ingest history line opens on its details');
+{
+  const ctx = vm.createContext({ String, Number, isFinite, Math, Array,
+    esc: (x) => String(x == null ? '' : x) });
+  vm.runInContext([extractFn(REND, 'fmtReportDur'), extractFn(REND, 'fmtSize'), extractFn(REND, 'fmtSpd'),
+                   extractFn(REND, 'sessDetails')].join('\n'), ctx);
+  const html = ctx.sessDetails({ drives:['RAID_SHOOT','NAS_BACKUP'], rec:{
+    date:'24.09.2026 09:12', files:168, bytes:26.4e9, copyMs:40000, v1Ms:30000, v2Ms:0,
+    mode:'Secure', operator:'NOAR', cam:'FX6', pp:'SLOG3', note:'Interviews', rclass:'r-ok' } });
+  ok(/24\.09\.2026 09:12/.test(html) && />168</.test(html), 'date and time, number of files');
+  ok(/24\.6 GB/.test(html), 'total size');
+  ok(/>1m10s</.test(html), 'duration: copy plus verification');
+  ok(/629\.\d MB\/s/.test(html), 'copy speed: size over copy time');
+  ok(/RAID_SHOOT, NAS_BACKUP/.test(html), 'every destination, named');
+  ok(/copy 40s · verify 30s/.test(html) && !/source re-read/.test(html), 'the phases that ran, and only those');
+  ok(/NOAR · FX6 · SLOG3/.test(html) && /Interviews/.test(html), 'who, which camera, which profile, the note');
+  const old = ctx.sessDetails({ drives:['X'], rec:{ files:3, bytes:0 } });
+  ok(/DURATION<\/div><div class="sd-v">-</.test(old) && /COPY SPEED<\/div><div class="sd-v">-</.test(old),
+     'a report from an older version, without timings, reads "-", not 0 or NaN');
+  const rsl = extractFn(REND, 'renderSessionLog');
+  ok(/sessDetails\(row\)/.test(rsl) && /role="button" tabindex="0"/.test(rsl) && /aria-expanded/.test(rsl),
+     'the line is a button: click, Enter or Space');
+  ok(/e\.target\.closest\('\.sess-rev'\)/.test(rsl), 'and the reveal button keeps its own job');
+  ok(/_sessOpen/.test(rsl), 'an open line stays open when the list is redrawn');
+}
+
+console.log('\nCopy Info is kept from one card to the next, and a broom clears it');
+{
+  const cs = extractFn(REND, 'clearSources');
+  ok(!/meta-cam|meta-model|meta-pp/.test(cs), 'operator, camera and profile survive the end of an ingest');
+  ok(/meta-note'\);\s*if\(mn\) mn\.value=''/.test(cs), 'the note, which describes one card, does not');
+  ok(/const SRC_DEFAULT_FIELD = \{ operator:'meta-cam', camera:'meta-model', pp:'meta-pp' \}/.test(REND) &&
+     /g\.value = value/.test(extractFn(REND, 'updateSrcField')),
+     'what is typed on a card becomes the value the next card starts from');
+  // The mark: a carried-over camera is not a detected one.
+  const ctx = vm.createContext({ MARK_A:'(A)', MARK_M:'(M)' });
+  vm.runInContext(extractFn(REND, 'srcMark'), ctx);
+  ok(ctx.srcMark({ camera:'FX6' }, 'camera') === '(M)', 'a camera carried over from the last card says (M)');
+  ok(ctx.srcMark({ camera:'FX6', _camDetected:true }, 'camera') === '(A)', 'one read off this card says (A)');
+  ok(ctx.srcMark({ camera:'FX3', _camDetected:true, _forced:{ camera:true } }, 'camera') === '(M)', 'typed over, (M) again');
+  ok(/entry\._camDetected = true;/.test(extractFn(REND, 'onSourceAdded')), 'the detection is what sets (A)');
+  // The broom, run.
+  const el = {}; ['meta-cam','meta-model','meta-pp','meta-note'].forEach(k => el[k] = { value:'x' });
+  let toast = '', saved = 0;
+  const ctx2 = vm.createContext({ S:{ copying:false, sources:[{ operator:'A', camera:'B', pp:'C', note:'D', _camDetected:true, _forced:{camera:true} }] },
+    document:{ getElementById:(id) => el[id] }, persistPrefs:() => saved++, renderSourceInfoCards(){}, updatePreview(){},
+    showToast:(m) => toast = m });
+  vm.runInContext(extractFn(REND, 'clearCopyInfo'), ctx2);
+  ctx2.clearCopyInfo();
+  const s0 = ctx2.S.sources[0];
+  ok(Object.values(el).every(x => x.value === ''), 'the broom empties the four default fields');
+  ok(s0.operator === '' && s0.camera === '' && s0.pp === '' && s0.note === '' && !s0._camDetected, 'and every loaded card');
+  ok(saved === 1 && /cleared/.test(toast), 'saved, and said');
+  ctx2.S.copying = true; el['meta-cam'].value = 'kept'; ctx2.clearCopyInfo();
+  ok(el['meta-cam'].value === 'kept', 'never during an ingest');
+  const brooms = REND.match(/onclick="clearCopyInfo\(\)"/g) || [];
+  ok(brooms.length === 2, 'beside Copy Info, and beside Loaded Cards when cards are in (' + brooms.length + ')');
 }
 
 // ── 9. The session log ──────────────────────────────────────────────────────

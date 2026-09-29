@@ -481,10 +481,12 @@ console.log('\nthe interface offers the field, everywhere a card is described');
   ok(/list="pp-list"/.test(global), 'and it suggests the usual profiles');
   ok(/<datalist id="pp-list">/.test(REND), 'from a list the page carries');
 
-  // Cleared with the rest. A profile left behind after the card is removed is
-  // inherited by the next card silently, and ends up in its folder name.
+  // 2.7.1: the profile is KEPT for the next card (it rarely changes on a
+  // shoot), and the broom beside the title clears it with the rest.
   const clear = REND.slice(REND.indexOf('function clearSources()'), REND.indexOf('function clearSources()') + 900);
-  ok(/getElementById\('meta-pp'\)/.test(clear), 'removing the cards clears the profile too');
+  ok(!/getElementById\('meta-pp'\)/.test(clear), 'the profile is kept for the next card');
+  const broom = REND.slice(REND.indexOf('function clearCopyInfo()'), REND.indexOf('function clearCopyInfo()') + 700);
+  ok(/'meta-pp'/.test(broom) && /src\.pp = ''/.test(broom), 'and the broom clears it, on the defaults and on every card');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

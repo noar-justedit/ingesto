@@ -45,6 +45,13 @@ macOS · Windows · Linux.
   list shows `LUMIX (D:)` so two identical cards in two readers can be told
   apart, while `{cardname}`, the ingest report and the phone notification get
   the bare label — `LUMIX`.
+- **Never touches the source card.** ingesto never deletes, renames or
+  overwrites a file on a card it copies. While a card is being ingested it is
+  locked: any delete, rename or write that would land on it is refused,
+  including through a symbolic link pointing into it, and a refusal stops the
+  operation instead of finding another way. The only thing that ever writes on
+  a card is **Card Tracking**, off by default, and it writes nothing but its own
+  journal, `.ingesto.json`.
 - **Never writes into a card folder that already exists.** Whatever the
   interface has checked, the engine refuses to write into a destination folder
   that holds anything but its own residue from an interrupted run. That is the
@@ -125,11 +132,41 @@ If you just want to try it before building:
 ## Using the app
 
 ### Interface
-- **Center column**: mounted volumes (SD cards, drives, network shares), each
-  with a type icon (removable card, system disk, network, external) and an
-  SRC/DST badge once assigned. During an ingest this column becomes the
-  **ingest queue** — the volumes stay one click away, on the switch at the top
-  right of the column.
+
+Three columns: what you copy, what is happening, where it goes.
+
+**Sources** (left)
+
+- Each loaded card has its own **Operator**, **Camera**, **Picture profile**
+  and **Notes**, and shows the folder it will create.
+- Operator, camera and picture profile are **kept from one card to the next**:
+  a new card starts from the last values entered, until you change them. Notes
+  describe one card and are cleared after each ingest. The **broom** beside the
+  title clears all four fields in one click.
+- A small green **(A)** beside a label means ingesto read the value off the
+  card; a grey **(M)** means it was typed, on this card or carried over from
+  the previous one.
+- The **counter** stays pinned at the bottom of the column.
+
+**Mounted volumes and ingest history** (centre)
+
+- **Mounted volumes**: SD cards, drives and network shares, each with a type
+  icon (card, system disk, network, external) and an SRC/DST badge once
+  assigned. Two rows are shown, then the list scrolls inside its card.
+- **Ingest history**: every card ingested on the destinations currently
+  loaded, one line per card, with the drives it went to and its result. It is
+  read back from the reports written on those drives, not kept in memory: it
+  survives a restart, and a drive brought back from another machine arrives
+  with its history. The folder button of a line shows that card's folder in the
+  Finder or the Explorer.
+- **Click a line** to open its details: date and time, number of files, size,
+  duration of each phase, copy speed, copy mode, every destination, operator,
+  camera, picture profile and note.
+- The **eraser** in its header clears the list in ingesto, and nothing else:
+  the reports on the drives are never touched. The list stays cleared after a
+  restart, and **Show it again** brings the hidden lines back.
+- During an ingest the column shows the **ingest queue**, and only it. The
+  volumes and the history come back when the ingest ends.
 - **Filters** (column header): hide System and/or Network volumes, or manually
   hide a given volume (right-click → Hide Volume)
 - **Eject** (right-click a card or drive → **Eject**): unmounts it without
@@ -139,6 +176,18 @@ If you just want to try it before building:
   the eject actually succeeded.
 - **↻ Refresh**: refresh the volume list
 
+**Destinations** (right)
+
+- Each destination lists **the folders it will create**, one per card of the
+  batch: the drive in grey, the new folder in green.
+- **Folder structure**: build the name from the **Insert** menu, grouped into
+  the card, the date, text typed by you (**Insert > Text…** adds a fixed text
+  such as `DAY1`), and separators. Drag the tokens to
+  reorder them, or **double-click** the strip to type the template by hand.
+- **Templates**: four named templates showing the structure each one writes.
+  Click one to load it, click an empty one to save the current structure there.
+  Save, export and import are the icons of the header.
+
 ### Typical workflow
 1. **Connect** your source cards / drives
 2. **Drag** a source volume into the **Sources** zone (left)
@@ -147,7 +196,7 @@ If you just want to try it before building:
 4. Enter the **operator**, **camera model**, **picture profile** and notes if
    needed — globally, or per card
 5. Choose a **copy mode** (below)
-6. Configure the **folder name** using the variables (drag to reorder them)
+6. Build the **folder structure** from the **Insert** menu, or load a template
 7. Click **START INGEST**
 
 You can load several cards at once. They are ingested one after the other, each
@@ -239,8 +288,9 @@ that failed is raised to high priority and names the destination that failed.
 A locked, full-screen view for a shared ingest station: one card, big type, a
 ring that follows the whole queue, and an automatic eject when the ingest is
 complete — the screen says *Verified* only after a SECURE or PRO run, and *do
-not erase it yet* after a FAST or SIZE CHECK one. Leaving kiosk mode requires
-a PIN, which is never written to disk.
+not erase it yet* after a FAST or SIZE CHECK one. The camera model detected on
+the card carries the same green **(A)** as in the standard window. Leaving
+kiosk mode requires a PIN, which is never written to disk.
 
 ### Verifying a folder later
 The **Verify** button (book icon) lets you re-check a folder that was already
@@ -267,7 +317,7 @@ anything again.
 
 `{cameraman}` is kept as a legacy alias of `{operator}`, so older templates
 still load.
-`{SS}` (seconds) works too, by typing it — it has no chip.
+`{SS}` (seconds) works too, by typing it: it is not in the Insert menu.
 
 **Example**: `001_A001_JohnDoe_SonyFX3_260429_1435`
 
@@ -289,9 +339,10 @@ DAY1/{camera}/{counter}_{operator}_{YY}{MM}{DD}
       →  DAY1/SonyFX3/001_JohnDoe_260429
 ```
 
-In the template bar, the part before the last `/` is shown in **blue** (the
-subfolders) and the card's own folder in **green**. A **bold** chip is a
-variable, an *italic* one is text you typed and that never changes.
+In the folder structure, the part before the last `/` is shown in **blue**
+(the subfolders) and the card's own folder in **green**. A **bold** token is a
+variable, an *italic* one is text you typed and that never changes. The `/`
+button beside the Insert menu adds a subfolder.
 
 Rules, all enforced before anything is written:
 
