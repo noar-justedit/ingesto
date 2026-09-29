@@ -181,7 +181,7 @@ Three columns: what you copy, what is happening, where it goes.
 - Each destination lists **the folders it will create**, one per card of the
   batch: the drive in grey, the new folder in green.
 - **Folder structure**: build the name from the **Insert** menu, grouped into
-  the card, the date, text typed by you (**Insert > Text…** adds a fixed text
+  the card, the date, text typed by you (**Insert > Custom text…** adds a fixed text
   such as `DAY1`), and separators. Drag the tokens to
   reorder them, or **double-click** the strip to type the template by hand.
 - **Templates**: four named templates showing the structure each one writes.

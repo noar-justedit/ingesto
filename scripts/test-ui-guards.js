@@ -392,7 +392,23 @@ console.log('\nthe settings are written once per pause, and never lost');
 // ── 8ter. 2.7.1, issue #11 ──────────────────────────────────────────────────
 console.log('\nInsert > Text, said the way it is looked for');
 {
-  ok(/onclick="insPick\('txt'\)">Text…<span>/.test(REND), 'the entry is called Text…');
+  ok(/onclick="insPick\('txt'\)">Custom text…<span>/.test(REND), 'the entry is called Custom text…');
+  // 2.7.2: the menu was one column of 486 px cut at 340. Custom text and the
+  // separators sat under the edge, and macOS hides the scroll bar on a
+  // trackpad, so nothing said there was more.
+  const menu = REND.slice(REND.indexOf('<div class="ins-menu" id="ins-menu"'), REND.indexOf('<span class="tipwrap">', REND.indexOf('<div class="ins-menu" id="ins-menu"')));
+  const cols = menu.split('<div class="ins-col">').slice(1);
+  ok(cols.length === 2, 'two columns');
+  ok(/THE CARD/.test(cols[0]) && /insPick\('txt'\)/.test(cols[0]) && /SEPARATORS/.test(cols[0]), 'Custom text and the separators in the first one');
+  ok(/THE DATE/.test(cols[1]) && !/insPick\('txt'\)/.test(cols[1]), 'the date in the second');
+  ok((menu.match(/class="ins-it/g) || []).length === 14, 'all fourteen entries still there');
+  const fx = REND.slice(REND.indexOf('Reparations, mesurees dans l app qui tourne'));
+  ok(/\.ins-menu\.on\{display:grid !important;grid-template-columns:1fr 1fr;/.test(fx), 'laid out side by side');
+  ok(/\.ins-menu\{left:0;right:0;width:auto !important;/.test(fx) && /\.tpl-hd > \.tipwrap:first-child\{position:static;\}/.test(fx),
+     'as wide as the Folder Structure block, so the side panel never cuts it');
+  ok(/\.ins-menu\{[^}]*background:#1b1d24 !important/.test(fx), 'on the surface of what floats, per the charter');
+  ok(/::-webkit-scrollbar\{width:8px;/.test(fx) && /::-webkit-scrollbar-thumb\{background:#2a2d36;/.test(fx),
+     'and scroll bars are dark, thin and always drawn');
 }
 
 console.log('\nan ingest history line opens on its details');

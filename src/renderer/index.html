@@ -1396,6 +1396,28 @@ button:focus-visible, .mem-item:focus-visible, .src-info-header:focus-visible,
 .ci-clear:hover{color:var(--text);}
 body.ingesting .ci-clear{opacity:.35;pointer-events:none;}
 
+/* 10. Le menu Insert tenait sur une colonne de 486 px coupee a 340 : Custom
+   text et les separateurs etaient sous le bord, et macOS masque la barre de
+   defilement au trackpad. Deux colonnes, tout visible d un coup, et la teinte
+   de ce qui flotte (charte : #1b1d24) au lieu de celle de la carte dessous. */
+.tpl-hd{position:relative;}
+.tpl-hd > .tipwrap:first-child{position:static;}
+.ins-menu{left:0;right:0;width:auto !important;min-width:300px;padding:5px !important;max-height:calc(100vh - 140px) !important;background:#1b1d24 !important;
+  box-shadow:0 18px 44px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.04) !important;}
+.ins-menu.on{display:grid !important;grid-template-columns:1fr 1fr;column-gap:6px;}
+.ins-it:hover{background:#252832;}
+.ins-menu .ins-it{padding:6px 8px;font-size:12px;gap:6px;white-space:nowrap;}
+.ins-menu .ins-it span{font-size:9.5px;}
+.ins-menu .ins-grp{padding:8px 8px 3px;}
+
+/* 11. Barres de defilement : sombres, fines, et visibles. Sans style, macOS
+   les masque au trackpad (rien ne dit qu une liste continue) ou les dessine
+   en blanc avec une souris. */
+::-webkit-scrollbar{width:8px;height:8px;background:transparent;}
+::-webkit-scrollbar-thumb{background:#2a2d36;border-radius:8px;}
+::-webkit-scrollbar-thumb:hover{background:#3a3e4a;}
+::-webkit-scrollbar-corner{background:transparent;}
+
 /* 5. Le mot SELECTED du mode choisi etait coupe ("SELECTEI") sur tout ecran
    de moins de ~1780 px : le bouton mesure 171 px a 1500 px de large, et
    SIZE CHECK + SELECTED en demandent 184 sans les marges. Le mode choisi est
@@ -1642,12 +1664,20 @@ ondragover="onDZ(event,'dst')" ondragleave="offDZ(event,'dst')" ondrop="dropDZ(e
     <button class="tpl-ins" id="ins-btn" aria-haspopup="menu" aria-expanded="false" onclick="toggleInsertMenu(event)">Insert
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
     <div class="ins-menu" id="ins-menu" role="menu">
+      <div class="ins-col">
       <div class="ins-grp">THE CARD</div>
       <button class="ins-it" role="menuitem" onclick="insPick('var','counter')">Counter<span>{counter}</span></button>
       <button class="ins-it" role="menuitem" onclick="insPick('var','cardname')">Card name<span>{cardname}</span></button>
       <button class="ins-it" role="menuitem" onclick="insPick('var','camera')">Camera<span>{camera}</span></button>
       <button class="ins-it" role="menuitem" onclick="insPick('var','pp')">Picture profile<span>{pp}</span></button>
       <button class="ins-it" role="menuitem" onclick="insPick('var','operator')">Operator<span>{operator}</span></button>
+      <div class="ins-grp">TYPED BY YOU</div>
+      <button class="ins-it ins-txt" role="menuitem" onclick="insPick('txt')">Custom text…<span>abc</span></button>
+      <div class="ins-grp">SEPARATORS</div>
+      <button class="ins-it" role="menuitem" onclick="insPick('sep','_')">Underscore<span>_</span></button>
+      <button class="ins-it" role="menuitem" onclick="insPick('sep','-')">Hyphen<span>-</span></button>
+      </div>
+      <div class="ins-col">
       <div class="ins-grp">THE DATE</div>
       <button class="ins-it" role="menuitem" onclick="insPick('var','YY')">Year, 2 digits<span>{YY}</span></button>
       <button class="ins-it" role="menuitem" onclick="insPick('var','YYYY')">Year, 4 digits<span>{YYYY}</span></button>
@@ -1655,11 +1685,7 @@ ondragover="onDZ(event,'dst')" ondragleave="offDZ(event,'dst')" ondrop="dropDZ(e
       <button class="ins-it" role="menuitem" onclick="insPick('var','DD')">Day<span>{DD}</span></button>
       <button class="ins-it" role="menuitem" onclick="insPick('var','HH')">Hour<span>{HH}</span></button>
       <button class="ins-it" role="menuitem" onclick="insPick('var','MIN')">Minute<span>{MIN}</span></button>
-      <div class="ins-grp">TYPED BY YOU</div>
-      <button class="ins-it ins-txt" role="menuitem" onclick="insPick('txt')">Text…<span>abc</span></button>
-      <div class="ins-grp">SEPARATORS</div>
-      <button class="ins-it" role="menuitem" onclick="insPick('sep','_')">Underscore<span>_</span></button>
-      <button class="ins-it" role="menuitem" onclick="insPick('sep','-')">Hyphen<span>-</span></button>
+      </div>
     </div>
   </span>
   <span class="tipwrap">
