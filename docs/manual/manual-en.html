@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ingesto 2.7.2 User Manual</title>
+<link rel="stylesheet" href="manual.css">
+<style>@page { @bottom-left { content: "ingesto 2.7.2 · User Manual"; } } @page :first { @bottom-left { content: none; } }</style>
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<div class="cover">
+  <div class="mark"><img src="images/logo-mark.png" alt=""><div class="word">ingesto<span>.</span></div></div>
+  <h1>User Manual</h1>
+  <div class="sub">Copy your camera cards to several drives at once, and know that every file arrived intact.</div>
+  <div class="shot"><img src="images/13-ingest-copy.png" alt=""></div>
+  <div class="foot"><span>Version 2.7.2 · October 2026</span><span>Just Edit · github.com/noar-justedit/ingesto</span></div>
+</div>
+
+
+<!-- ============================== CONTENTS ============================== -->
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><span class="n">1</span><a href="#c1">Welcome</a><span class="d">What ingesto does, and its three promises</span></li>
+    <li><span class="n">2</span><a href="#c2">Install and first launch</a><span class="d">macOS, Windows, Linux</span></li>
+    <li><span class="n">3</span><a href="#c3">Your first ingest in seven steps</a><span class="d">The short version</span></li>
+    <li><span class="n">4</span><a href="#c4">The window at a glance</a><span class="d">Three columns, three buttons</span></li>
+    <li><span class="n">5</span><a href="#c5">Loading cards</a><span class="d">Sources, card details, several cards</span></li>
+    <li><span class="n">6</span><a href="#c6">Choosing destinations</a><span class="d">Drives, RAIDs, network shares</span></li>
+    <li><span class="n">7</span><a href="#c7">Naming the folders</a><span class="d">Folder structure, subfolders, templates</span></li>
+    <li><span class="n">8</span><a href="#c8">The counter</a><span class="d">Numbering your cards</span></li>
+    <li><span class="n">9</span><a href="#c9">Choosing a copy mode</a><span class="d">FAST, SIZE CHECK, SECURE, PRO</span></li>
+    <li><span class="n">10</span><a href="#c10">Starting and following an ingest</a><span class="d">Safety checks, the ingest queue</span></li>
+    <li><span class="n">11</span><a href="#c11">When the ingest ends</a><span class="d">Summary, errors, re-copy, eject</span></li>
+    <li><span class="n">12</span><a href="#c12">History and reports</a><span class="d">What was ingested, and where</span></li>
+    <li><span class="n">13</span><a href="#c13">Verifying a folder later</a><span class="d">Re-check without copying again</span></li>
+    <li><span class="n">14</span><a href="#c14">Settings</a><span class="d">Every option, one by one</span></li>
+    <li><span class="n">15</span><a href="#c15">Kiosk mode</a><span class="d">A locked station for a whole crew</span></li>
+    <li><span class="n">16</span><a href="#c16">Managing volumes</a><span class="d">Filters, hide, eject, refresh</span></li>
+    <li><span class="n">17</span><a href="#c17">Good practice on set</a><span class="d">A checklist</span></li>
+    <li><span class="n">18</span><a href="#c18">Troubleshooting</a><span class="d">Common questions</span></li>
+  </ol>
+</div>
+
+<!-- ============================== 1 ============================== -->
+<section class="chap" id="c1">
+<h2><span class="n">1</span>Welcome</h2>
+<p class="lead">ingesto copies the footage from your camera cards to as many drives as you need, then reads every copy back to make sure it is identical to the card. It is free and open source, and runs on macOS, Windows and Linux.</p>
+
+<h3>What it does for you</h3>
+<ul>
+  <li><strong>One card, several drives, in one pass.</strong> The card is read once and written to every destination at the same time. The copies are then checked at the same time too.</li>
+  <li><strong>Several cards in a row.</strong> Load a batch of cards; they are ingested one after the other, each to every destination.</li>
+  <li><strong>Folders named for you.</strong> Each card lands in a folder built from a template: counter, card name, operator, camera, date…</li>
+  <li><strong>It recognises the camera</strong> from the structure of the card, and fills the camera field for you.</li>
+  <li><strong>It writes what it did:</strong> an ingest report on each drive, checksum lists and MHL manifests if you want them, and a notification on your phone if you set one up.</li>
+</ul>
+
+<h3>Three promises</h3>
+<div class="note ok"><b class="t">1 · Your card is never touched</b>
+<p>ingesto never deletes, renames or overwrites anything on a card it copies. While a card is being ingested, any write to it is refused. The only exception is <strong>Card Tracking</strong>, an option that is off by default and writes nothing but its own small journal file (see chapter 14).</p></div>
+<div class="note ok"><b class="t">2 · "Verified" means verified</b>
+<p>The word <em>verified</em> only appears when every file was read back from every destination and compared with the card (SECURE and PRO modes). A FAST copy says <em>not verified</em>, a SIZE CHECK copy says <em>sizes checked</em>, everywhere: on screen, in the report, on your phone. A run with errors is never shown as a success.</p></div>
+<div class="note ok"><b class="t">3 · It refuses to start when something is wrong</b>
+<p>A drive that has been unplugged, two cards that would land in the same folder, a card with nothing to copy: ingesto stops before writing anything, names the problem, and tells you nothing has been copied.</p></div>
+</section>
+
+<!-- ============================== 2 ============================== -->
+<section class="chap" id="c2">
+<h2><span class="n">2</span>Install and first launch</h2>
+
+<h3>Download</h3>
+<p>Get the latest version from the Releases page: <strong>github.com/noar-justedit/ingesto/releases/latest</strong>. Choose the file for your system.</p>
+
+<h4>macOS</h4>
+<ol>
+  <li>Open the <code>.dmg</code> file.</li>
+  <li>Drag <strong>ingesto</strong> into your <strong>Applications</strong> folder.</li>
+  <li>Launch it with a normal double-click. The app is signed and notarised by Apple: no security warning.</li>
+</ol>
+
+<h4>Windows</h4>
+<ol>
+  <li>Run the installer.</li>
+  <li>The installer is not signed, so Windows SmartScreen shows a warning the first time. Click <span class="ui">More info</span>, then <span class="ui">Run anyway</span>. This is expected.</li>
+</ol>
+
+<h4>Linux</h4>
+<p>Two packages are offered: the <code>.AppImage</code> runs on most distributions without installing; the <code>.deb</code> installs on Debian and Ubuntu.</p>
+
+<h3>The first launch</h3>
+<figure><img src="images/01-first-launch.png" alt=""><figcaption>ingesto at first launch: no card, no destination yet.</figcaption></figure>
+<p>There is no setup wizard. The window opens straight away with your mounted cards and drives in the middle. The mode is <span class="badge b-secure">SECURE</span>, the recommended setting. You can start working immediately; chapter 3 shows how.</p>
+
+<div class="note tip"><b class="t">Updates</b>
+<p>When a new version is published, ingesto shows <span class="ui">New version available</span> at launch. <span class="ui">Get it</span> opens the download page, <span class="ui">Later</span> closes the notice.</p></div>
+<div class="note tip"><b class="t">Your computer stays awake</b>
+<p>During an ingest, ingesto prevents the computer from going to sleep. The screen may still turn off; the copy carries on.</p></div>
+</section>
+
+<!-- ============================== 3 ============================== -->
+<section class="chap" id="c3">
+<h2><span class="n">3</span>Your first ingest in seven steps</h2>
+<p class="lead">The essentials on one page. Each step is detailed in the chapters that follow.</p>
+<ol class="steps">
+  <li><strong>Connect</strong> your card reader and your destination drives. They appear under <span class="ui">MOUNTED VOLUMES</span>.</li>
+  <li><strong>Drag the card</strong> onto the <span class="ui">SOURCES</span> zone on the left (or right-click it → <span class="ui">Set as SOURCE</span>).</li>
+  <li><strong>Drag one or more drives</strong> onto the <span class="ui">DESTINATIONS</span> zone on the right (or right-click → <span class="ui">Set as DESTINATION</span>).</li>
+  <li><strong>Fill in</strong> the operator, camera, picture profile and notes for the card, if you need them in the folder name or the report.</li>
+  <li><strong>Check the folder name</strong> shown in green under each destination. Change the <span class="ui">FOLDER STRUCTURE</span> if needed.</li>
+  <li><strong>Choose the copy mode.</strong> Keep <span class="badge b-secure">SECURE</span> unless you have a reason not to.</li>
+  <li><strong>Click <span class="ui">START INGEST</span>.</strong> Wait for the green summary <span class="ui">ALL FILES COPIED &amp; VERIFIED</span> before you do anything with the card.</li>
+</ol>
+<figure class="w70"><img src="images/02-ready.png" alt=""><figcaption>Ready to go: card A001 loaded, two destinations, the folder name previewed on each drive.</figcaption></figure>
+<div class="note stop"><b class="t">Before you format a card</b>
+<p>Only format a card after a <strong>verified</strong> ingest (SECURE or PRO) to at least two drives, with a green summary. ingesto will never format a card for you.</p></div>
+</section>
+
+<!-- ============================== 4 ============================== -->
+<section class="chap" id="c4">
+<h2><span class="n">4</span>The window at a glance</h2>
+<p class="lead">Three columns, read from left to right: what you copy, what is happening, where it goes.</p>
+<figure class="w75"><img src="images/02-ready.png" alt=""></figure>
+<table>
+  <tr><th>Area</th><th>What you find there</th></tr>
+  <tr><td><strong>Left: SOURCES</strong></td><td>The cards to copy, with their details (operator, camera, picture profile, notes) and the counter at the bottom.</td></tr>
+  <tr><td><strong>Centre</strong></td><td><span class="ui">MOUNTED VOLUMES</span>: every card, drive and network share connected to the computer. <span class="ui">INGEST HISTORY</span>: the cards already ingested on the loaded destinations. <span class="ui">COPY MODE</span> at the bottom. During an ingest, this column shows the ingest queue instead.</td></tr>
+  <tr><td><strong>Right: DESTINATIONS</strong></td><td>The drives that will receive the copies, the <span class="ui">FOLDER STRUCTURE</span>, the <span class="ui">TEMPLATES</span> and the <span class="ui">START INGEST</span> button.</td></tr>
+</table>
+<h3>The three buttons at the top right</h3>
+<table>
+  <tr><th>Button</th><th>Use</th></tr>
+  <tr><td><span class="ui">KIOSK</span></td><td>Switches to kiosk mode, a simplified, locked screen for a shared station (chapter 15).</td></tr>
+  <tr><td>Book icon</td><td>Verifies a folder that was ingested earlier, without copying again (chapter 13).</td></tr>
+  <tr><td>Gear icon</td><td>Opens the <span class="ui">Settings</span> (chapter 14).</td></tr>
+</table>
+<p>Hover over any button or icon for a short explanation. The small <span class="ui">ⓘ</span> buttons next to some titles open a detailed explanation.</p>
+</section>
+
+<!-- ============================== 5 ============================== -->
+<section class="chap" id="c5">
+<h2><span class="n">5</span>Loading cards</h2>
+
+<h3>Three ways to load a card</h3>
+<ul>
+  <li><strong>Drag</strong> the card from <span class="ui">MOUNTED VOLUMES</span> onto the <span class="ui">SOURCES</span> zone. You can also drag it from the Finder or the Explorer.</li>
+  <li><strong>Right-click</strong> the card → <span class="ui">Set as SOURCE</span>.</li>
+  <li><strong>+ Browse</strong> in the Sources zone, to pick a card or a folder.</li>
+</ul>
+<div class="pair">
+  <figure><img src="images/04-vol-menu.png" alt=""><figcaption>Right-click on a volume.</figcaption></figure>
+  <figure><img src="images/05-new-drive.png" alt=""><figcaption>A card has just been inserted.</figcaption></figure>
+</div>
+<p>When you insert a new card, ingesto offers to use it: <span class="ui">Use as source</span> loads it, <span class="ui">Ignore</span> leaves it alone.</p>
+<p>A loaded card shows a red <span class="badge b-err">SRC1</span> badge, both in the Sources column and on its tile. The folder it will create appears in green under its name.</p>
+
+<h3>The card details</h3>
+<div class="side">
+  <figure style="flex-basis:38%"><img src="images/30-card-details.png" alt=""></figure>
+  <div class="txt">
+    <p>Each card has four fields:</p>
+    <ul>
+      <li><span class="ui">OPERATOR</span>: who shot it.</li>
+      <li><span class="ui">CAMERA</span>: the camera model.</li>
+      <li><span class="ui">PICTURE PROFILE</span>: SLOG3, CLOG, VLOG, HLG… pick one from the list or type your own.</li>
+      <li><span class="ui">NOTES</span>: free text, recorded in the report and the notification.</li>
+    </ul>
+    <p>These values can be used in the folder name and appear in the report.</p>
+  </div>
+</div>
+<ul>
+  <li><strong>Carried over:</strong> operator, camera and picture profile are kept from one card to the next. Notes describe one card and are cleared after each ingest.</li>
+  <li><strong>(A) or (M):</strong> a small green <strong>(A)</strong> next to <span class="ui">CAMERA</span> means ingesto read the model off the card. A grey <strong>(M)</strong> means it was typed by hand.</li>
+  <li><strong>The broom</strong> next to <span class="ui">LOADED CARDS</span> clears the four fields in one click.</li>
+  <li>Operator and camera accept letters and digits only, so the folder names stay clean. The picture profile is written in capitals and without spaces: <code>s-log 3</code> becomes <code>SLOG3</code>.</li>
+</ul>
+
+<h3>Several cards</h3>
+<p>Load as many cards as you like. Each gets its own block, which you can fold with the arrow. They are ingested one after the other, each to every destination, each in its own numbered folder. Remove a card with its <strong>×</strong>.</p>
+
+<div class="note warn"><b class="t">Write-protected card</b>
+<p>If the card's lock switch is on, ingesto warns you before starting. You can continue (nothing is ever written to the card anyway) or remove the card.</p></div>
+</section>
+
+<!-- ============================== 6 ============================== -->
+<section class="chap" id="c6">
+<h2><span class="n">6</span>Choosing destinations</h2>
+<p class="lead">A destination is a drive, a RAID, a network share or a folder that will receive a full copy of each card.</p>
+<p>Load them the same way as cards: drag onto the <span class="ui">DESTINATIONS</span> zone, right-click → <span class="ui">Set as DESTINATION</span>, or <span class="ui">+ Browse</span> to choose a precise folder. Each one gets a green badge <span class="badge b-ok">DST1</span>, <span class="badge b-ok">DST2</span>…</p>
+<figure class="w60"><img src="images/31-dest-list.png" alt=""><figcaption>Under each destination: its path, and in green the folder each card will create.</figcaption></figure>
+<ul>
+  <li>Under each destination, ingesto lists <strong>the folders it will create</strong>, one per loaded card. Check them before starting.</li>
+  <li>Your destinations are remembered from one session to the next.</li>
+  <li>Network shares (NAS) work. In SECURE and PRO modes, ingesto really reads the copy back over the network, not from the computer's memory, so the check is genuine. It is slower; that is the price of a real check.</li>
+  <li>A destination cannot be the card itself, nor a folder inside it: ingesto refuses.</li>
+  <li>Before starting, ingesto checks that each drive has enough free space. If not, it tells you and lets you decide.</li>
+</ul>
+<div class="note tip"><b class="t">How many destinations?</b>
+<p>Two is the usual minimum on a shoot: for example a working drive and a backup drive. ingesto writes to all of them in one pass, so a third copy costs little extra time.</p></div>
+</section>
+
+<!-- ============================== 7 ============================== -->
+<section class="chap" id="c7">
+<h2><span class="n">7</span>Naming the folders</h2>
+<p class="lead">Each card is copied into its own folder. Its name is built from the <span class="ui">FOLDER STRUCTURE</span>: a row of pieces you assemble.</p>
+
+<h3>The Insert menu</h3>
+<div class="side">
+  <figure><img src="images/32-insert-menu.png" alt=""></figure>
+  <div class="txt">
+    <p>Click <span class="ui">Insert</span> to add a piece at the end of the structure. Pieces are grouped by kind:</p>
+    <ul>
+      <li><span class="ui">THE CARD</span>: counter, card name, camera, picture profile, operator.</li>
+      <li><span class="ui">THE DATE</span>: year, month, day, hour, minute.</li>
+      <li><span class="ui">TYPED BY YOU</span>: <span class="ui">Custom text…</span> adds a fixed text such as <code>DAY1</code> or a client name.</li>
+      <li><span class="ui">SEPARATORS</span>: underscore <code>_</code> or hyphen <code>-</code>.</li>
+    </ul>
+    <p>Drag the pieces to reorder them. The <strong>×</strong> on a piece removes it.</p>
+    <p><strong>Double-click</strong> the row to type the whole structure by hand.</p>
+  </div>
+</div>
+
+<h3>What each piece becomes</h3>
+<table>
+  <tr><th>Piece</th><th>Becomes</th><th>Example</th></tr>
+  <tr><td><code>{counter}</code></td><td>The card number (chapter 8)</td><td><code>004</code></td></tr>
+  <tr><td><code>{cardname}</code></td><td>The name of the card</td><td><code>A001</code></td></tr>
+  <tr><td><code>{operator}</code></td><td>The operator field</td><td><code>ALEX</code></td></tr>
+  <tr><td><code>{camera}</code></td><td>The camera field</td><td><code>FX6</code></td></tr>
+  <tr><td><code>{pp}</code></td><td>The picture profile field</td><td><code>SLOG3</code></td></tr>
+  <tr><td><code>{YY}</code> / <code>{YYYY}</code></td><td>Year, 2 or 4 digits</td><td><code>26</code> / <code>2026</code></td></tr>
+  <tr><td><code>{MM}</code> <code>{DD}</code></td><td>Month, day</td><td><code>10</code> <code>01</code></td></tr>
+  <tr><td><code>{HH}</code> <code>{MIN}</code></td><td>Hour, minute of the ingest</td><td><code>14</code> <code>35</code></td></tr>
+</table>
+<p>The default structure gives, for example: <code>004_A001_ALEX_FX6_261001_1435</code>.</p>
+<p>An empty field creates nothing, not even a stray separator. You never get <code>004__FX6</code>.</p>
+
+<h3>Subfolders</h3>
+<div class="side">
+  <figure><img src="images/33-subfolder.png" alt=""></figure>
+  <div class="txt">
+    <p>The <span class="ui">/</span> button starts a subfolder. One ingest can thus build the whole tree of your project, identically on every destination.</p>
+    <p>Example: <code>DAY1 / {camera} / {counter}_{cardname}…</code> gives <code>DAY1/FX6/004_A001_ALEX_261001</code>.</p>
+    <p>Subfolder pieces are shown in blue, the card's own folder in green. A piece in <em>italics</em> is text you typed.</p>
+  </div>
+</div>
+<p>A few rules, all checked before anything is written:</p>
+<ul>
+  <li>The <code>{counter}</code> must be in the card's own folder, after the last <span class="ui">/</span>.</li>
+  <li>Four levels at most.</li>
+  <li>A subfolder level that ends up empty (a card with no camera, for example) is simply skipped. The card's own folder can never be empty: ingesto refuses instead.</li>
+  <li>A <span class="ui">/</span> typed in a field (operator, camera…) never creates a folder. Only the structure decides.</li>
+</ul>
+
+<h3>Templates</h3>
+<div class="side"><figure style="flex-basis:38%"><img src="images/34-templates.png" alt=""></figure><div class="txt"><p>The <span class="ui">TEMPLATES</span> area keeps four structures, each with a name. The one in use carries a tick.</p>
+<ul>
+  <li><strong>Click a filled template</strong> to load it.</li>
+  <li><strong>Click an empty one</strong> to save the current structure there; you can give it a name.</li>
+  <li><strong>Right-click</strong> a template to load, save over or delete it.</li>
+  <li>The icons in the header <strong>save</strong>, <strong>export</strong> and <strong>import</strong> templates, to share them with another station.</li>
+</ul></div></div>
+</section>
+
+<!-- ============================== 8 ============================== -->
+<section class="chap" id="c8">
+<h2><span class="n">8</span>The counter</h2>
+<p class="lead">The counter numbers your cards: 001, 002, 003… It stays at the bottom of the left column.</p>
+<div class="side">
+  <figure><img src="images/12-counter-info.png" alt=""></figure>
+  <div class="txt">
+    <h4 style="margin-top:0">Auto (the normal case)</h4>
+    <p>ingesto looks at what is already on your destinations and picks the next free number. Cards get consecutive numbers across sessions and days. <span class="ui">last: 003</span> under the counter tells you what it found.</p>
+    <h4>Manual</h4>
+    <p>Type a number or use <span class="ui">−</span> / <span class="ui">+</span> to force a value. It stays locked until you click <span class="ui">Auto</span>, which goes back to automatic numbering.</p>
+    <h4>Number of digits</h4>
+    <p>The <span class="ui">ⓘ</span> next to <span class="ui">COUNTER</span> lets you choose 2, 3 or 4 digits (07, 007, 0007). It is a minimum: after 99 comes 100.</p>
+  </div>
+</div>
+<div class="note tip"><b class="t">Why it matters</b>
+<p>The counter is global to the destination, even with subfolders per day or per camera. A gap in the numbering therefore means a card is missing.</p></div>
+<div class="note stop"><b class="t">A number already used</b>
+<p>If the number you chose already exists on a destination, ingesto refuses to start and offers to change the counter or show you the existing folder. An existing card folder is never written into.</p></div>
+</section>
+
+<!-- ============================== 9 ============================== -->
+<section class="chap" id="c9">
+<h2><span class="n">9</span>Choosing a copy mode</h2>
+<p class="lead">The mode decides how thoroughly each copy is checked. It is chosen at the bottom of the centre column.</p>
+<figure><img src="images/10-pro.png" alt=""><figcaption>The four modes. Here PRO is selected, which shows its own options below.</figcaption></figure>
+<table>
+  <tr><th>Mode</th><th>What it checks</th><th>When to use it</th></tr>
+  <tr><td><span class="badge b-fast">FAST</span></td><td>Nothing. Copy only. Shown as <em>not verified</em>.</td><td>Throwaway material, or an extra copy you will check elsewhere.</td></tr>
+  <tr><td><span class="badge b-size">SIZE CHECK</span></td><td>That each copied file has the same size as the original. Catches an interrupted copy or a full disk, not a corrupted file. Shown as <em>sizes checked</em>.</td><td>When time is very short and you accept the risk.</td></tr>
+  <tr><td><span class="badge b-secure">SECURE</span></td><td>Every file is read back from every destination and its fingerprint (xxHash) compared with the card. Detects any corruption, down to a single bit.</td><td><strong>Recommended for all rushes.</strong> The default.</td></tr>
+  <tr><td><span class="badge b-pro">PRO</span></td><td>Everything SECURE does, plus checksum lists and manifests, a choice of algorithm, and the optional double source read.</td><td>When a post house, an archive or a workflow asks for checksum files.</td></tr>
+</table>
+<p>The <span class="ui">ⓘ</span> next to <span class="ui">COPY MODE</span> explains each mode in the app.</p>
+
+<h3>PRO options</h3>
+<ul>
+  <li><strong>Algorithm:</strong> xxHash64, xxHash128 or MD5. Choose the one your post-production or archive asks for. MD5 is noticeably slower.</li>
+  <li><span class="ui">Double source read</span>: after verifying the copies, ingesto reads the card a second time and checks it gives the same data. A card that answers differently is failing; those files are flagged. It makes the verification roughly twice as long.</li>
+</ul>
+<div class="pair">
+  <figure><img src="images/11-pro-warn.png" alt=""><figcaption>The warning shown the first time you pick PRO.</figcaption></figure>
+  <div>
+    <div class="note warn"><b class="t">PRO is not "more secure"</b>
+    <p>SECURE already guarantees your copies bit for bit. PRO adds files for other tools. If nobody asked you for checksum lists, SECURE is the right choice.</p></div>
+    <p>The checksum and manifest files PRO writes are chosen in the <span class="ui">Settings</span>, section <span class="ui">WRITE CHECKSUM</span> (chapter 14).</p>
+  </div>
+</div>
+<div class="note tip"><b class="t">Why SECURE takes longer</b>
+<p>Checking means reading every file again from each drive. ingesto deliberately bypasses the computer's memory cache so that what it reads really comes from the disk. On a slow drive or a network share, verification can take as long as the copy.</p></div>
+</section>
+
+<!-- ============================== 10 ============================== -->
+<section class="chap" id="c10">
+<h2><span class="n">10</span>Starting and following an ingest</h2>
+
+<h3>The START INGEST button</h3>
+<p>Its label tells you what is missing: <span class="ui">Load a card</span>, then <span class="ui">Choose a destination</span>, then <span class="ui">START INGEST</span> when everything is ready.</p>
+
+<h3>Safety checks before anything is written</h3>
+<div class="side">
+  <figure><img src="images/17-refusal.png" alt=""></figure>
+  <div class="txt">
+    <p>When you click Start, ingesto checks everything first. If something is wrong, a window explains what, why, and what to do. The line <strong>Nothing has been written</strong> confirms your drives and card are untouched.</p>
+    <p>Typical cases:</p>
+    <ul>
+      <li>a drive or card that is no longer connected;</li>
+      <li>two cards that would land in the same folder (here, two cards both called A001 with no counter in the structure);</li>
+      <li>a counter number already used on a destination;</li>
+      <li>not enough free space;</li>
+      <li>a card with nothing to copy.</li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="newpage">The ingest queue</h3>
+<p>During the ingest, the centre column shows the queue, and only it.</p>
+<figure><img src="images/13-ingest-copy.png" alt=""><figcaption>Card A001 being copied to two drives; A002 is waiting.</figcaption></figure>
+<ul>
+  <li><strong>The ring at the top left</strong> follows the whole queue, all cards and all phases included, with the cards left, total size and time left.</li>
+  <li><strong>The tiles</strong> below give the current file, files and data remaining, speed and estimated time. An <span class="ui">Errors</span> tile appears if anything goes wrong.</li>
+  <li><strong>One block per card</strong>, with one line per destination, each with its own percentage and speed. A drive lagging behind is visible at a glance.</li>
+  <li><strong>The colour says the phase:</strong> green while copying, blue while verifying, violet during the double source read, red on error.</li>
+</ul>
+<figure><img src="images/14-ingest-verify.png" alt=""><figcaption>Verification: each destination is read back at its own speed (here the network share is slower).</figcaption></figure>
+
+<h3>Pause and cancel</h3>
+<p><span class="ui">PAUSE</span> finishes the current file then waits; <span class="ui">Resume</span> continues. <span class="ui">CANCEL</span> stops the ingest. Everything else (cards, destinations, structure, counter, mode) is locked during the run: what you change after clicking Start cannot affect a copy already under way.</p>
+<div class="note tip"><b class="t">Quitting during an ingest</b>
+<p>If you try to quit while copying, ingesto asks for confirmation. Your card is untouched either way.</p></div>
+</section>
+
+<!-- ============================== 11 ============================== -->
+<section class="chap" id="c11">
+<h2><span class="n">11</span>When the ingest ends</h2>
+<p class="lead">A summary window opens, with a sound. Its colour and title tell you at once whether you can trust the copies.</p>
+
+<h3>Everything went well</h3>
+<div class="side">
+  <figure><img src="images/15-summary-ok.png" alt=""></figure>
+  <div class="txt">
+    <p>The title depends on the mode:</p>
+    <ul>
+      <li><span class="ui">ALL FILES COPIED &amp; VERIFIED</span>: SECURE or PRO. The copies are proven identical.</li>
+      <li><span class="ui">ALL FILES COPIED &amp; SIZE-CHECKED</span>: SIZE CHECK.</li>
+      <li><span class="ui">ALL FILES COPIED</span>: FAST. Nothing was checked.</li>
+    </ul>
+    <p>Below: mode, number of files, size, time of each phase and average speed. Then, for each card, its folder on each drive.</p>
+    <ul>
+      <li><span class="ui">REVEAL</span> opens the folder in the Finder or the Explorer.</li>
+      <li><span class="ui">EJECT</span> ejects the card (<span class="ui">EJECT ALL</span> for a batch).</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Something went wrong</h3>
+<div class="side">
+  <figure><img src="images/16-summary-fail.png" alt=""></figure>
+  <div class="txt">
+    <p>The window turns red and says plainly what happened, for example <span class="ui">2 FILES DID NOT SURVIVE THE COPY TO NAS_BACKUP</span>. Under the title: <strong>Do not format this card.</strong></p>
+    <p>The list below groups the failed files by cause. A bad copy is set aside under a name ending in <code>.ingesto-failed</code>, so no damaged file ever carries a valid name in your delivery folder.</p>
+    <p><span class="ui">Re-copy 2 failed files</span> copies and verifies those files again, and only them. The queue shows the progress as usual.</p>
+  </div>
+</div>
+<div class="note stop"><b class="t">The rule</b>
+<p>As long as the summary is not green and verified, keep the card. If a re-copy fails again on the same drive, suspect the drive or its cable. If ingesto says the card does not give the same data twice, the card itself is failing: keep it aside.</p></div>
+
+<h3>Two notes you may see on a green summary</h3>
+<ul>
+  <li><strong>Blue, <span class="ui">You can double-check this later</span>.</strong> The check ran right after the copy, and part of it may have been answered by the computer's memory rather than the drive. The ingest is verified; for extra peace of mind, another day, re-plug the drive and verify the folder (chapter 13).</li>
+  <li><strong>Orange, <span class="ui">The extra card check did not really run</span></strong> (PRO with double source read). Your footage is fine and verified, but the second read of the card came from the computer's memory, so it did not test the card's health. Where it is possible, a button offers to run that card check again for real.</li>
+</ul>
+</section>
+
+<!-- ============================== 12 ============================== -->
+<section class="chap" id="c12">
+<h2><span class="n">12</span>History and reports</h2>
+
+<h3>Ingest history</h3>
+<figure><img src="images/18-history.png" alt=""><figcaption>The history, with one line opened.</figcaption></figure>
+<p>As soon as a destination is loaded, the centre column lists every card already ingested on it: number, card name, folder, number of drives, and a status badge <span class="badge b-ok">VERIFIED</span> or <span class="badge b-err">FAILED</span>.</p>
+<ul>
+  <li><strong>Click a line</strong> to see the details: date, number of files, size, duration, speed, mode, the time of each phase, every destination, operator, camera, profile and notes.</li>
+  <li>The <strong>folder icon</strong> at the end of a line shows that folder on the drive.</li>
+  <li>The history is read from the reports written on the drives. It survives a restart, and a drive brought from another computer arrives with its own history.</li>
+  <li>The <strong>eraser</strong> in the header clears the list in ingesto only. The reports on the drives are never touched, and <span class="ui">Show it again</span> brings the lines back.</li>
+</ul>
+
+<h3>The ingest report</h3>
+<p>After each ingest, ingesto updates a report at the root of each destination. <span class="ui">Open the report</span>, under the history, opens it in your browser.</p>
+<figure><img src="images/19-report.png" alt=""><figcaption>The HTML report: one line per card. Click ▸ on a line to list its files.</figcaption></figure>
+<ul>
+  <li>One line per card: number, date, card, operator, camera, mode, files, size, result, the time of each phase, notes.</li>
+  <li>The <span class="ui">Export PDF</span> button turns it into a PDF to send to production or post.</li>
+  <li>CSV (spreadsheet) and JSON (for scripts) versions can be added in the Settings.</li>
+</ul>
+</section>
+
+<!-- ============================== 13 ============================== -->
+<section class="chap" id="c13">
+<h2><span class="n">13</span>Verifying a folder later</h2>
+<div class="side">
+  <figure><img src="images/20-verify-result.png" alt=""></figure>
+  <div class="txt">
+    <p>The <strong>book icon</strong> at the top right re-checks a folder that was already ingested, without copying anything.</p>
+    <ol>
+      <li>Click the book icon.</li>
+      <li>Choose the card folder on the drive.</li>
+      <li>ingesto reads its checksum list or MHL manifest, re-reads every file and compares.</li>
+    </ol>
+    <p>The result shows how many files were checked, matched, corrupted or missing. <span class="ui">ALL FILES VERIFIED</span> means the folder is still identical to what was ingested.</p>
+  </div>
+</div>
+<div class="note tip"><b class="t">When to use it</b>
+<p>Before handing a drive to post-production, after a long journey, or months later before archiving. The folder must contain a checksum list or a manifest: keep <span class="ui">Write Checksum</span> on in the Settings (it is on by default).</p></div>
+</section>
+
+<!-- ============================== 14 ============================== -->
+<section class="chap" id="c14">
+<h2><span class="n">14</span>Settings</h2>
+<p class="lead">The gear icon at the top right opens the Settings. Each section has its own switch. <span class="ui">Done</span> closes the window; everything is saved straight away.</p>
+<figure class="w35"><img src="images/21-settings-overview.png" alt=""></figure>
+
+<h3>Card Tracking <span style="font-weight:400;color:var(--ink3)">(off by default)</span></h3>
+<figure class="w70"><img src="images/22-set-0-tracking.png" alt=""></figure>
+<p>Writes a small file, <code>.ingesto.json</code>, on the card. When the same card comes back, ingesto knows whether it was formatted since its last ingest. This is the only option that ever writes on a card, which is why it asks for confirmation when you turn it on.</p>
+<div class="side">
+  <figure><img src="images/28-unformatted.png" alt=""></figure>
+  <div class="txt">
+    <p>If a card comes back unformatted, ingesto tells you how many files were already ingested and how many are new:</p>
+    <ul>
+      <li><span class="ui">COPY NEW FILES</span>: only what was shot since. A file is skipped only if every destination already holds a verified copy of it.</li>
+      <li><span class="ui">COPY FULL CARD</span>: everything again.</li>
+      <li><span class="ui">CANCEL</span>: nothing.</li>
+    </ul>
+    <p>Useful when a card goes back into the camera between two ingests.</p>
+  </div>
+</div>
+
+<h3>Write Checksum <span style="font-weight:400;color:var(--ink3)">(on by default)</span></h3>
+<figure class="w70"><img src="images/22-set-1-checksum.png" alt=""></figure>
+<p>Writes, next to the footage, files that let anyone re-check the copy later (SECURE and PRO only):</p>
+<ul>
+  <li><span class="ui">Checksum list</span>: a <code>.xxh</code> / <code>.md5</code> list, readable by ingesto and TeraCopy.</li>
+  <li><span class="ui">MHL manifest</span>: the classic format of Silverstack, YoYotta, OffShoot (PRO with MD5 or xxHash64).</li>
+  <li><span class="ui">ASC MHL</span>: the newer industry standard, in an <code>ascmhl</code> folder.</li>
+</ul>
+<p>Turn on what your post-production asks for. If nobody asks, the checksum list alone is enough.</p>
+
+<h3>Ingest Report <span style="font-weight:400;color:var(--ink3)">(on by default)</span></h3>
+<figure class="w70"><img src="images/22-set-2-report.png" alt=""></figure>
+<p>Formats: <span class="ui">HTML</span> to read and print, <span class="ui">CSV</span> for spreadsheets, <span class="ui">JSON</span> for scripts. <span class="ui">Full report</span> lists every file of each card; off, each card is a single line. <span class="ui">VIEW</span> opens the current report.</p>
+
+<h3>File Filter <span style="font-weight:400;color:var(--ink3)">(off at every launch)</span></h3>
+<div class="side">
+  <figure style="flex-basis:34%"><img src="images/22-set-3-filter.png" alt=""></figure>
+  <div class="txt">
+    <p>Copies only the file types you choose: video, audio, pictures, and other files (sidecars such as XML, THM…), each type one by one.</p>
+    <p><span class="ui">Copy empty folders</span> keeps the card's empty folders.</p>
+    <p><span class="ui">Reorganize files on destination</span> sorts the copied files into <code>/VIDEO</code>, <code>/AUDIO</code>, <code>/PICTURES</code>. Other files are then never copied.</p>
+    <div class="note warn"><b class="t">Use with care</b>
+    <p>A filtered ingest is not a full copy of the card. That is why the filter switches itself off at every launch: you have to turn it on on purpose each time. Your choice of formats is kept.</p>
+    <p>Many cameras need their sidecar files (XML, metadata folders) to be read correctly in editing software. When in doubt, leave the filter off.</p></div>
+  </div>
+</div>
+
+<h3>Phone Notifications (ntfy) <span style="font-weight:400;color:var(--ink3)">(off by default)</span></h3>
+<div class="side">
+  <figure><img src="images/22-set-4-ntfy.png" alt=""></figure>
+  <div class="txt">
+    <p>Receive a notification on your phone after each card: card, operator, camera, number of files, size, mode, result per drive, time of each phase, notes. A failed card is sent as high priority.</p>
+    <ol>
+      <li>Install the free <strong>ntfy</strong> app (iPhone, Android): scan the QR code.</li>
+      <li>In ingesto, enter a <span class="ui">Topic</span>: a long, hard-to-guess name.</li>
+      <li>In the app, subscribe to that same topic.</li>
+      <li>Click <span class="ui">Send test notification</span> and check your phone.</li>
+    </ol>
+    <p>Leave the <span class="ui">Server</span> on <code>https://ntfy.sh</code> unless you run your own.</p>
+  </div>
+</div>
+<div class="note warn"><b class="t">Privacy</b>
+<p>On the public server, the topic name is the only thing protecting your notifications. Anyone who knows it can read them. Choose something like <code>ingesto-studio-7x2k</code>, not <code>ingesto</code>.</p></div>
+
+<h3>Post-Ingest Command and Card Handoff <span style="font-weight:400;color:var(--ink3)">(off by default)</span></h3>
+<p>Two options for technical users who automate their workflow with scripts. <span class="ui">Post-Ingest Command</span> runs a command after each ingest. <span class="ui">Card Handoff</span> passes each card to a script of yours with a document describing what was copied and verified; <span class="ui">Dry run</span> tests it. Both run exactly what you type. If you do not know what to put there, leave them off.</p>
+
+<h3>Settings File</h3>
+<figure class="w70"><img src="images/22-set-7-file.png" alt=""></figure>
+<p>To set up several stations the same way. <span class="ui">Export settings…</span> saves a file; <span class="ui">Import settings…</span> applies it on another computer. The switches choose what is included: current structure, templates, copy mode, Card Tracking, checksums, report, file filter.</p>
+
+<div class="note tip"><b class="t">What is not a setting</b>
+<p>There is no language choice: the interface is in English. Sounds and keeping the computer awake are automatic. The counter's number of digits is set from its own <span class="ui">ⓘ</span> (chapter 8), the kiosk PIN from the KIOSK button (chapter 15).</p></div>
+</section>
+
+<!-- ============================== 15 ============================== -->
+<section class="chap" id="c15">
+<h2><span class="n">15</span>Kiosk mode</h2>
+<p class="lead">A simplified, locked, full-screen view for a station shared by a whole crew: the camera operator comes, inserts the card, types their name, starts. Nobody can change the settings.</p>
+
+<h3>Prepare the station</h3>
+<ol class="steps">
+  <li>In the normal window, load the <strong>destinations</strong>, choose the <strong>copy mode</strong> and the <strong>folder structure</strong>. Kiosk mode uses them as they are.</li>
+  <li>Click <span class="ui">KIOSK</span> at the top right.</li>
+  <li>Choose a 4-digit PIN, then type it again to confirm.</li>
+</ol>
+<div class="pair">
+  <figure><img src="images/25-kiosk-pin.png" alt=""><figcaption>Setting the PIN.</figcaption></figure>
+  <figure><img src="images/26b-kiosk-card.png" alt=""><figcaption>The kiosk screen, card loaded.</figcaption></figure>
+</div>
+
+<h3>For the person ingesting</h3>
+<ol class="steps">
+  <li>Insert the card, or click <span class="ui">Browse a card…</span>.</li>
+  <li>Type your name in <span class="ui">Operator</span> (required). Camera, profile and notes are optional; the camera is often filled in automatically.</li>
+  <li>Click <span class="ui">START INGEST</span> and follow the large progress ring.</li>
+  <li>Read the result, then click <span class="ui">Next card</span>.</li>
+</ol>
+<div class="side">
+  <figure style="flex-basis:36%"><img src="images/27-kiosk-result.png" alt=""></figure>
+  <div class="txt">
+    <p>The result screen speaks plainly:</p>
+    <ul>
+      <li><strong>Verified</strong>: "You can remove your card." The card is ejected automatically.</li>
+      <li>After FAST or SIZE CHECK: "Remove your card. Do not erase it."</li>
+      <li>On a problem: "Do not erase it. Call the person in charge."</li>
+    </ul>
+    <p>If no destination was chosen, the screen says <span class="ui">Not set up yet</span> and asks for the person who set up the station.</p>
+  </div>
+</div>
+
+<h3>Leaving kiosk mode</h3>
+<p>Click <span class="ui">STANDARD</span> at the top right and enter the PIN. After five wrong attempts, the pad locks for 30 seconds.</p>
+<div class="note tip"><b class="t">Forgotten PIN</b>
+<p>Quit and reopen ingesto: it always starts in the normal window. The PIN is never saved; it only lasts for the session.</p></div>
+</section>
+
+<!-- ============================== 16 ============================== -->
+<section class="chap" id="c16">
+<h2><span class="n">16</span>Managing volumes</h2>
+<p>The <span class="ui">MOUNTED VOLUMES</span> area shows every card, drive and share connected, with an icon by type (card, disk, network, system disk) and the free space.</p>
+<table>
+  <tr><th>Control</th><th>Use</th></tr>
+  <tr><td><span class="ui">HIDE SYSTEM</span></td><td>Hides the computer's internal disk.</td></tr>
+  <tr><td><span class="ui">HIDE NETWORK</span></td><td>Hides network shares.</td></tr>
+  <tr><td>Right-click → <span class="ui">Hide Volume</span></td><td>Hides one particular volume. The eye icon in the header shows hidden volumes again.</td></tr>
+  <tr><td>Right-click → <span class="ui">Eject</span></td><td>Ejects a card or drive without leaving ingesto. Not offered for the system disk or network shares, and refused during an ingest. If the volume was loaded, it is unloaded once the eject has succeeded.</td></tr>
+  <tr><td>Circular arrow</td><td>Refreshes the list.</td></tr>
+</table>
+<p>On Windows, a card's drive letter is shown in the list, for example <code>LUMIX (D:)</code>, so two identical cards in two readers can be told apart. The folder name and the report use the bare name, <code>LUMIX</code>.</p>
+</section>
+
+<!-- ============================== 17 ============================== -->
+<section class="chap" id="c17">
+<h2><span class="n">17</span>Good practice on set</h2>
+<p class="lead">ingesto does the checking. These habits make the rest of the chain just as safe.</p>
+<h3>Before the shoot</h3>
+<ul class="checklist">
+  <li>Install ingesto and do a test ingest with a real card.</li>
+  <li>Prepare the folder structure and save it as a template.</li>
+  <li>Set up ntfy and send a test notification.</li>
+  <li>Prepare at least two destination drives, formatted and with enough space for the day.</li>
+</ul>
+<h3>For every card</h3>
+<ul class="checklist">
+  <li>Mode <span class="badge b-secure">SECURE</span> (or PRO if asked).</li>
+  <li>Check the folder name in green under each destination.</li>
+  <li>Fill in the operator, camera and notes.</li>
+  <li>Wait for the green summary: <span class="ui">ALL FILES COPIED &amp; VERIFIED</span>.</li>
+  <li>Only then hand the card back to camera for formatting.</li>
+</ul>
+<h3>At the end of the day</h3>
+<ul class="checklist">
+  <li>Check the history: no red line, no gap in the numbers.</li>
+  <li>Export the report as PDF for production if needed.</li>
+  <li>Keep the two copies in two different places.</li>
+</ul>
+</section>
+
+<!-- ============================== 18 ============================== -->
+<section class="chap" id="c18">
+<h2><span class="n">18</span>Troubleshooting</h2>
+
+<h4>macOS says ingesto cannot be opened, or the developer cannot be verified</h4>
+<p>Versions from 2.5.5 onwards are signed and should not show this. If you see it, you have an older version or a copy you built yourself: right-click the app in Applications → <span class="ui">Open</span> → <span class="ui">Open</span> again. Once is enough.</p>
+
+<h4>My card or drive does not appear</h4>
+<p>Click the refresh arrow. Check that it appears in the Finder or the Explorer. Check that <span class="ui">HIDE SYSTEM</span> / <span class="ui">HIDE NETWORK</span> are not hiding it, and click the eye icon to show hidden volumes.</p>
+
+<h4>The ingest refuses to start</h4>
+<p>Read the window: it names the problem and says what to do. Nothing has been copied. The most common causes are a drive that has been disconnected, two cards with the same name and no counter in the structure, or a counter number already used.</p>
+
+<h4>SECURE or PRO is slow</h4>
+<p>That is expected: every file is read again from every drive, from the disk itself. On a network share, verification can take as long as the copy. It is the price of a real check.</p>
+
+<h4>Some files failed</h4>
+<p>Do not format the card. Click <span class="ui">Re-copy</span>. If it fails again on the same drive, change the cable or the drive. If ingesto says the card gives different data on each read, the card is failing: keep it aside.</p>
+
+<h4>The counter does not give the number I expected</h4>
+<p>In Auto mode, it follows what it finds on the destinations. Look at <span class="ui">last:</span> under the counter. To force a number, type it; click <span class="ui">Auto</span> to go back.</p>
+
+<h4>I hid the history by mistake</h4>
+<p>Click <span class="ui">Show it again</span> in the history area. The reports on the drives were never touched.</p>
+
+<h4>The notification does not arrive</h4>
+<p>Check that the topic is exactly the same in ingesto and in the ntfy app, and use <span class="ui">Send test notification</span>. The computer needs an Internet connection.</p>
+
+<h3>Help and contact</h3>
+<p>To report a problem or suggest an improvement, open an <em>issue</em> on <strong>github.com/noar-justedit/ingesto/issues</strong>. Mention your version of ingesto (bottom left of the window) and your system.</p>
+<p>ingesto is free software, under the GNU GPL v3 licence. © Just Edit 2026.</p>
+</section>
+
+</body>
+</html>

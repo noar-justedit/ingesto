@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>ingesto 2.7.2 Manuel d'utilisation</title>
+<link rel="stylesheet" href="manual.css">
+<style>@page { @bottom-left { content: "ingesto 2.7.2 · Manuel d’utilisation"; } } @page :first { @bottom-left { content: none; } }</style>
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<div class="cover">
+  <div class="mark"><img src="images/logo-mark.png" alt=""><div class="word">ingesto<span>.</span></div></div>
+  <h1>Manuel d'utilisation</h1>
+  <div class="sub">Copiez vos cartes caméra sur plusieurs disques à la fois, et sachez que chaque fichier est arrivé intact.</div>
+  <div class="shot"><img src="images/13-ingest-copy.png" alt=""></div>
+  <div class="foot"><span>Version 2.7.2 · octobre 2026</span><span>Just Edit · github.com/noar-justedit/ingesto</span></div>
+</div>
+
+
+<!-- ============================== CONTENTS ============================== -->
+<div class="toc">
+  <h2>Sommaire</h2>
+  <ol>
+    <li><span class="n">1</span><a href="#c1">Bienvenue</a><span class="d">Ce que fait ingesto, et ses trois engagements</span></li>
+    <li><span class="n">2</span><a href="#c2">Installation et premier lancement</a><span class="d">macOS, Windows, Linux</span></li>
+    <li><span class="n">3</span><a href="#c3">Votre premier ingest en sept étapes</a><span class="d">La version courte</span></li>
+    <li><span class="n">4</span><a href="#c4">La fenêtre en un coup d'œil</a><span class="d">Trois colonnes, trois boutons</span></li>
+    <li><span class="n">5</span><a href="#c5">Charger les cartes</a><span class="d">Sources, infos carte, plusieurs cartes</span></li>
+    <li><span class="n">6</span><a href="#c6">Choisir les destinations</a><span class="d">Disques, RAID, partages réseau</span></li>
+    <li><span class="n">7</span><a href="#c7">Nommer les dossiers</a><span class="d">Structure, sous-dossiers, modèles</span></li>
+    <li><span class="n">8</span><a href="#c8">Le compteur</a><span class="d">Numéroter vos cartes</span></li>
+    <li><span class="n">9</span><a href="#c9">Choisir un mode de copie</a><span class="d">FAST, SIZE CHECK, SECURE, PRO</span></li>
+    <li><span class="n">10</span><a href="#c10">Lancer et suivre un ingest</a><span class="d">Contrôles de sécurité, file d'ingest</span></li>
+    <li><span class="n">11</span><a href="#c11">À la fin de l'ingest</a><span class="d">Bilan, erreurs, recopie, éjection</span></li>
+    <li><span class="n">12</span><a href="#c12">Historique et rapports</a><span class="d">Ce qui a été copié, et où</span></li>
+    <li><span class="n">13</span><a href="#c13">Vérifier un dossier plus tard</a><span class="d">Contrôler sans recopier</span></li>
+    <li><span class="n">14</span><a href="#c14">Réglages</a><span class="d">Chaque option, une par une</span></li>
+    <li><span class="n">15</span><a href="#c15">Mode kiosque</a><span class="d">Un poste verrouillé pour toute une équipe</span></li>
+    <li><span class="n">16</span><a href="#c16">Gérer les volumes</a><span class="d">Filtres, masquer, éjecter, rafraîchir</span></li>
+    <li><span class="n">17</span><a href="#c17">Bonnes pratiques en tournage</a><span class="d">Une liste à cocher</span></li>
+    <li><span class="n">18</span><a href="#c18">Dépannage</a><span class="d">Questions fréquentes</span></li>
+  </ol>
+</div>
+
+<!-- ============================== 1 ============================== -->
+<section class="chap" id="c1">
+<h2><span class="n">1</span>Bienvenue</h2>
+<p class="lead">ingesto copie les rushes de vos cartes caméra sur autant de disques que nécessaire, puis relit chaque copie pour s'assurer qu'elle est identique à la carte. Il est gratuit, libre, et fonctionne sur macOS, Windows et Linux.</p>
+
+<div class="note tip"><b class="t">L'interface est en anglais</b>
+<p>ingesto n'existe qu'en anglais. Ce manuel cite donc les boutons et les messages tels qu'ils apparaissent à l'écran, en gras : <span class="ui">START INGEST</span>, <span class="ui">Settings</span>… L'explication, elle, est en français.</p></div>
+
+<h3>Ce qu'il fait pour vous</h3>
+<ul>
+  <li><strong>Une carte, plusieurs disques, en un seul passage.</strong> La carte est lue une fois et écrite sur toutes les destinations en même temps. Les copies sont ensuite vérifiées en même temps, elles aussi.</li>
+  <li><strong>Plusieurs cartes à la suite.</strong> Chargez un lot de cartes : elles passent l'une après l'autre, chacune vers toutes les destinations.</li>
+  <li><strong>Des dossiers nommés pour vous.</strong> Chaque carte arrive dans un dossier construit à partir d'un modèle : compteur, nom de carte, opérateur, caméra, date…</li>
+  <li><strong>Il reconnaît la caméra</strong> d'après l'arborescence de la carte, et remplit le champ caméra pour vous.</li>
+  <li><strong>Il garde une trace de ce qu'il a fait :</strong> un rapport d'ingest sur chaque disque, des listes de checksums et des manifestes MHL si vous le souhaitez, et une notification sur votre téléphone si vous l'avez configurée.</li>
+</ul>
+
+<h3>Trois engagements</h3>
+<div class="note ok"><b class="t">1 · Votre carte n'est jamais touchée</b>
+<p>ingesto ne supprime, ne renomme et n'écrase jamais rien sur une carte qu'il copie. Pendant l'ingest d'une carte, toute écriture sur celle-ci est refusée. Seule exception : <strong>Card Tracking</strong>, une option désactivée par défaut qui n'écrit que son propre petit fichier journal (voir chapitre 14).</p></div>
+<div class="note ok"><b class="t">2 · « Verified » veut dire vérifié</b>
+<p>Le mot <em>verified</em> n'apparaît que si chaque fichier a été relu sur chaque destination et comparé à la carte (modes SECURE et PRO). Une copie FAST affiche <em>not verified</em>, une copie SIZE CHECK affiche <em>sizes checked</em>, partout : à l'écran, dans le rapport, sur votre téléphone. Un ingest avec des erreurs n'est jamais présenté comme réussi.</p></div>
+<div class="note ok"><b class="t">3 · Il refuse de démarrer quand quelque chose ne va pas</b>
+<p>Un disque débranché, deux cartes qui atterriraient dans le même dossier, une carte vide : ingesto s'arrête avant d'écrire quoi que ce soit, nomme le problème, et vous dit que rien n'a été copié.</p></div>
+</section>
+
+<!-- ============================== 2 ============================== -->
+<section class="chap" id="c2">
+<h2><span class="n">2</span>Installation et premier lancement</h2>
+
+<h3>Télécharger</h3>
+<p>La dernière version se trouve sur la page des versions : <strong>github.com/noar-justedit/ingesto/releases/latest</strong>. Choisissez le fichier correspondant à votre système.</p>
+
+<h4>macOS</h4>
+<ol>
+  <li>Ouvrez le fichier <code>.dmg</code>.</li>
+  <li>Glissez <strong>ingesto</strong> dans votre dossier <strong>Applications</strong>.</li>
+  <li>Lancez-le par un double-clic normal. L'application est signée et notariée par Apple : aucun avertissement de sécurité.</li>
+</ol>
+
+<h4>Windows</h4>
+<ol>
+  <li>Lancez l'installeur.</li>
+  <li>L'installeur n'est pas signé : au premier lancement, Windows SmartScreen affiche un avertissement. Cliquez sur <span class="ui">More info</span> (Informations complémentaires), puis <span class="ui">Run anyway</span> (Exécuter quand même). C'est normal.</li>
+</ol>
+
+<h4>Linux</h4>
+<p>Deux paquets sont proposés : le <code>.AppImage</code> fonctionne sur la plupart des distributions sans installation ; le <code>.deb</code> s'installe sur Debian et Ubuntu.</p>
+
+<h3>Le premier lancement</h3>
+<figure><img src="images/01-first-launch.png" alt=""><figcaption>ingesto au premier lancement : ni carte ni destination pour l'instant.</figcaption></figure>
+<p>Pas d'assistant de configuration. La fenêtre s'ouvre directement, avec vos cartes et disques montés au centre. Le mode est <span class="badge b-secure">SECURE</span>, le réglage recommandé. Vous pouvez travailler tout de suite ; le chapitre 3 montre comment.</p>
+
+<div class="note tip"><b class="t">Mises à jour</b>
+<p>Quand une nouvelle version sort, ingesto affiche <span class="ui">New version available</span> au lancement. <span class="ui">Get it</span> ouvre la page de téléchargement, <span class="ui">Later</span> ferme l'avis.</p></div>
+<div class="note tip"><b class="t">Votre ordinateur reste éveillé</b>
+<p>Pendant un ingest, ingesto empêche l'ordinateur de se mettre en veille. L'écran peut s'éteindre ; la copie continue.</p></div>
+</section>
+
+<!-- ============================== 3 ============================== -->
+<section class="chap" id="c3">
+<h2><span class="n">3</span>Votre premier ingest en sept étapes</h2>
+<p class="lead">L'essentiel sur une page. Chaque étape est détaillée dans les chapitres suivants.</p>
+<ol class="steps">
+  <li><strong>Branchez</strong> votre lecteur de cartes et vos disques de destination. Ils apparaissent sous <span class="ui">MOUNTED VOLUMES</span>.</li>
+  <li><strong>Glissez la carte</strong> sur la zone <span class="ui">SOURCES</span> à gauche (ou clic droit → <span class="ui">Set as SOURCE</span>).</li>
+  <li><strong>Glissez un ou plusieurs disques</strong> sur la zone <span class="ui">DESTINATIONS</span> à droite (ou clic droit → <span class="ui">Set as DESTINATION</span>).</li>
+  <li><strong>Renseignez</strong> l'opérateur, la caméra, le profil d'image et les notes de la carte, si vous en avez besoin dans le nom du dossier ou dans le rapport.</li>
+  <li><strong>Vérifiez le nom du dossier</strong> affiché en vert sous chaque destination. Modifiez la <span class="ui">FOLDER STRUCTURE</span> si besoin.</li>
+  <li><strong>Choisissez le mode de copie.</strong> Gardez <span class="badge b-secure">SECURE</span> sauf raison particulière.</li>
+  <li><strong>Cliquez sur <span class="ui">START INGEST</span>.</strong> Attendez le bilan vert <span class="ui">ALL FILES COPIED &amp; VERIFIED</span> avant de faire quoi que ce soit avec la carte.</li>
+</ol>
+<figure class="w70"><img src="images/02-ready.png" alt=""><figcaption>Prêt à partir : carte A001 chargée, deux destinations, le nom du dossier affiché sur chaque disque.</figcaption></figure>
+<div class="note stop"><b class="t">Avant de formater une carte</b>
+<p>Ne formatez une carte qu'après un ingest <strong>vérifié</strong> (SECURE ou PRO) sur au moins deux disques, avec un bilan vert. ingesto ne formatera jamais une carte à votre place.</p></div>
+</section>
+
+<!-- ============================== 4 ============================== -->
+<section class="chap" id="c4">
+<h2><span class="n">4</span>La fenêtre en un coup d'œil</h2>
+<p class="lead">Trois colonnes, à lire de gauche à droite : ce que vous copiez, ce qui se passe, où ça va.</p>
+<figure class="w75"><img src="images/02-ready.png" alt=""></figure>
+<table>
+  <tr><th>Zone</th><th>Ce qu'on y trouve</th></tr>
+  <tr><td><strong>Gauche : SOURCES</strong></td><td>Les cartes à copier, avec leurs informations (opérateur, caméra, profil d'image, notes), et le compteur en bas.</td></tr>
+  <tr><td><strong>Centre</strong></td><td><span class="ui">MOUNTED VOLUMES</span> : toutes les cartes, tous les disques et partages réseau branchés. <span class="ui">INGEST HISTORY</span> : les cartes déjà copiées sur les destinations chargées. <span class="ui">COPY MODE</span> en bas. Pendant un ingest, cette colonne affiche la file d'ingest à la place.</td></tr>
+  <tr><td><strong>Droite : DESTINATIONS</strong></td><td>Les disques qui recevront les copies, la <span class="ui">FOLDER STRUCTURE</span>, les <span class="ui">TEMPLATES</span> et le bouton <span class="ui">START INGEST</span>.</td></tr>
+</table>
+<h3>Les trois boutons en haut à droite</h3>
+<table>
+  <tr><th>Bouton</th><th>Usage</th></tr>
+  <tr><td><span class="ui">KIOSK</span></td><td>Passe en mode kiosque, un écran simplifié et verrouillé pour un poste partagé (chapitre 15).</td></tr>
+  <tr><td>Icône livre</td><td>Vérifie un dossier copié précédemment, sans recopier (chapitre 13).</td></tr>
+  <tr><td>Icône engrenage</td><td>Ouvre les réglages, <span class="ui">Settings</span> (chapitre 14).</td></tr>
+</table>
+<p>Survolez un bouton ou une icône pour afficher une courte explication. Les petits boutons <span class="ui">ⓘ</span> à côté de certains titres ouvrent une explication détaillée.</p>
+</section>
+
+<!-- ============================== 5 ============================== -->
+<section class="chap" id="c5">
+<h2><span class="n">5</span>Charger les cartes</h2>
+
+<h3>Trois façons de charger une carte</h3>
+<ul>
+  <li><strong>Glissez</strong> la carte depuis <span class="ui">MOUNTED VOLUMES</span> sur la zone <span class="ui">SOURCES</span>. Vous pouvez aussi la glisser depuis le Finder ou l'Explorateur.</li>
+  <li><strong>Clic droit</strong> sur la carte → <span class="ui">Set as SOURCE</span>.</li>
+  <li><strong>+ Browse</strong> dans la zone Sources, pour choisir une carte ou un dossier.</li>
+</ul>
+<div class="pair">
+  <figure><img src="images/04-vol-menu.png" alt=""><figcaption>Clic droit sur un volume.</figcaption></figure>
+  <figure><img src="images/05-new-drive.png" alt=""><figcaption>Une carte vient d'être insérée.</figcaption></figure>
+</div>
+<p>Quand vous insérez une nouvelle carte, ingesto propose de l'utiliser : <span class="ui">Use as source</span> la charge, <span class="ui">Ignore</span> la laisse de côté.</p>
+<p>Une carte chargée porte un badge rouge <span class="badge b-err">SRC1</span>, dans la colonne Sources comme sur sa vignette. Le dossier qu'elle va créer s'affiche en vert sous son nom.</p>
+
+<h3>Les informations de la carte</h3>
+<div class="side">
+  <figure style="flex-basis:38%"><img src="images/30-card-details.png" alt=""></figure>
+  <div class="txt">
+    <p>Chaque carte a quatre champs :</p>
+    <ul>
+      <li><span class="ui">OPERATOR</span> : qui a tourné.</li>
+      <li><span class="ui">CAMERA</span> : le modèle de caméra.</li>
+      <li><span class="ui">PICTURE PROFILE</span> : SLOG3, CLOG, VLOG, HLG… choisi dans la liste ou tapé librement.</li>
+      <li><span class="ui">NOTES</span> : texte libre, repris dans le rapport et la notification.</li>
+    </ul>
+    <p>Ces valeurs peuvent servir dans le nom du dossier et apparaissent dans le rapport.</p>
+  </div>
+</div>
+<ul>
+  <li><strong>Reprises d'une carte à l'autre :</strong> opérateur, caméra et profil d'image sont conservés pour la carte suivante. Les notes décrivent une seule carte et sont effacées après chaque ingest.</li>
+  <li><strong>(A) ou (M) :</strong> un petit <strong>(A)</strong> vert à côté de <span class="ui">CAMERA</span> signifie qu'ingesto a lu le modèle sur la carte. Un <strong>(M)</strong> gris signifie qu'il a été saisi à la main.</li>
+  <li><strong>Le balai</strong> à côté de <span class="ui">LOADED CARDS</span> vide les quatre champs d'un clic.</li>
+  <li>Opérateur et caméra n'acceptent que lettres et chiffres, pour des noms de dossiers propres. Le profil d'image est écrit en majuscules et sans espaces : <code>s-log 3</code> devient <code>SLOG3</code>.</li>
+</ul>
+
+<h3>Plusieurs cartes</h3>
+<p>Chargez autant de cartes que vous voulez. Chacune a son bloc, repliable avec la flèche. Elles passent l'une après l'autre, chacune vers toutes les destinations, chacune dans son propre dossier numéroté. Retirez une carte avec sa <strong>×</strong>.</p>
+
+<div class="note warn"><b class="t">Carte protégée en écriture</b>
+<p>Si le verrou de la carte est enclenché, ingesto vous prévient avant de démarrer. Vous pouvez continuer (rien n'est jamais écrit sur la carte de toute façon) ou retirer la carte.</p></div>
+</section>
+
+<!-- ============================== 6 ============================== -->
+<section class="chap" id="c6">
+<h2><span class="n">6</span>Choisir les destinations</h2>
+<p class="lead">Une destination est un disque, un RAID, un partage réseau ou un dossier qui recevra une copie complète de chaque carte.</p>
+<p>Chargez-les comme les cartes : glisser sur la zone <span class="ui">DESTINATIONS</span>, clic droit → <span class="ui">Set as DESTINATION</span>, ou <span class="ui">+ Browse</span> pour choisir un dossier précis. Chacune reçoit un badge vert <span class="badge b-ok">DST1</span>, <span class="badge b-ok">DST2</span>…</p>
+<figure class="w60"><img src="images/31-dest-list.png" alt=""><figcaption>Sous chaque destination : son chemin, et en vert le dossier que chaque carte va créer.</figcaption></figure>
+<ul>
+  <li>Sous chaque destination, ingesto liste <strong>les dossiers qu'il va créer</strong>, un par carte chargée. Vérifiez-les avant de lancer.</li>
+  <li>Vos destinations sont mémorisées d'une session à l'autre.</li>
+  <li>Les partages réseau (NAS) fonctionnent. En modes SECURE et PRO, ingesto relit vraiment la copie à travers le réseau, et non depuis la mémoire de l'ordinateur : la vérification est réelle. C'est plus lent ; c'est le prix d'un vrai contrôle.</li>
+  <li>Une destination ne peut pas être la carte elle-même, ni un dossier qui s'y trouve : ingesto refuse.</li>
+  <li>Avant de démarrer, ingesto vérifie que chaque disque a assez de place. Sinon, il vous le dit et vous laisse décider.</li>
+</ul>
+<div class="note tip"><b class="t">Combien de destinations ?</b>
+<p>Deux est le minimum habituel en tournage : par exemple un disque de travail et un disque de sauvegarde. ingesto écrit sur tous en un seul passage : une troisième copie coûte peu de temps en plus.</p></div>
+</section>
+
+<!-- ============================== 7 ============================== -->
+<section class="chap" id="c7">
+<h2><span class="n">7</span>Nommer les dossiers</h2>
+<p class="lead">Chaque carte est copiée dans son propre dossier. Son nom est construit par la <span class="ui">FOLDER STRUCTURE</span> : une rangée d'éléments que vous assemblez.</p>
+
+<h3>Le menu Insert</h3>
+<div class="side">
+  <figure><img src="images/32-insert-menu.png" alt=""></figure>
+  <div class="txt">
+    <p>Cliquez sur <span class="ui">Insert</span> pour ajouter un élément à la fin de la structure. Les éléments sont rangés par famille :</p>
+    <ul>
+      <li><span class="ui">THE CARD</span> : compteur, nom de carte, caméra, profil d'image, opérateur.</li>
+      <li><span class="ui">THE DATE</span> : année, mois, jour, heure, minute.</li>
+      <li><span class="ui">TYPED BY YOU</span> : <span class="ui">Custom text…</span> ajoute un texte fixe, comme <code>DAY1</code> ou le nom d'un client.</li>
+      <li><span class="ui">SEPARATORS</span> : tiret bas <code>_</code> ou trait d'union <code>-</code>.</li>
+    </ul>
+    <p>Glissez les éléments pour les réordonner. La <strong>×</strong> d'un élément le retire.</p>
+    <p><strong>Double-cliquez</strong> sur la rangée pour taper toute la structure à la main.</p>
+  </div>
+</div>
+
+<h3>Ce que devient chaque élément</h3>
+<table>
+  <tr><th>Élément</th><th>Devient</th><th>Exemple</th></tr>
+  <tr><td><code>{counter}</code></td><td>Le numéro de la carte (chapitre 8)</td><td><code>004</code></td></tr>
+  <tr><td><code>{cardname}</code></td><td>Le nom de la carte</td><td><code>A001</code></td></tr>
+  <tr><td><code>{operator}</code></td><td>Le champ opérateur</td><td><code>ALEX</code></td></tr>
+  <tr><td><code>{camera}</code></td><td>Le champ caméra</td><td><code>FX6</code></td></tr>
+  <tr><td><code>{pp}</code></td><td>Le champ profil d'image</td><td><code>SLOG3</code></td></tr>
+  <tr><td><code>{YY}</code> / <code>{YYYY}</code></td><td>Année, 2 ou 4 chiffres</td><td><code>26</code> / <code>2026</code></td></tr>
+  <tr><td><code>{MM}</code> <code>{DD}</code></td><td>Mois, jour</td><td><code>10</code> <code>01</code></td></tr>
+  <tr><td><code>{HH}</code> <code>{MIN}</code></td><td>Heure, minute de l'ingest</td><td><code>14</code> <code>35</code></td></tr>
+</table>
+<p>La structure par défaut donne par exemple : <code>004_A001_ALEX_FX6_261001_1435</code>.</p>
+<p>Un champ vide ne crée rien, pas même un séparateur orphelin. Vous n'obtiendrez jamais <code>004__FX6</code>.</p>
+
+<h3>Sous-dossiers</h3>
+<div class="side">
+  <figure><img src="images/33-subfolder.png" alt=""></figure>
+  <div class="txt">
+    <p>Le bouton <span class="ui">/</span> commence un sous-dossier. Un seul ingest peut ainsi construire toute l'arborescence de votre projet, à l'identique sur chaque destination.</p>
+    <p>Exemple : <code>DAY1 / {camera} / {counter}_{cardname}…</code> donne <code>DAY1/FX6/004_A001_ALEX_261001</code>.</p>
+    <p>Les éléments de sous-dossier s'affichent en bleu, le dossier propre à la carte en vert. Un élément en <em>italique</em> est un texte que vous avez tapé.</p>
+  </div>
+</div>
+<p>Quelques règles, toutes contrôlées avant la moindre écriture :</p>
+<ul>
+  <li>Le <code>{counter}</code> doit se trouver dans le dossier propre à la carte, après le dernier <span class="ui">/</span>.</li>
+  <li>Quatre niveaux au maximum.</li>
+  <li>Un niveau de sous-dossier qui se retrouve vide (une carte sans caméra, par exemple) est simplement sauté. Le dossier propre à la carte, lui, ne peut jamais être vide : ingesto refuse plutôt.</li>
+  <li>Un <span class="ui">/</span> tapé dans un champ (opérateur, caméra…) ne crée jamais de dossier. Seule la structure décide.</li>
+</ul>
+
+<h3>Modèles</h3>
+<div class="side"><figure style="flex-basis:38%"><img src="images/34-templates.png" alt=""></figure><div class="txt"><p>La zone <span class="ui">TEMPLATES</span> garde quatre structures, chacune avec un nom. Celle en cours d'utilisation porte une coche.</p>
+<ul>
+  <li><strong>Cliquez sur un modèle rempli</strong> pour le charger.</li>
+  <li><strong>Cliquez sur un modèle vide</strong> pour y enregistrer la structure actuelle ; vous pouvez lui donner un nom.</li>
+  <li><strong>Clic droit</strong> sur un modèle pour le charger, l'écraser ou le supprimer.</li>
+  <li>Les icônes de l'en-tête <strong>enregistrent</strong>, <strong>exportent</strong> et <strong>importent</strong> les modèles, pour les partager avec un autre poste.</li>
+</ul></div></div>
+</section>
+
+<!-- ============================== 8 ============================== -->
+<section class="chap" id="c8">
+<h2><span class="n">8</span>Le compteur</h2>
+<p class="lead">Le compteur numérote vos cartes : 001, 002, 003… Il reste en bas de la colonne de gauche.</p>
+<div class="side">
+  <figure><img src="images/12-counter-info.png" alt=""></figure>
+  <div class="txt">
+    <h4 style="margin-top:0">Auto (le cas normal)</h4>
+    <p>ingesto regarde ce qui existe déjà sur vos destinations et prend le numéro libre suivant. Les cartes ont des numéros qui se suivent d'une session et d'un jour à l'autre. <span class="ui">last: 003</span> sous le compteur indique ce qu'il a trouvé.</p>
+    <h4>Manuel</h4>
+    <p>Tapez un numéro ou utilisez <span class="ui">−</span> / <span class="ui">+</span> pour imposer une valeur. Elle reste bloquée jusqu'à ce que vous cliquiez sur <span class="ui">Auto</span>, qui revient à la numérotation automatique.</p>
+    <h4>Nombre de chiffres</h4>
+    <p>Le <span class="ui">ⓘ</span> à côté de <span class="ui">COUNTER</span> permet de choisir 2, 3 ou 4 chiffres (07, 007, 0007). C'est un minimum : après 99 vient 100.</p>
+  </div>
+</div>
+<div class="note tip"><b class="t">Pourquoi c'est important</b>
+<p>Le compteur est global à la destination, même avec des sous-dossiers par jour ou par caméra. Un trou dans la numérotation signifie donc qu'une carte manque.</p></div>
+<div class="note stop"><b class="t">Un numéro déjà utilisé</b>
+<p>Si le numéro choisi existe déjà sur une destination, ingesto refuse de démarrer et propose de changer le compteur ou de vous montrer le dossier existant. On n'écrit jamais dans le dossier d'une carte existante.</p></div>
+</section>
+
+<!-- ============================== 9 ============================== -->
+<section class="chap" id="c9">
+<h2><span class="n">9</span>Choisir un mode de copie</h2>
+<p class="lead">Le mode décide du niveau de contrôle de chaque copie. Il se choisit en bas de la colonne centrale.</p>
+<figure><img src="images/10-pro.png" alt=""><figcaption>Les quatre modes. Ici PRO est sélectionné, ce qui affiche ses propres options en dessous.</figcaption></figure>
+<table>
+  <tr><th>Mode</th><th>Ce qu'il contrôle</th><th>Quand l'utiliser</th></tr>
+  <tr><td><span class="badge b-fast">FAST</span></td><td>Rien. Copie seule. Affiché <em>not verified</em>.</td><td>Matériel jetable, ou copie supplémentaire que vous vérifierez ailleurs.</td></tr>
+  <tr><td><span class="badge b-size">SIZE CHECK</span></td><td>Que chaque fichier copié a la même taille que l'original. Détecte une copie interrompue ou un disque plein, pas un fichier corrompu. Affiché <em>sizes checked</em>.</td><td>Quand le temps manque vraiment et que vous acceptez le risque.</td></tr>
+  <tr><td><span class="badge b-secure">SECURE</span></td><td>Chaque fichier est relu sur chaque destination et son empreinte (xxHash) comparée à celle de la carte. Détecte toute corruption, jusqu'au moindre bit.</td><td><strong>Recommandé pour tous les rushes.</strong> Le réglage par défaut.</td></tr>
+  <tr><td><span class="badge b-pro">PRO</span></td><td>Tout ce que fait SECURE, plus des listes de checksums et des manifestes, le choix de l'algorithme, et la double lecture de la source en option.</td><td>Quand une post-production, une archive ou un workflow demande des fichiers de checksums.</td></tr>
+</table>
+<p>Le <span class="ui">ⓘ</span> à côté de <span class="ui">COPY MODE</span> explique chaque mode dans l'application.</p>
+
+<h3>Les options PRO</h3>
+<ul>
+  <li><strong>Algorithme :</strong> xxHash64, xxHash128 ou MD5. Prenez celui que demande votre post-production ou votre archive. MD5 est nettement plus lent.</li>
+  <li><span class="ui">Double source read</span> : après la vérification des copies, ingesto relit la carte une seconde fois et contrôle qu'elle rend les mêmes données. Une carte qui répond différemment est en train de lâcher ; ses fichiers sont signalés. La vérification dure environ deux fois plus longtemps.</li>
+</ul>
+<div class="pair">
+  <figure><img src="images/11-pro-warn.png" alt=""><figcaption>L'avertissement affiché la première fois que vous choisissez PRO.</figcaption></figure>
+  <div>
+    <div class="note warn"><b class="t">PRO n'est pas « plus sûr »</b>
+    <p>SECURE garantit déjà vos copies au bit près. PRO ajoute des fichiers destinés à d'autres outils. Si personne ne vous a demandé de listes de checksums, SECURE est le bon choix.</p></div>
+    <p>Les fichiers de checksums et les manifestes écrits en PRO se choisissent dans les réglages, section <span class="ui">WRITE CHECKSUM</span> (chapitre 14).</p>
+  </div>
+</div>
+<div class="note tip"><b class="t">Pourquoi SECURE prend plus de temps</b>
+<p>Vérifier, c'est relire chaque fichier sur chaque disque. ingesto contourne volontairement la mémoire cache de l'ordinateur pour que la lecture vienne vraiment du disque. Sur un disque lent ou un partage réseau, la vérification peut durer aussi longtemps que la copie.</p></div>
+</section>
+
+<!-- ============================== 10 ============================== -->
+<section class="chap" id="c10">
+<h2><span class="n">10</span>Lancer et suivre un ingest</h2>
+
+<h3>Le bouton START INGEST</h3>
+<p>Son libellé indique ce qui manque : <span class="ui">Load a card</span> (chargez une carte), puis <span class="ui">Choose a destination</span> (choisissez une destination), puis <span class="ui">START INGEST</span> quand tout est prêt.</p>
+
+<h3>Des contrôles avant toute écriture</h3>
+<div class="side">
+  <figure><img src="images/17-refusal.png" alt=""></figure>
+  <div class="txt">
+    <p>Quand vous cliquez sur Start, ingesto contrôle tout d'abord. Si quelque chose ne va pas, une fenêtre explique quoi, pourquoi, et que faire. La ligne <strong>Nothing has been written</strong> confirme que vos disques et votre carte sont intacts.</p>
+    <p>Cas typiques :</p>
+    <ul>
+      <li>un disque ou une carte qui n'est plus branché ;</li>
+      <li>deux cartes qui atterriraient dans le même dossier (ici, deux cartes nommées A001 sans compteur dans la structure) ;</li>
+      <li>un numéro de compteur déjà utilisé sur une destination ;</li>
+      <li>pas assez de place libre ;</li>
+      <li>une carte sans rien à copier.</li>
+    </ul>
+  </div>
+</div>
+
+<h3 class="newpage">La file d'ingest</h3>
+<p>Pendant l'ingest, la colonne centrale affiche la file, et seulement elle.</p>
+<figure><img src="images/13-ingest-copy.png" alt=""><figcaption>La carte A001 en cours de copie vers deux disques ; A002 attend son tour.</figcaption></figure>
+<ul>
+  <li><strong>L'anneau en haut à gauche</strong> suit toute la file, toutes cartes et toutes phases comprises, avec les cartes restantes, la taille totale et le temps restant.</li>
+  <li><strong>Les tuiles</strong> en dessous donnent le fichier en cours, les fichiers et données restants, la vitesse et le temps estimé. Une tuile <span class="ui">Errors</span> apparaît en cas de problème.</li>
+  <li><strong>Un bloc par carte</strong>, avec une ligne par destination, chacune avec son pourcentage et sa vitesse. Un disque à la traîne se voit d'un coup d'œil.</li>
+  <li><strong>La couleur indique la phase :</strong> vert pendant la copie, bleu pendant la vérification, violet pendant la double lecture de la source, rouge en cas d'erreur.</li>
+</ul>
+<figure><img src="images/14-ingest-verify.png" alt=""><figcaption>Vérification : chaque destination est relue à sa propre vitesse (ici le partage réseau est plus lent).</figcaption></figure>
+
+<h3>Pause et annulation</h3>
+<p><span class="ui">PAUSE</span> termine le fichier en cours puis attend ; <span class="ui">Resume</span> reprend. <span class="ui">CANCEL</span> arrête l'ingest. Tout le reste (cartes, destinations, structure, compteur, mode) est verrouillé pendant la copie : ce que vous modifiez après avoir cliqué sur Start ne peut pas toucher une copie déjà lancée.</p>
+<div class="note tip"><b class="t">Quitter pendant un ingest</b>
+<p>Si vous essayez de quitter pendant une copie, ingesto demande confirmation. Votre carte reste intacte dans tous les cas.</p></div>
+</section>
+
+<!-- ============================== 11 ============================== -->
+<section class="chap" id="c11">
+<h2><span class="n">11</span>À la fin de l'ingest</h2>
+<p class="lead">Une fenêtre de bilan s'ouvre, accompagnée d'un son. Sa couleur et son titre vous disent tout de suite si vous pouvez vous fier aux copies.</p>
+
+<h3>Tout s'est bien passé</h3>
+<div class="side">
+  <figure><img src="images/15-summary-ok.png" alt=""></figure>
+  <div class="txt">
+    <p>Le titre dépend du mode :</p>
+    <ul>
+      <li><span class="ui">ALL FILES COPIED &amp; VERIFIED</span> : SECURE ou PRO. Les copies sont prouvées identiques.</li>
+      <li><span class="ui">ALL FILES COPIED &amp; SIZE-CHECKED</span> : SIZE CHECK.</li>
+      <li><span class="ui">ALL FILES COPIED</span> : FAST. Rien n'a été vérifié.</li>
+    </ul>
+    <p>En dessous : mode, nombre de fichiers, taille, durée de chaque phase et vitesse moyenne. Puis, pour chaque carte, son dossier sur chaque disque.</p>
+    <ul>
+      <li><span class="ui">REVEAL</span> ouvre le dossier dans le Finder ou l'Explorateur.</li>
+      <li><span class="ui">EJECT</span> éjecte la carte (<span class="ui">EJECT ALL</span> pour un lot).</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Quelque chose s'est mal passé</h3>
+<div class="side">
+  <figure><img src="images/16-summary-fail.png" alt=""></figure>
+  <div class="txt">
+    <p>La fenêtre passe au rouge et dit clairement ce qui s'est produit, par exemple <span class="ui">2 FILES DID NOT SURVIVE THE COPY TO NAS_BACKUP</span> (2 fichiers n'ont pas survécu à la copie vers NAS_BACKUP). Sous le titre : <strong>Do not format this card</strong>, ne formatez pas cette carte.</p>
+    <p>La liste en dessous regroupe les fichiers en échec par cause. Une copie défectueuse est mise de côté sous un nom finissant par <code>.ingesto-failed</code> : aucun fichier abîmé ne porte un nom valide dans votre dossier de livraison.</p>
+    <p><span class="ui">Re-copy 2 failed files</span> recopie et revérifie ces fichiers, et seulement eux. La file affiche la progression comme d'habitude.</p>
+  </div>
+</div>
+<div class="note stop"><b class="t">La règle</b>
+<p>Tant que le bilan n'est pas vert et vérifié, gardez la carte. Si une recopie échoue encore sur le même disque, soupçonnez le disque ou son câble. Si ingesto indique que la carte ne rend pas deux fois les mêmes données, c'est la carte elle-même qui lâche : mettez-la de côté.</p></div>
+
+<h3>Deux remarques possibles sur un bilan vert</h3>
+<ul>
+  <li><strong>En bleu, <span class="ui">You can double-check this later</span>.</strong> Le contrôle a eu lieu juste après la copie, et une partie a pu être servie par la mémoire de l'ordinateur plutôt que par le disque. L'ingest est vérifié ; pour plus de tranquillité, un autre jour, rebranchez le disque et vérifiez le dossier (chapitre 13).</li>
+  <li><strong>En orange, <span class="ui">The extra card check did not really run</span></strong> (PRO avec double lecture de la source). Vos rushes sont bons et vérifiés, mais la seconde lecture de la carte est venue de la mémoire de l'ordinateur : elle n'a pas testé la santé de la carte. Quand c'est possible, un bouton propose de refaire ce contrôle de la carte pour de bon.</li>
+</ul>
+</section>
+
+<!-- ============================== 12 ============================== -->
+<section class="chap" id="c12">
+<h2><span class="n">12</span>Historique et rapports</h2>
+
+<h3>L'historique d'ingest</h3>
+<figure><img src="images/18-history.png" alt=""><figcaption>L'historique, avec une ligne dépliée.</figcaption></figure>
+<p>Dès qu'une destination est chargée, la colonne centrale liste toutes les cartes déjà copiées dessus : numéro, nom de carte, dossier, nombre de disques, et un badge d'état <span class="badge b-ok">VERIFIED</span> ou <span class="badge b-err">FAILED</span>.</p>
+<ul>
+  <li><strong>Cliquez sur une ligne</strong> pour voir le détail : date, nombre de fichiers, taille, durée, vitesse, mode, durée de chaque phase, toutes les destinations, opérateur, caméra, profil et notes.</li>
+  <li>L'<strong>icône dossier</strong> en bout de ligne montre ce dossier sur le disque.</li>
+  <li>L'historique est lu dans les rapports écrits sur les disques. Il survit à un redémarrage, et un disque venu d'un autre ordinateur arrive avec son propre historique.</li>
+  <li>La <strong>gomme</strong> dans l'en-tête vide la liste dans ingesto seulement. Les rapports sur les disques ne sont jamais touchés, et <span class="ui">Show it again</span> fait réapparaître les lignes.</li>
+</ul>
+
+<h3>Le rapport d'ingest</h3>
+<p>Après chaque ingest, ingesto met à jour un rapport à la racine de chaque destination. <span class="ui">Open the report</span>, sous l'historique, l'ouvre dans votre navigateur.</p>
+<figure><img src="images/19-report.png" alt=""><figcaption>Le rapport HTML : une ligne par carte. Cliquez sur ▸ pour lister ses fichiers.</figcaption></figure>
+<ul>
+  <li>Une ligne par carte : numéro, date, carte, opérateur, caméra, mode, fichiers, taille, résultat, durée de chaque phase, notes.</li>
+  <li>Le bouton <span class="ui">Export PDF</span> le transforme en PDF à envoyer à la production ou à la post-production.</li>
+  <li>Des versions CSV (tableur) et JSON (pour des scripts) peuvent être ajoutées dans les réglages.</li>
+</ul>
+</section>
+
+<!-- ============================== 13 ============================== -->
+<section class="chap" id="c13">
+<h2><span class="n">13</span>Vérifier un dossier plus tard</h2>
+<div class="side">
+  <figure><img src="images/20-verify-result.png" alt=""></figure>
+  <div class="txt">
+    <p>L'<strong>icône livre</strong> en haut à droite revérifie un dossier déjà copié, sans rien recopier.</p>
+    <ol>
+      <li>Cliquez sur l'icône livre.</li>
+      <li>Choisissez le dossier de la carte sur le disque.</li>
+      <li>ingesto lit sa liste de checksums ou son manifeste MHL, relit chaque fichier et compare.</li>
+    </ol>
+    <p>Le résultat indique combien de fichiers ont été contrôlés, sont conformes, corrompus ou manquants. <span class="ui">ALL FILES VERIFIED</span> signifie que le dossier est toujours identique à ce qui a été copié.</p>
+  </div>
+</div>
+<div class="note tip"><b class="t">Quand s'en servir</b>
+<p>Avant de confier un disque à la post-production, après un long transport, ou des mois plus tard avant l'archivage. Le dossier doit contenir une liste de checksums ou un manifeste : laissez <span class="ui">Write Checksum</span> activé dans les réglages (il l'est par défaut).</p></div>
+</section>
+
+<!-- ============================== 14 ============================== -->
+<section class="chap" id="c14">
+<h2><span class="n">14</span>Réglages</h2>
+<p class="lead">L'icône engrenage en haut à droite ouvre les réglages, <span class="ui">Settings</span>. Chaque section a son interrupteur. <span class="ui">Done</span> ferme la fenêtre ; tout est enregistré immédiatement.</p>
+<figure class="w35"><img src="images/21-settings-overview.png" alt=""></figure>
+
+<h3>Card Tracking <span style="font-weight:400;color:var(--ink3)">(désactivé par défaut)</span></h3>
+<figure class="w70"><img src="images/22-set-0-tracking.png" alt=""></figure>
+<p>Écrit un petit fichier, <code>.ingesto.json</code>, sur la carte. Quand la même carte revient, ingesto sait si elle a été formatée depuis son dernier ingest. C'est la seule option qui écrive sur une carte, et c'est pourquoi elle demande confirmation quand vous l'activez.</p>
+<div class="side">
+  <figure><img src="images/28-unformatted.png" alt=""></figure>
+  <div class="txt">
+    <p>Si une carte revient sans avoir été formatée, ingesto indique combien de fichiers ont déjà été copiés et combien sont nouveaux :</p>
+    <ul>
+      <li><span class="ui">COPY NEW FILES</span> : seulement ce qui a été tourné depuis. Un fichier n'est sauté que si chaque destination en détient déjà une copie vérifiée.</li>
+      <li><span class="ui">COPY FULL CARD</span> : tout, à nouveau.</li>
+      <li><span class="ui">CANCEL</span> : rien.</li>
+    </ul>
+    <p>Utile quand une carte repart dans la caméra entre deux ingests.</p>
+  </div>
+</div>
+
+<h3>Write Checksum <span style="font-weight:400;color:var(--ink3)">(activé par défaut)</span></h3>
+<figure class="w70"><img src="images/22-set-1-checksum.png" alt=""></figure>
+<p>Écrit, à côté des rushes, des fichiers qui permettent à n'importe qui de recontrôler la copie plus tard (SECURE et PRO seulement) :</p>
+<ul>
+  <li><span class="ui">Checksum list</span> : une liste <code>.xxh</code> / <code>.md5</code>, lisible par ingesto et TeraCopy.</li>
+  <li><span class="ui">MHL manifest</span> : le format classique de Silverstack, YoYotta, OffShoot (PRO avec MD5 ou xxHash64).</li>
+  <li><span class="ui">ASC MHL</span> : le standard plus récent de la profession, dans un dossier <code>ascmhl</code>.</li>
+</ul>
+<p>Activez ce que demande votre post-production. Si personne ne demande rien, la liste de checksums seule suffit.</p>
+
+<h3>Ingest Report <span style="font-weight:400;color:var(--ink3)">(activé par défaut)</span></h3>
+<figure class="w70"><img src="images/22-set-2-report.png" alt=""></figure>
+<p>Formats : <span class="ui">HTML</span> pour lire et imprimer, <span class="ui">CSV</span> pour un tableur, <span class="ui">JSON</span> pour des scripts. <span class="ui">Full report</span> liste chaque fichier de chaque carte ; désactivé, chaque carte tient en une ligne. <span class="ui">VIEW</span> ouvre le rapport actuel.</p>
+
+<h3>File Filter <span style="font-weight:400;color:var(--ink3)">(désactivé à chaque lancement)</span></h3>
+<div class="side">
+  <figure style="flex-basis:34%"><img src="images/22-set-3-filter.png" alt=""></figure>
+  <div class="txt">
+    <p>Ne copie que les types de fichiers choisis : vidéo, audio, images, et autres fichiers (fichiers annexes comme XML, THM…), type par type.</p>
+    <p><span class="ui">Copy empty folders</span> conserve les dossiers vides de la carte.</p>
+    <p><span class="ui">Reorganize files on destination</span> range les fichiers copiés dans <code>/VIDEO</code>, <code>/AUDIO</code>, <code>/PICTURES</code>. Les autres fichiers ne sont alors jamais copiés.</p>
+    <div class="note warn"><b class="t">À manier avec prudence</b>
+    <p>Un ingest filtré n'est pas une copie complète de la carte. C'est pour cela que le filtre se désactive à chaque lancement : il faut le rallumer volontairement à chaque fois. Votre choix de formats, lui, est conservé.</p>
+    <p>Beaucoup de caméras ont besoin de leurs fichiers annexes (XML, dossiers de métadonnées) pour être lues correctement en montage. Dans le doute, laissez le filtre désactivé.</p></div>
+  </div>
+</div>
+
+<h3>Phone Notifications (ntfy) <span style="font-weight:400;color:var(--ink3)">(désactivé par défaut)</span></h3>
+<div class="side">
+  <figure><img src="images/22-set-4-ntfy.png" alt=""></figure>
+  <div class="txt">
+    <p>Recevez une notification sur votre téléphone après chaque carte : carte, opérateur, caméra, nombre de fichiers, taille, mode, résultat par disque, durée de chaque phase, notes. Une carte en échec est envoyée en priorité haute.</p>
+    <ol>
+      <li>Installez l'application gratuite <strong>ntfy</strong> (iPhone, Android) : scannez le QR code.</li>
+      <li>Dans ingesto, saisissez un <span class="ui">Topic</span> : un nom long et difficile à deviner.</li>
+      <li>Dans l'application, abonnez-vous à ce même topic.</li>
+      <li>Cliquez sur <span class="ui">Send test notification</span> et regardez votre téléphone.</li>
+    </ol>
+    <p>Laissez le <span class="ui">Server</span> sur <code>https://ntfy.sh</code> sauf si vous avez votre propre serveur.</p>
+  </div>
+</div>
+<div class="note warn"><b class="t">Confidentialité</b>
+<p>Sur le serveur public, le nom du topic est la seule protection de vos notifications. Quiconque le connaît peut les lire. Choisissez quelque chose comme <code>ingesto-studio-7x2k</code>, pas <code>ingesto</code>.</p></div>
+
+<h3>Post-Ingest Command et Card Handoff <span style="font-weight:400;color:var(--ink3)">(désactivés par défaut)</span></h3>
+<p>Deux options pour les utilisateurs techniques qui automatisent leur workflow avec des scripts. <span class="ui">Post-Ingest Command</span> lance une commande après chaque ingest. <span class="ui">Card Handoff</span> confie chaque carte à un script de votre choix, avec un document qui décrit ce qui a été copié et vérifié ; <span class="ui">Dry run</span> permet de le tester. Les deux exécutent exactement ce que vous tapez. Si vous ne savez pas quoi y mettre, laissez-les désactivées.</p>
+
+<h3>Settings File</h3>
+<figure class="w70"><img src="images/22-set-7-file.png" alt=""></figure>
+<p>Pour configurer plusieurs postes à l'identique. <span class="ui">Export settings…</span> enregistre un fichier ; <span class="ui">Import settings…</span> l'applique sur un autre ordinateur. Les interrupteurs choisissent ce qui est inclus : structure actuelle, modèles, mode de copie, Card Tracking, checksums, rapport, filtre de fichiers.</p>
+
+<div class="note tip"><b class="t">Ce qui n'est pas un réglage</b>
+<p>Il n'y a pas de choix de langue : l'interface est en anglais. Les sons et le maintien en éveil de l'ordinateur sont automatiques. Le nombre de chiffres du compteur se règle depuis son propre <span class="ui">ⓘ</span> (chapitre 8), le code du kiosque depuis le bouton KIOSK (chapitre 15).</p></div>
+</section>
+
+<!-- ============================== 15 ============================== -->
+<section class="chap" id="c15">
+<h2><span class="n">15</span>Mode kiosque</h2>
+<p class="lead">Une vue simplifiée, verrouillée et plein écran, pour un poste partagé par toute une équipe : l'opérateur arrive, insère sa carte, tape son nom, lance. Personne ne peut modifier les réglages.</p>
+
+<h3>Préparer le poste</h3>
+<ol class="steps">
+  <li>Dans la fenêtre normale, chargez les <strong>destinations</strong>, choisissez le <strong>mode de copie</strong> et la <strong>structure de dossier</strong>. Le mode kiosque les utilise tels quels.</li>
+  <li>Cliquez sur <span class="ui">KIOSK</span> en haut à droite.</li>
+  <li>Choisissez un code à 4 chiffres, puis tapez-le à nouveau pour confirmer.</li>
+</ol>
+<div class="pair">
+  <figure><img src="images/25-kiosk-pin.png" alt=""><figcaption>Choix du code.</figcaption></figure>
+  <figure><img src="images/26b-kiosk-card.png" alt=""><figcaption>L'écran kiosque, carte chargée.</figcaption></figure>
+</div>
+
+<h3>Pour la personne qui fait l'ingest</h3>
+<ol class="steps">
+  <li>Insérez la carte, ou cliquez sur <span class="ui">Browse a card…</span>.</li>
+  <li>Tapez votre nom dans <span class="ui">Operator</span> (obligatoire). Caméra, profil et notes sont facultatifs ; la caméra est souvent remplie automatiquement.</li>
+  <li>Cliquez sur <span class="ui">START INGEST</span> et suivez le grand anneau de progression.</li>
+  <li>Lisez le résultat, puis cliquez sur <span class="ui">Next card</span>.</li>
+</ol>
+<div class="side">
+  <figure style="flex-basis:36%"><img src="images/27-kiosk-result.png" alt=""></figure>
+  <div class="txt">
+    <p>L'écran de résultat parle clairement :</p>
+    <ul>
+      <li><strong>Verified</strong> : « You can remove your card » (vous pouvez retirer votre carte). La carte est éjectée automatiquement.</li>
+      <li>Après FAST ou SIZE CHECK : « Remove your card. Do not erase it » (retirez votre carte, ne l'effacez pas).</li>
+      <li>En cas de problème : « Do not erase it. Call the person in charge » (ne l'effacez pas, appelez le responsable).</li>
+    </ul>
+    <p>Si aucune destination n'a été choisie, l'écran affiche <span class="ui">Not set up yet</span> et demande la personne qui a préparé le poste.</p>
+  </div>
+</div>
+
+<h3>Quitter le mode kiosque</h3>
+<p>Cliquez sur <span class="ui">STANDARD</span> en haut à droite et saisissez le code. Après cinq erreurs, le pavé se bloque 30 secondes.</p>
+<div class="note tip"><b class="t">Code oublié</b>
+<p>Quittez et relancez ingesto : il démarre toujours dans la fenêtre normale. Le code n'est jamais enregistré ; il ne vaut que pour la session.</p></div>
+</section>
+
+<!-- ============================== 16 ============================== -->
+<section class="chap" id="c16">
+<h2><span class="n">16</span>Gérer les volumes</h2>
+<p>La zone <span class="ui">MOUNTED VOLUMES</span> montre toutes les cartes, tous les disques et partages branchés, avec une icône par type (carte, disque, réseau, disque système) et l'espace libre.</p>
+<table>
+  <tr><th>Commande</th><th>Usage</th></tr>
+  <tr><td><span class="ui">HIDE SYSTEM</span></td><td>Masque le disque interne de l'ordinateur.</td></tr>
+  <tr><td><span class="ui">HIDE NETWORK</span></td><td>Masque les partages réseau.</td></tr>
+  <tr><td>Clic droit → <span class="ui">Hide Volume</span></td><td>Masque un volume précis. L'icône œil de l'en-tête réaffiche les volumes masqués.</td></tr>
+  <tr><td>Clic droit → <span class="ui">Eject</span></td><td>Éjecte une carte ou un disque sans quitter ingesto. Non proposé pour le disque système ni les partages réseau, et refusé pendant un ingest. Si le volume était chargé, il est retiré une fois l'éjection réussie.</td></tr>
+  <tr><td>Flèche circulaire</td><td>Rafraîchit la liste.</td></tr>
+</table>
+<p>Sous Windows, la lettre de lecteur d'une carte est affichée dans la liste, par exemple <code>LUMIX (D:)</code>, pour distinguer deux cartes identiques dans deux lecteurs. Le nom du dossier et le rapport utilisent le nom seul, <code>LUMIX</code>.</p>
+</section>
+
+<!-- ============================== 17 ============================== -->
+<section class="chap" id="c17">
+<h2><span class="n">17</span>Bonnes pratiques en tournage</h2>
+<p class="lead">ingesto se charge des contrôles. Ces habitudes rendent le reste de la chaîne tout aussi sûr.</p>
+<h3>Avant le tournage</h3>
+<ul class="checklist">
+  <li>Installez ingesto et faites un ingest d'essai avec une vraie carte.</li>
+  <li>Préparez la structure de dossier et enregistrez-la comme modèle.</li>
+  <li>Configurez ntfy et envoyez une notification de test.</li>
+  <li>Préparez au moins deux disques de destination, formatés et avec assez de place pour la journée.</li>
+</ul>
+<h3>Pour chaque carte</h3>
+<ul class="checklist">
+  <li>Mode <span class="badge b-secure">SECURE</span> (ou PRO si demandé).</li>
+  <li>Vérifiez le nom du dossier en vert sous chaque destination.</li>
+  <li>Renseignez l'opérateur, la caméra et les notes.</li>
+  <li>Attendez le bilan vert : <span class="ui">ALL FILES COPIED &amp; VERIFIED</span>.</li>
+  <li>Seulement alors, rendez la carte à la caméra pour formatage.</li>
+</ul>
+<h3>En fin de journée</h3>
+<ul class="checklist">
+  <li>Regardez l'historique : aucune ligne rouge, aucun trou dans la numérotation.</li>
+  <li>Exportez le rapport en PDF pour la production si besoin.</li>
+  <li>Gardez les deux copies dans deux endroits différents.</li>
+</ul>
+</section>
+
+<!-- ============================== 18 ============================== -->
+<section class="chap" id="c18">
+<h2><span class="n">18</span>Dépannage</h2>
+
+<h4>macOS dit qu'ingesto ne peut pas être ouvert, ou que le développeur ne peut pas être vérifié</h4>
+<p>Les versions à partir de la 2.5.5 sont signées et ne devraient pas afficher ce message. Si vous le voyez, vous avez une version plus ancienne ou une copie compilée vous-même : clic droit sur l'application dans Applications → <span class="ui">Ouvrir</span> → <span class="ui">Ouvrir</span> à nouveau. Une seule fois suffit.</p>
+
+<h4>Ma carte ou mon disque n'apparaît pas</h4>
+<p>Cliquez sur la flèche de rafraîchissement. Vérifiez qu'il apparaît dans le Finder ou l'Explorateur. Vérifiez que <span class="ui">HIDE SYSTEM</span> / <span class="ui">HIDE NETWORK</span> ne le masquent pas, et cliquez sur l'icône œil pour afficher les volumes masqués.</p>
+
+<h4>L'ingest refuse de démarrer</h4>
+<p>Lisez la fenêtre : elle nomme le problème et dit quoi faire. Rien n'a été copié. Les causes les plus courantes sont un disque débranché, deux cartes portant le même nom sans compteur dans la structure, ou un numéro de compteur déjà utilisé.</p>
+
+<h4>SECURE ou PRO est lent</h4>
+<p>C'est normal : chaque fichier est relu sur chaque disque, directement sur le support. Sur un partage réseau, la vérification peut durer aussi longtemps que la copie. C'est le prix d'un vrai contrôle.</p>
+
+<h4>Des fichiers ont échoué</h4>
+<p>Ne formatez pas la carte. Cliquez sur <span class="ui">Re-copy</span>. Si l'échec se reproduit sur le même disque, changez de câble ou de disque. Si ingesto indique que la carte rend des données différentes à chaque lecture, la carte lâche : mettez-la de côté.</p>
+
+<h4>Le compteur ne donne pas le numéro attendu</h4>
+<p>En mode Auto, il suit ce qu'il trouve sur les destinations. Regardez <span class="ui">last:</span> sous le compteur. Pour imposer un numéro, tapez-le ; cliquez sur <span class="ui">Auto</span> pour revenir.</p>
+
+<h4>J'ai masqué l'historique par erreur</h4>
+<p>Cliquez sur <span class="ui">Show it again</span> dans la zone historique. Les rapports sur les disques n'ont jamais été touchés.</p>
+
+<h4>La notification n'arrive pas</h4>
+<p>Vérifiez que le topic est exactement le même dans ingesto et dans l'application ntfy, et utilisez <span class="ui">Send test notification</span>. L'ordinateur doit être connecté à Internet.</p>
+
+<h3>Aide et contact</h3>
+<p>Pour signaler un problème ou proposer une amélioration, ouvrez une <em>issue</em> sur <strong>github.com/noar-justedit/ingesto/issues</strong>. Indiquez votre version d'ingesto (en bas à gauche de la fenêtre) et votre système.</p>
+<p>ingesto est un logiciel libre, sous licence GNU GPL v3. © Just Edit 2026.</p>
+</section>
+
+</body>
+</html>

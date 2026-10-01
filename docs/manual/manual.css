@@ -1,0 +1,134 @@
+/* ingesto user manual: shared print stylesheet (A4). */
+@font-face { font-family: 'Poppins'; font-weight: 700; src: url('../../src/renderer/fonts/Poppins-Bold.ttf'); }
+
+:root {
+  --ink: #17181d;
+  --ink2: #4a4d57;
+  --ink3: #80838d;
+  --paper: #ffffff;
+  --soft: #f4f4f7;
+  --line: #e4e4ea;
+  --brand: #8b6ff0;
+  --green: #1f9d63;
+  --red: #d64545;
+  --blue: #3b7ddd;
+  --orange: #d9822b;
+  --grey: #6b6f7a;
+  --pro: #8b6ff0;
+}
+
+@page {
+  size: A4; margin: 18mm 17mm 20mm 17mm;
+  @bottom-left { font: 7.5pt -apple-system, Helvetica, sans-serif; color: #80838d; }
+  @bottom-right { content: counter(page); font: 7.5pt -apple-system, Helvetica, sans-serif; color: #80838d; }
+}
+@page :first { margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+
+
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+  font-size: 10.4pt; line-height: 1.55;
+}
+.mono, code { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: .9em; }
+code { background: var(--soft); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+
+/* Cover */
+.cover {
+  height: 297mm; width: 210mm; background: #0a0b0e; color: #fff; position: relative;
+  padding: 46mm 22mm 22mm; overflow: hidden; page-break-after: always;
+}
+.cover .mark { display: flex; align-items: center; gap: 14px; }
+.cover .mark img { width: 64px; height: 64px; }
+.cover .word { font-family: 'Poppins', sans-serif; font-size: 54pt; line-height: 1; letter-spacing: -1px; }
+.cover .word span { color: var(--brand); }
+.cover h1 { font-size: 26pt; font-weight: 600; margin: 22mm 0 4mm; letter-spacing: -.3px; }
+.cover .sub { font-size: 13pt; color: #b5b8c2; max-width: 130mm; }
+.cover .shot { position: absolute; left: 22mm; right: 0; top: 136mm; }
+.cover .shot img { width: 100%; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.cover .foot { position: absolute; left: 22mm; right: 22mm; bottom: 18mm; display: flex; justify-content: space-between; font-size: 10pt; color: #8a8d97; }
+
+/* Table of contents */
+.toc { page-break-after: always; }
+.toc h2 { border: 0; margin-top: 0; }
+.toc ol { list-style: none; padding: 0; margin: 0; columns: 1; }
+.toc li { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 11pt; }
+.toc li a { color: var(--ink); text-decoration: none; flex: 1; }
+.toc li .n { color: var(--brand); font-weight: 700; width: 26px; }
+.toc li .d { color: var(--ink3); font-size: 9.5pt; }
+
+/* Headings */
+section.chap { page-break-before: always; }
+h2 {
+  font-size: 21pt; font-weight: 700; letter-spacing: -.3px; margin: 0 0 4mm;
+  padding-bottom: 3mm; border-bottom: 2px solid var(--ink);
+}
+h2 .n { color: var(--brand); margin-right: 8px; }
+h3 { font-size: 13pt; margin: 7mm 0 2mm; page-break-after: avoid; }
+h4 { font-size: 10.6pt; margin: 5mm 0 1mm; page-break-after: avoid; }
+p { margin: 0 0 3mm; }
+.lead { font-size: 11.5pt; color: var(--ink2); margin-bottom: 5mm; }
+ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+li { margin-bottom: 1.2mm; }
+strong { font-weight: 650; }
+.ui { font-weight: 650; }
+
+/* Figures */
+figure { margin: 4mm 0 5mm; page-break-inside: avoid; text-align: center; }
+figure img { max-width: 100%; border-radius: 6px; }
+figure.w75 img { width: 75%; } figure.w70 img { width: 70%; } figure.w60 img { width: 60%; } figure.w50 img { width: 50%; } figure.w40 img { width: 40%; } figure.w35 img { width: 35%; }
+figcaption { font-size: 8.8pt; color: var(--ink3); margin-top: 2mm; }
+.pair { display: flex; gap: 5mm; align-items: flex-start; page-break-inside: avoid; }
+.pair > * { flex: 1; min-width: 0; }
+.pair figure { margin-top: 0; }
+.side { display: flex; gap: 6mm; align-items: flex-start; page-break-inside: avoid; margin: 3mm 0 4mm; }
+.side figure { flex: 0 0 42%; margin: 0; }
+.side .txt { flex: 1; }
+
+/* Callouts */
+.note { border-radius: 6px; padding: 3mm 4mm; margin: 3mm 0 4mm; background: var(--soft); page-break-inside: avoid; border-left: 4px solid var(--blue); }
+.note.tip { border-left-color: var(--blue); }
+.note.warn { border-left-color: var(--orange); background: #fdf5ec; }
+.note.stop { border-left-color: var(--red); background: #fcf0f0; }
+.note.ok { border-left-color: var(--green); background: #eef8f3; }
+.note b.t { display: block; margin-bottom: 1mm; font-size: 9pt; letter-spacing: .6px; text-transform: uppercase; }
+.note.tip b.t { color: var(--blue); } .note.warn b.t { color: var(--orange); } .note.stop b.t { color: var(--red); } .note.ok b.t { color: var(--green); }
+.note p:last-child, .note ul:last-child { margin-bottom: 0; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 5mm; font-size: 9.6pt; page-break-inside: avoid; }
+th { text-align: left; font-size: 8.4pt; letter-spacing: .5px; text-transform: uppercase; color: var(--ink3); border-bottom: 1.5px solid var(--ink); padding: 2mm 2mm; }
+td { border-bottom: 1px solid var(--line); padding: 2mm 2mm; vertical-align: top; }
+td:first-child { white-space: nowrap; }
+
+/* Mode badges, same colours as the app */
+.badge { display: inline-block; font-weight: 700; font-size: 8.6pt; letter-spacing: .4px; padding: 1px 7px; border-radius: 4px; white-space: nowrap; }
+.b-fast { background: #e9eaee; color: var(--grey); }
+.b-size { background: #e6effc; color: var(--blue); }
+.b-secure { background: #fbeedd; color: var(--orange); }
+.b-pro { background: #efeafe; color: var(--pro); }
+.b-ok { background: #e3f4ec; color: var(--green); }
+.b-err { background: #fbe5e5; color: var(--red); }
+
+/* Numbered steps */
+.steps { counter-reset: s; list-style: none; padding: 0; }
+.steps > li { counter-increment: s; position: relative; padding-left: 10mm; margin-bottom: 3mm; }
+.steps > li::before {
+  content: counter(s); position: absolute; left: 0; top: 0; width: 6.5mm; height: 6.5mm; border-radius: 50%;
+  background: var(--ink); color: #fff; font-weight: 700; font-size: 9pt; display: flex; align-items: center; justify-content: center;
+}
+
+.keep { page-break-inside: avoid; }
+.checklist { list-style: none; padding-left: 0; }
+.checklist li { padding-left: 7mm; position: relative; }
+.checklist li::before { content: ''; position: absolute; left: 0; top: 1.3mm; width: 3.4mm; height: 3.4mm; border: 1.5px solid var(--ink2); border-radius: 3px; }
+.end { margin-top: 10mm; color: var(--ink3); font-size: 9pt; text-align: center; }
+figure.w85 img { width: 85%; }
+
+h3.newpage { page-break-before: always; margin-top: 0; }
+
+#c18 h4 { margin-top: 3.2mm; }
+#c18 p { margin-bottom: 2mm; }
+.end { margin-top: 6mm; }
