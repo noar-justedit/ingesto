@@ -106,7 +106,7 @@ NOTARY_PROFILE="${INGESTO_NOTARY_PROFILE:-ingesto-notarization}"
 
 # ── 1. Check Node.js ──────────────────────────────────────────
 echo -e "${BLUE}[1/6]${NC} Checking Node.js…"
-# This script is launched from build-mac.command through a NON-interactive,
+# This script is launched from build_mac.command through a NON-interactive,
 # NON-login bash, which reads neither ~/.zshrc nor ~/.bashrc — where nvm lives.
 # Without this block a Mac whose only Node is nvm-managed (the usual case) was
 # told "Node.js not found" while having Node 22 installed.

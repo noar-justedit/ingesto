@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Charte UI</title>
+<style>
+:root{
+  /* ── Surfaces. Trois niveaux, jamais quatre. ── */
+  --page:#0a0b0e;
+  --card:#14161c;
+  --ins:#0e1014;
+  --raise:#1b1d24;        /* menus, infobulles, etat survole */
+  /* ── Texte ── */
+  --text:#e8eaf0;
+  --text2:#aeb3bd;
+  --text3:#8b909b;
+  --text4:#6f757f;
+  /* ── Etats. Communs a toutes les applis. ── */
+  --green:#35c98b;
+  --red:#f2555a;
+  --blue:#4d90f0;
+  --orange:#f2a03d;
+  /* ── L accent. LA SEULE VALEUR QUI CHANGE D UNE APPLI A L AUTRE. ── */
+  --accent:#8b6ff0;
+  /* ── Rayons ── */
+  --r-card:14px; --r-ins:11px; --r-field:8px; --r-badge:4px;
+  --font:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;
+  --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--font);
+  line-height:1.5;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 80px;}
+h1{font-size:26px;font-weight:700;letter-spacing:-.6px;margin:0 0 6px;}
+.sub{font-size:13.5px;color:var(--text3);margin:0 0 34px;max-width:70ch;}
+h2{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--text3);
+  margin:42px 0 14px;text-transform:uppercase;}
+p.note{font-size:13px;color:var(--text2);max-width:76ch;margin:0 0 16px;}
+p.note b{color:var(--text);font-weight:600;}
+.card{background:var(--card);border-radius:var(--r-card);padding:16px;}
+.ins{background:var(--ins);border-radius:var(--r-ins);padding:13px;}
+.grid{display:grid;gap:12px;}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr));}
+@media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr;}}
+pre{background:var(--ins);border-radius:10px;padding:13px 15px;overflow-x:auto;
+  font-family:var(--mono);font-size:11.5px;line-height:1.75;color:var(--text2);margin:12px 0 0;}
+pre b{color:var(--text);font-weight:600;}
+code{font-family:var(--mono);font-size:.92em;color:var(--text2);}
+.lbl{display:flex;align-items:center;height:12px;line-height:12px;gap:6px;
+  font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--text3);margin-bottom:6px;}
+.sw-row{display:flex;flex-wrap:wrap;gap:9px;align-items:center;}
+/* echantillons de couleur */
+.sw{flex:1;min-width:120px;border-radius:10px;padding:11px 12px;background:var(--ins);}
+.sw i{display:block;width:100%;height:30px;border-radius:7px;margin-bottom:9px;}
+.sw b{display:block;font-size:11.5px;font-weight:600;}
+.sw span{display:block;font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:3px;}
+/* badges */
+.badge{font-size:9px;font-weight:700;letter-spacing:.06em;padding:2px 6px;border-radius:var(--r-badge);}
+.b-green{color:var(--green);background:rgba(53,201,139,.15);}
+.b-red{color:var(--red);background:rgba(242,85,90,.15);}
+.b-blue{color:var(--blue);background:rgba(77,144,240,.15);}
+.b-orange{color:var(--orange);background:rgba(242,160,61,.15);}
+.b-accent{color:var(--accent);background:rgba(139,111,240,.15);}
+/* champs */
+.field{background:var(--ins);border:none;border-radius:var(--r-field);padding:9px 10px;
+  color:var(--text);font-size:14px;font-family:var(--font);width:100%;outline:none;}
+.field::placeholder{color:var(--text3);}
+.field:focus{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.field-wrap{display:flex;align-items:center;gap:8px;background:var(--ins);
+  border-radius:var(--r-field);padding:0 10px;}
+.field-wrap input{flex-grow:1;min-width:0;background:transparent;border:none;outline:none;
+  padding:9px 0;color:var(--text);font-size:14px;font-family:var(--font);}
+.field-wrap .tok{font-family:var(--mono);font-size:10px;color:var(--text4);flex-shrink:0;}
+/* boutons */
+.btn{background:var(--ins);border:none;border-radius:9px;padding:8px 14px;color:var(--text2);
+  font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;}
+.btn:hover{color:var(--text);}
+.btn-ico{width:28px;height:28px;padding:0;display:inline-flex;align-items:center;
+  justify-content:center;background:var(--card);border-radius:8px;border:none;
+  color:var(--text2);cursor:pointer;}
+.btn-go{width:100%;background:#0f2c1d;border:none;border-radius:14px;padding:16px;
+  color:var(--green);font-size:15px;font-weight:700;letter-spacing:.08em;cursor:pointer;
+  font-family:var(--font);}
+.btn-danger{background:rgba(242,85,90,.14);color:var(--red);}
+/* lignes de liste */
+.row{display:flex;align-items:center;gap:11px;background:var(--ins);border-radius:10px;padding:11px 13px;}
+.row .n{font-family:var(--mono);font-size:13px;color:var(--text3);}
+.row .nm{font-size:13.5px;font-weight:600;}
+.row .pth{font-family:var(--mono);font-size:11px;color:var(--text4);margin-top:4px;}
+/* interrupteur */
+.tog{width:34px;height:20px;border-radius:20px;flex-shrink:0;position:relative;display:inline-block;}
+.tog i{position:absolute;top:3px;width:14px;height:14px;border-radius:50%;background:var(--text);}
+.tog.on{background:var(--green);} .tog.on i{right:3px;}
+.tog.off{background:var(--ins);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);}
+.tog.off i{left:3px;background:#5c6270;}
+/* menu */
+.menu{background:var(--card);border-radius:12px;padding:6px;box-shadow:0 18px 44px rgba(0,0,0,.6);width:230px;}
+.menu .grp{font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--text4);padding:9px 10px 4px;}
+.menu .it{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:6px 10px;
+  border:none;background:transparent;border-radius:7px;color:var(--text);font-size:12.5px;
+  cursor:pointer;font-family:var(--font);}
+.menu .it span{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3);}
+.menu .it:hover{background:var(--raise);}
+/* ne pas faire */
+.bad{border-radius:10px;padding:13px 15px;background:rgba(242,85,90,.07);font-size:13px;color:var(--text2);}
+.bad b{color:var(--red);font-weight:600;}
+.good{border-radius:10px;padding:13px 15px;background:rgba(53,201,139,.07);font-size:13px;color:var(--text2);}
+.good b{color:var(--green);font-weight:600;}
+.scrolldemo{max-height:120px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#2a2d36 transparent;}
+.scrolldemo::-webkit-scrollbar{width:8px;}
+.scrolldemo::-webkit-scrollbar-thumb{background:#2a2d36;border-radius:8px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--accent);
+  background:rgba(139,111,240,.14);padding:3px 8px;border-radius:5px;}
+</style></head>
+<body><div class="wrap">
+
+<h1>Charte UI</h1>
+<p class="sub">Le langage visuel des applications de Noar, tel qu'il a été arrêté sur ingesto 2.7.0.
+Cette page est la référence à regarder : chaque composant y est rendu pour de vrai, avec le CSS
+exact à reprendre. Le document <code>charte-ui-noar.md</code> qui l'accompagne dit comment
+porter tout ça sur une application existante.</p>
+
+<h2>1 · La règle, en une phrase</h2>
+<p class="note">Le groupement est porté par <b>le fond</b>, jamais par un trait. Trois niveaux de
+surface et rien d'autre : la page, la carte posée dessus, le creux à l'intérieur de la carte.
+Un quatrième niveau, ou une bordure ajoutée à une carte, et l'interface devient une soupe de
+cadres. Le seul contour autorisé est celui qui <b>dit un état</b> : la sélection, le focus clavier,
+une alerte.</p>
+
+<div class="grid g3">
+  <div style="background:var(--page);border-radius:14px;padding:16px;">
+    <div class="lbl">NIVEAU 1 · PAGE</div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--text2);">#0a0b0e</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">Le fond de fenêtre. Rien n'est posé
+    directement dessus sauf les cartes et les étiquettes de colonne.</div>
+  </div>
+  <div class="card">
+    <div class="lbl">NIVEAU 2 · CARTE</div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--text2);">#14161c</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">Un groupe d'informations.
+    Rayon 14, marge intérieure 13 à 16, 12 d'écart entre deux cartes.</div>
+  </div>
+  <div class="card">
+    <div class="ins">
+      <div class="lbl">NIVEAU 3 · CREUX</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text2);">#0e1014</div>
+      <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">Ce qui se manipule ou se lit
+      dans une carte : champ, tuile, ligne de liste, sous-réglage.</div>
+    </div>
+  </div>
+</div>
+
+<pre><b>:root</b>{
+  --page:#0a0b0e;   /* fenêtre */
+  --card:#14161c;   /* carte */
+  --ins:#0e1014;    /* creux dans une carte */
+  --raise:#1b1d24;  /* menu, infobulle, survol : au-dessus de la carte */
+}</pre>
+
+<h2>2 · Couleurs</h2>
+<p class="note">Le texte a quatre niveaux, et un seul sert de couleur pleine. Les couleurs d'état
+sont communes à toutes les applications et ne changent jamais de sens : <b>vert</b> ce qui est fait
+et vérifié, <b>rouge</b> ce qui a échoué ou ce qui est une source, <b>bleu</b> une information
+neutre, <b>orange</b> ce qui manque ou ce qui demande une décision.</p>
+
+<div class="sw-row">
+  <div class="sw"><i style="background:#e8eaf0"></i><b>Texte plein</b><span>--text · #e8eaf0</span></div>
+  <div class="sw"><i style="background:#aeb3bd"></i><b>Texte secondaire</b><span>--text2 · #aeb3bd</span></div>
+  <div class="sw"><i style="background:#8b909b"></i><b>Étiquette</b><span>--text3 · #8b909b</span></div>
+  <div class="sw"><i style="background:#6f757f"></i><b>Discret</b><span>--text4 · #6f757f</span></div>
+</div>
+<div class="sw-row" style="margin-top:9px;">
+  <div class="sw"><i style="background:#35c98b"></i><b>Vert</b><span>--green · #35c98b</span></div>
+  <div class="sw"><i style="background:#f2555a"></i><b>Rouge</b><span>--red · #f2555a</span></div>
+  <div class="sw"><i style="background:#4d90f0"></i><b>Bleu</b><span>--blue · #4d90f0</span></div>
+  <div class="sw"><i style="background:#f2a03d"></i><b>Orange</b><span>--orange · #f2a03d</span></div>
+</div>
+<div class="sw-row" style="margin-top:9px;">
+  <div class="sw" style="box-shadow:inset 0 0 0 1px rgba(139,111,240,.4);">
+    <i style="background:#8b6ff0"></i><b>Accent <span class="tag" style="margin-left:6px;">PROPRE À L'APPLI</span></b>
+    <span>--accent · ingesto #8b6ff0</span></div>
+</div>
+<p class="note" style="margin-top:14px;">L'accent sert au logo, au repère de marque et à rien d'autre
+de fonctionnel. C'est <b>la seule valeur à changer</b> quand on porte cette charte sur une autre
+application : tout le reste est commun, ce qui donne une famille reconnaissable sans que deux
+applications se confondent.</p>
+
+<h2>3 · Badges</h2>
+<p class="note">Un seul gabarit pour tous les badges de l'application, quelle que soit la notion :
+numéro de source, état d'une carte, modèle de caméra, mode. Seule la couleur change, et elle porte
+le sens. Le fond est la couleur à 15 %, écrit <code>{couleur}26</code> en hexadécimal à huit
+chiffres.</p>
+<div class="card sw-row">
+  <span class="badge b-red">SRC1</span>
+  <span class="badge b-green">DST1</span>
+  <span class="badge b-green">VERIFIED</span>
+  <span class="badge b-green">READY</span>
+  <span class="badge b-red">FAILED</span>
+  <span class="badge b-orange">SUSPECT</span>
+  <span class="badge b-blue">SONY FX6</span>
+  <span class="badge b-accent">PRO</span>
+</div>
+<pre><b>.badge</b>{
+  font-size:9px; font-weight:700; letter-spacing:.06em;
+  color:<b>{couleur}</b>; background:<b>{couleur}26</b>;
+  padding:2px 6px; border-radius:4px;
+}</pre>
+
+<h2>4 · D'où vient une valeur</h2>
+<p class="note">Quand une application remplit un champ toute seule, elle le dit. Un rond vert
+<b>(A)</b> à côté de l'étiquette signifie que la valeur a été détectée ; un rond gris <b>(M)</b>
+qu'elle a été saisie à la main. Le picto fait 12 px, et l'étiquette porte une hauteur fixe de 12
+avec <code>line-height:12px</code>, sans quoi la ligne grandit et deux colonnes de champs se
+désalignent d'un pixel.</p>
+
+<div class="card grid g2">
+  <div>
+    <div class="lbl">CAMERA
+      <svg width="12" height="12" viewBox="0 0 24 24" role="img" aria-label="détecté" style="flex-shrink:0;display:block;">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="#35c98b" stroke-width="2"/>
+      <text x="12" y="12" text-anchor="middle" dominant-baseline="central" fill="#35c98b"
+        font-size="13" font-weight="700" font-family="-apple-system,system-ui,sans-serif">A</text></svg>
+    </div>
+    <div class="field-wrap"><input value="FX6"><span class="tok">{camera}</span></div>
+  </div>
+  <div>
+    <div class="lbl">NUMBER
+      <svg width="12" height="12" viewBox="0 0 24 24" role="img" aria-label="saisi" style="flex-shrink:0;display:block;">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="#8b909b" stroke-width="2"/>
+      <text x="12" y="12" text-anchor="middle" dominant-baseline="central" fill="#8b909b"
+        font-size="12" font-weight="700" font-family="-apple-system,system-ui,sans-serif">M</text></svg>
+    </div>
+    <div class="field-wrap"><input value="014" style="font-family:var(--mono);"><span class="tok">{counter}</span></div>
+  </div>
+</div>
+<pre><b>.lbl</b>{ display:flex; align-items:center; <b>height:12px; line-height:12px;</b>
+      gap:6px; font-size:10px; font-weight:700; letter-spacing:.14em;
+      color:var(--text3); margin-bottom:6px; }</pre>
+
+<h2>5 · Champs</h2>
+<p class="note">Un champ est un creux, jamais un rectangle à contour. Au focus clavier il prend un
+liseré intérieur clair, qui est le seul contour de toute l'interface avec celui de la sélection.
+Un jeton ou une unité se pose à droite dans le même creux, en police à chasse fixe et en gris.</p>
+<div class="card grid g2">
+  <div><div class="lbl">OPERATOR</div><input class="field" value="NOAR"></div>
+  <div><div class="lbl">PICTURE PROFILE</div><input class="field" placeholder="SLOG3"></div>
+  <div style="grid-column:1/-1;"><div class="lbl">NOTES</div>
+    <textarea class="field" rows="2" placeholder="Shooting notes, lens, location…" style="resize:none;"></textarea></div>
+</div>
+<pre><b>.field</b>{ background:var(--ins); border:none; border-radius:8px;
+        padding:9px 10px; color:var(--text); font-size:14px; }
+<b>.field:focus</b>{ outline:none; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18); }</pre>
+
+<h2>6 · Boutons</h2>
+<p class="note">Trois formes seulement. Le bouton discret, posé dans une carte. Le bouton à icône
+seule, carré de 28, <b>qui porte toujours un <code>aria-label</code></b> car une icône ne se lit
+pas. Le bouton d'action principale, pleine largeur, en bas de sa colonne, sur un fond teinté de sa
+couleur d'état.</p>
+<div class="card">
+  <div class="sw-row" style="margin-bottom:14px;">
+    <button class="btn">Export</button>
+    <button class="btn">Import</button>
+    <button class="btn btn-danger">Delete</button>
+    <button class="btn-ico" aria-label="Ajouter une source" title="Ajouter une source">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+    <button class="btn-ico" aria-label="Réglages" title="Réglages">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  </div>
+  <button class="btn-go">START</button>
+</div>
+
+<h2>7 · Listes</h2>
+<p class="note">Une ligne de liste est un creux, séparée de la suivante par un écart, jamais par un
+filet. L'élément actif d'une liste de choix est <b>le seul posé sur un fond</b>, les autres sont à
+plat sur la carte : c'est la présence de la surface qui dit « celui-là », sans couleur
+supplémentaire.</p>
+<div class="grid g2">
+  <div class="card" style="display:flex;flex-direction:column;gap:7px;">
+    <div class="row"><span class="n">001</span>
+      <div style="flex-grow:1;min-width:0;"><div class="nm">A001_FX6</div>
+      <div class="pth">001_A001_FX6_SLOG3_260920</div></div>
+      <span class="badge b-green">VERIFIED</span></div>
+    <div class="row"><span class="n">002</span>
+      <div style="flex-grow:1;min-width:0;"><div class="nm">B002_FX3</div>
+      <div class="pth">002_B002_FX3_VLOG_260920</div></div>
+      <span class="badge b-red">FAILED</span></div>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column;gap:3px;">
+    <div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;background:var(--ins);">
+      <div style="flex-grow:1;min-width:0;">
+        <div style="font-size:12px;font-weight:600;">Doc, 2 caméras</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text4);margin-top:5px;">{counter}_{cardname}_{camera}</div></div>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#35c98b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;">
+      <div style="flex-grow:1;min-width:0;">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);">Fiction, dossiers par jour</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text4);margin-top:5px;">{YY}{MM}{DD}/{counter}</div></div>
+    </div>
+  </div>
+</div>
+
+<h2>8 · Interrupteurs et réglages</h2>
+<div class="card">
+  <div style="display:flex;align-items:center;gap:11px;">
+    <span class="tog on"><i></i></span>
+    <span style="font-size:14px;font-weight:600;">Ingest report</span>
+  </div>
+  <div style="font-size:11.5px;color:var(--text3);margin-top:3px;">Écrit un rapport sur la destination.</div>
+  <div class="ins" style="margin-top:11px;padding:8px 13px;">
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 0;">
+      <span class="tog on"><i></i></span><span style="font-size:12.5px;">HTML</span>
+      <span style="font-size:11px;color:var(--text4);">· à lire et à imprimer</span></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 0;">
+      <span class="tog off"><i></i></span><span style="font-size:12.5px;">CSV</span>
+      <span style="font-size:11px;color:var(--text4);">· pour un tableur</span></div>
+  </div>
+</div>
+
+<h2>9 · Menus et infobulles</h2>
+<p class="note">Un menu est posé <b>au-dessus</b> de la carte, sur le niveau <code>--raise</code>,
+avec une ombre portée franche. Quand une liste de choix dépasse la dizaine, elle est groupée et
+chaque entrée montre à droite ce qu'elle écrit réellement.</p>
+<div class="card" style="display:flex;gap:16px;flex-wrap:wrap;">
+  <div class="menu">
+    <div class="grp">LA CARTE</div>
+    <button class="it">Compteur<span>{counter}</span></button>
+    <button class="it">Nom de carte<span>{cardname}</span></button>
+    <div class="grp">SAISI PAR TOI</div>
+    <button class="it" style="color:var(--orange);">Texte libre…<span style="color:var(--orange);">abc</span></button>
+  </div>
+  <div style="background:var(--raise);border-radius:9px;padding:9px 11px;width:212px;height:fit-content;
+    font-size:11px;line-height:1.5;box-shadow:0 10px 26px rgba(0,0,0,.55);">
+    Une infobulle dit la règle, pas le nom du bouton. Elle remplace une ligne d'aide
+    permanente sous le contrôle.</div>
+</div>
+
+<h2>10 · Débordement</h2>
+<p class="note">Aucune poignée déplaçable. Une zone qui peut grandir sans fin montre <b>deux rangées
+ou deux écrans</b>, puis défile sur elle-même, en-tête et pied de carte fixes. On laisse
+volontairement <b>dépasser une lichette</b> de la rangée suivante : c'est ce qui annonce la suite,
+là où une coupe nette donne l'impression que tout est affiché.</p>
+<div class="card">
+  <div class="scrolldemo" style="display:flex;flex-direction:column;gap:7px;">
+    <div class="row"><span class="nm">Volume 1</span></div>
+    <div class="row"><span class="nm">Volume 2</span></div>
+    <div class="row"><span class="nm">Volume 3</span></div>
+    <div class="row"><span class="nm">Volume 4</span></div>
+    <div class="row"><span class="nm">Volume 5</span></div>
+  </div>
+</div>
+<pre><b>.scroll</b>{ max-height:<b>2 rangées + une lichette</b>; overflow-y:auto;
+         scrollbar-width:thin; scrollbar-color:#2a2d36 transparent; }
+<b>.scroll::-webkit-scrollbar</b>{ width:8px; }
+<b>.scroll::-webkit-scrollbar-thumb</b>{ background:#2a2d36; border-radius:8px; }</pre>
+
+<h2>11 · Fenêtres</h2>
+<p class="note">Une fenêtre modale est une carte posée sur un voile noir à 70 %, avec une ombre
+portée. Ses sections sont des cartes, ses sous-options descendent dans le creux. Les boutons sont
+pleine largeur en bas. <b>Échap ferme</b> toute fenêtre qui ne fait qu'informer ; une fenêtre qui
+porte une décision garde ses boutons.</p>
+<div style="background:rgba(0,0,0,.6);border-radius:16px;padding:26px;">
+  <div class="card" style="max-width:420px;margin:0 auto;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.6);">
+    <div style="display:flex;align-items:center;gap:13px;margin-bottom:14px;">
+      <span style="width:40px;height:40px;border-radius:12px;background:rgba(53,201,139,.12);
+        display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#35c98b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+      <div><div style="font-size:18px;font-weight:600;letter-spacing:-.3px;">3 cartes vérifiées</div>
+      <div style="font-size:12.5px;color:var(--text3);margin-top:3px;">Copiées sur 2 destinations, relues et contrôlées.</div></div>
+    </div>
+    <div class="grid g3" style="gap:9px;">
+      <div class="ins" style="padding:11px 12px;"><b style="display:block;font-size:15px;font-weight:600;">254</b>
+        <span style="display:block;font-size:9px;font-weight:700;letter-spacing:.13em;color:var(--text3);margin-top:5px;">FICHIERS</span></div>
+      <div class="ins" style="padding:11px 12px;"><b style="display:block;font-size:15px;font-weight:600;">6.10 GB</b>
+        <span style="display:block;font-size:9px;font-weight:700;letter-spacing:.13em;color:var(--text3);margin-top:5px;">VOLUME</span></div>
+      <div class="ins" style="padding:11px 12px;"><b style="display:block;font-size:15px;font-weight:600;color:var(--green);">12:43</b>
+        <span style="display:block;font-size:9px;font-weight:700;letter-spacing:.13em;color:var(--text3);margin-top:5px;">DURÉE</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>12 · Typographie</h2>
+<div class="card grid g2">
+  <div>
+    <div style="font-size:26px;font-weight:700;letter-spacing:-.6px;">Titre de fenêtre · 26/700</div>
+    <div style="font-size:18px;font-weight:600;letter-spacing:-.3px;margin-top:10px;">Titre de carte · 18/600</div>
+    <div style="font-size:16px;font-weight:600;letter-spacing:-.2px;margin-top:10px;">Nom d'objet · 16/600</div>
+    <div style="font-size:14px;margin-top:10px;">Texte de champ · 14/400</div>
+    <div style="font-size:12.5px;color:var(--text2);margin-top:10px;">Texte courant · 12.5/400</div>
+    <div style="font-size:11.5px;color:var(--text3);margin-top:10px;">Aide et précision · 11.5/400</div>
+    <div class="lbl" style="margin-top:12px;">ÉTIQUETTE · 10/700 · INTERLETTRAGE .14EM</div>
+  </div>
+  <div>
+    <div style="font-family:var(--mono);font-size:13px;">/Volumes/SHUTTLE_1/</div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--green);margin-top:6px;">001_A001_FX6_SLOG3_260920</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin-top:6px;">PRIVATE/M4ROOT/CLIP/C0118.MP4</div>
+    <p class="note" style="margin-top:14px;font-size:12px;">Chasse fixe pour tout ce qui est un chemin,
+    un nom de fichier, un jeton, un nombre à comparer. Jamais pour de la prose.</p>
+  </div>
+</div>
+
+<h2>13 · Ce qu'il ne faut pas faire</h2>
+<div class="grid g2">
+  <div class="bad"><b>Un filet de séparation.</b> Si deux blocs doivent être distingués, ils sont
+  deux cartes. Un trait entre eux répète ce que l'écart dit déjà.</div>
+  <div class="good"><b>Deux cartes, 12 px d'écart.</b> La structure se voit sans qu'on trace quoi que ce soit.</div>
+  <div class="bad"><b>Une bordure sur une carte.</b> Elle crée un quatrième niveau visuel et fait
+  basculer l'écran dans la soupe de cadres.</div>
+  <div class="good"><b>Un fond plus clair d'un cran.</b> C'est la surface qui hiérarchise, pas le contour.</div>
+  <div class="bad"><b>Une nouvelle couleur pour marquer l'élément actif.</b> Chaque couleur ajoutée
+  dilue le sens des quatre couleurs d'état.</div>
+  <div class="good"><b>Poser l'actif sur un creux.</b> Les autres restent à plat. Aucune couleur consommée.</div>
+  <div class="bad"><b>Une icône seule sans <code>aria-label</code>.</b> Un <code>data-tip</code> maison
+  n'est pas lu par VoiceOver.</div>
+  <div class="good"><b>aria-label plus title.</b> Le nom complet au survol, et l'annonce vocale.</div>
+</div>
+
+<h2>14 · Le contrat en dix lignes</h2>
+<div class="card">
+<pre>1.  Trois surfaces : page, carte, creux. Jamais une quatrième.
+2.  Aucun filet, aucune bordure, sauf pour dire un état.
+3.  12 px entre deux cartes, rayon 14 sur la carte, 11 dans le creux, 8 sur un champ.
+4.  Un seul gabarit de badge, la couleur porte le sens.
+5.  Vert fait et vérifié, rouge échoué ou source, bleu neutre, orange à décider.
+6.  L'accent ne sert qu'à la marque, et c'est la seule valeur propre à l'appli.
+7.  Étiquettes en capitales 10/700, hauteur fixe 12 px.
+8.  Chasse fixe pour les chemins et les nombres, jamais pour la prose.
+9.  Deux rangées puis ascenseur, une lichette qui dépasse, pas de poignée.
+10. Toute icône seule porte un aria-label. Échap ferme ce qui informe.</pre>
+</div>
+
+</div></body></html>

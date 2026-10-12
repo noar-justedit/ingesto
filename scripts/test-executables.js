@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The build scripts have to be executable.
 //
-// README step 3 is "double-click build-mac.command". Finder will not run a
+// README step 3 is "double-click build_mac.command". Finder will not run a
 // file without the executable bit: it opens it in a text editor, or does
 // nothing at all. For somebody who downloaded the source to build the app
 // themselves, that is where the road ends, and nothing on screen says why.
@@ -15,7 +15,7 @@
 // A `diff` patch carries no permissions either, so this cannot be left to the
 // patch. It has to be right in the repository, and it has to stay right:
 //
-//   git update-index --chmod=+x scripts/build-mac.command
+//   git update-index --chmod=+x scripts/build_mac.command
 //
 //   node scripts/test-executables.js
 //
@@ -41,7 +41,7 @@ if (process.platform === 'win32') {
   // Named explicitly as well as swept: a file that disappears from the folder
   // would silently stop being checked, and these two are the ones a person
   // double-clicks.
-  for (const must of ['build-mac.command', 'build-win-from-mac.command'])
+  for (const must of ['build_mac.command', 'build_win_from_mac.command'])
     ok(names.includes(must), `${must} is there`);
 
   for (const n of names) {

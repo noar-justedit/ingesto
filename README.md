@@ -93,7 +93,7 @@ wherever you like (e.g. your Desktop or `~/Documents`).
 
 ### Step 3 — Build the app
 1. Open the `ingesto/scripts/` folder
-2. **Double-click `build-mac.command`**
+2. **Double-click `build_mac.command`**
    - If macOS asks for confirmation, click **"Open"**
    - If double-clicking opens the file in a text editor instead of running it,
      the download lost the executable flag. Open Terminal in the `ingesto`
@@ -103,7 +103,7 @@ wherever you like (e.g. your Desktop or `~/Documents`).
    - The first run takes 2-3 minutes (downloading dependencies)
 3. When it's done, the script offers to open the `dist/` folder
 
-For Windows, use `scripts/build-win-from-mac.command` (cross-build from a Mac) —
+For Windows, use `scripts/build_win_from_mac.command` (cross-build from a Mac) —
 the resulting installer is unsigned, so Windows will show a SmartScreen warning
 on first launch (expected; click "More info" → "Run anyway").
 For Linux, run `bash scripts/build-linux.sh` on a Linux machine.
@@ -414,8 +414,8 @@ ingesto/
 ├── docs/
 │   └── screenshots/            — Screenshots used in this README
 ├── scripts/
-│   ├── build-mac.command      — Build the app for Mac
-│   ├── build-win-from-mac.command — Build the Windows installer from a Mac
+│   ├── build_mac.command      — Build the app for Mac
+│   ├── build_win_from_mac.command — Build the Windows installer from a Mac
 │   ├── build-linux.sh         — Build the app for Linux
 │   ├── dev.sh                 — Run in dev mode, without building
 │   └── test-*.js              — Engine test suites (run by `npm test`)
