@@ -1216,6 +1216,10 @@ html,body{background:var(--page);}
 .sd-wide{grid-column:1/-1;}
 .sd-k{font-size:9px;font-weight:700;letter-spacing:.1em;color:#6f757f;margin-bottom:3px;}
 .sd-v{font-family:var(--mono);font-size:12px;color:var(--text2);overflow-wrap:anywhere;}
+.sd-v .md-note{font-family:var(--font);font-size:12.5px;line-height:1.45;}
+.sd-v .md-note p,.sd-v .md-note h3,.sd-v .md-note ul,.sd-v .md-note ol{margin:0;}.sd-v .md-note h3{font-size:inherit;font-weight:700;color:var(--text);}
+.sd-v .md-note ul,.sd-v .md-note ol{padding-left:16px;}.sd-v .md-note ul.task{list-style:none;padding-left:0;}
+.sd-v .md-note ul.task li::before{content:'☐ ';}.sd-v .md-note ul.task li.done::before{content:'☑ ';}
 
 /* Un interrupteur eteint n est pas une erreur : fond creux et pastille grise,
    plutot que le rouge, qui est la couleur de l echec partout ailleurs. Allume,
@@ -1449,6 +1453,103 @@ body.tf-on #sess-card{display:none !important;}
 .k-loaded .kl-badge{border:none !important;background:rgba(77,144,240,.15);font-size:9px;letter-spacing:.06em;padding:2px 6px;border-radius:4px;}
 .k-auto{display:inline-flex;vertical-align:middle;margin-left:2px;position:relative;top:-1px;}
 
+/* 12. Copy Info 2.8.0 : Operator, Camera et Profile sur une ligne, le profil
+   choisi dans un menu, les notes en markdown. Valide sur maquette le 13.10.
+   Le bouton Profile reprend exactement le remplissage du champ voisin, sinon
+   la ligne a deux hauteurs. */
+.row3{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 88px;gap:8px;}
+.sif-grid.row3{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 88px;gap:8px;}
+.k-body .row3{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 112px;gap:10px;}
+.row3 > *{min-width:0;}
+.row3 .mf-label,.row3 .sif-label,.row3 .k-lbl{white-space:nowrap;overflow:hidden;}
+.pp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:space-between;gap:4px;
+  background:var(--ins);color:var(--text);font-family:var(--font);font-size:15px;line-height:normal;border-radius:8px;}
+.mf .pp-btn{padding:8px 8px 8px 11px;}
+.sif-grid .pp-btn{padding:4px 6px 4px 7px;}
+.k-field .pp-btn{padding:13px 12px 13px 14px;border-radius:10px;}
+.pp-btn:hover{box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);}
+.pp-btn:focus-visible,.pp-btn[aria-expanded="true"]{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.pp-btn:disabled{cursor:default;opacity:.55;box-shadow:none;}
+.pp-btn .v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pp-btn .v.ph{color:var(--text3);}
+.pp-btn svg{flex:none;width:12px;height:12px;color:var(--text3);}
+.pp-menu{position:fixed;z-index:2600;background:#1b1d24;border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.6);
+  padding:10px;display:none;font-family:var(--font);}
+.pp-menu.open{display:block;}
+.pp-cols{display:grid;grid-template-columns:repeat(3,172px);gap:4px 10px;}
+.pp-g{margin-bottom:6px;}
+.pp-gh{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:4px 8px 3px;}
+.pp-it{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  height:24px;padding:0 8px;border-radius:6px;font-size:12.5px;color:var(--text);cursor:pointer;}
+.pp-it .w{font-family:var(--mono);font-size:10px;color:#6f757f;}
+.pp-it:hover,.pp-it:focus-visible{background:rgba(255,255,255,.05);}
+.pp-it.cur{background:var(--ins);}
+.pp-it.cur .w{color:var(--green);}
+.pp-foot{display:flex;gap:8px;align-items:center;margin-top:6px;padding-top:4px;}
+.pp-foot input{all:unset;box-sizing:border-box;flex:1;background:var(--ins);border-radius:8px;height:28px;padding:0 10px;
+  font-size:12.5px;color:var(--text);font-family:var(--mono);}
+.pp-foot input::placeholder{color:#6f757f;font-family:var(--font);}
+.pp-foot input:focus{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.pp-foot .none{all:unset;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);background:var(--ins);border-radius:8px;
+  height:28px;padding:0 12px;display:flex;align-items:center;}
+.pp-hint{font-size:11px;color:#6f757f;margin-top:6px;padding:0 2px;}
+
+.op-cb{position:relative;}
+.op-cb input{padding-right:26px !important;}
+.k-field .op-cb input{padding-right:32px !important;}
+.op-arrow{all:unset;cursor:pointer;position:absolute;right:4px;top:50%;transform:translateY(-50%);width:20px;height:22px;
+  display:flex;align-items:center;justify-content:center;color:#6f757f;border-radius:5px;}
+.k-field .op-arrow{right:8px;}
+.op-arrow:hover{color:var(--text);}
+.op-arrow:disabled{display:none;}
+.op-arrow svg{width:12px;height:12px;}
+.op-list{position:fixed;z-index:2600;background:#1b1d24;border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.6);
+  padding:6px;display:none;font-family:var(--font);max-height:280px;overflow-y:auto;}
+.op-list.open{display:block;}
+.op-lh{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:6px 8px 4px;}
+.op-it{height:28px;display:flex;align-items:center;padding:0 8px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;}
+.op-it b{color:var(--text);font-weight:600;}
+.op-it.hl,.op-it:hover{background:var(--ins);color:var(--text);}
+.op-empty{font-size:11.5px;color:#6f757f;padding:4px 8px 6px;}
+
+.mdn-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.mdn-hd .sif-label,.mdn-hd .mf-label,.mdn-hd .k-lbl{margin-bottom:0;}
+.mdn-sw{display:flex;gap:2px;}
+.mdn-sw button{all:unset;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;color:#6f757f;
+  height:18px;line-height:18px;padding:0 7px;border-radius:5px;}
+.mdn-sw button[aria-checked="true"]{background:var(--ins);color:var(--text);}
+.mdn-sw button:hover{color:var(--text2);}
+.mdn-box{background:var(--ins);border-radius:8px;display:flex;flex-direction:column;}
+.k-field .mdn-box{border-radius:10px;}
+.mdn-box:focus-within{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.mdn-tb{display:flex;align-items:center;gap:1px;padding:4px 4px 0;}
+.mdn-tb .sep{width:8px;}
+.mdn-tb button{all:unset;cursor:pointer;width:26px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text3);}
+.mdn-tb button:hover,.mdn-tb button.on{background:#1b1d24;color:var(--text);}
+.mdn-tb svg{width:14px;height:14px;}
+.mdn[data-mode="md"] .mdn-tb button.on{background:none;}
+.mdn-ed{min-height:150px;max-height:260px;overflow-y:auto;padding:6px 10px 4px;color:var(--text);font-family:var(--font);
+  font-size:14px;line-height:1.45;outline:none;-webkit-user-select:text;user-select:text;overflow-wrap:anywhere;}
+.k-field .mdn-ed{font-size:15px;}
+.mdn-ed:empty::before{content:attr(data-ph);color:var(--text3);}
+.mdn-ed p,.mdn-ed div{margin:0;}
+.mdn-ed h3{margin:2px 0;font-size:inherit;font-weight:700;color:var(--text);}
+.mdn-ed ul,.mdn-ed ol{margin:0;padding-left:18px;}
+.mdn-ed ul.task{list-style:none;padding-left:2px;}
+.mdn-ed ul.task li{position:relative;padding-left:20px;}
+.mdn-ed ul.task li::before{content:"";position:absolute;left:0;top:.38em;width:11px;height:11px;border-radius:3px;box-shadow:inset 0 0 0 1.5px #6f757f;}
+.mdn-ed ul.task li.done{color:var(--text3);text-decoration:line-through;}
+.mdn-ed ul.task li.done::before{background:var(--green);box-shadow:none;}
+.mdn-ed[contenteditable="false"]{opacity:.6;}
+textarea.mdn-src,#meta-note.mdn-src,.k-ta.mdn-src,.sif-textarea.mdn-src{
+  all:unset;box-sizing:border-box;display:block;width:100%;min-height:150px;max-height:260px;overflow-y:auto;
+  padding:6px 10px 4px;color:var(--text2);font-family:var(--mono);font-size:12.5px;line-height:1.5;
+  white-space:pre-wrap;overflow-wrap:anywhere;resize:none;-webkit-user-select:text;user-select:text;
+  background:none !important;border:none !important;box-shadow:none !important;}
+textarea.mdn-src::placeholder{color:#6f757f;}
+.mdn[data-mode="rich"] .mdn-src,.mdn[data-mode="md"] .mdn-ed{display:none !important;}
+.mdn-ft{display:flex;justify-content:flex-end;padding:0 10px 6px;font-family:var(--mono);font-size:10px;color:#6f757f;}
+
 
 </style>
 </head>
@@ -1488,35 +1589,21 @@ ondragover="onDZ(event,'src')" ondragleave="offDZ(event,'src')" ondrop="dropDZ(e
 <div class="src-info-list lockable" id="src-info-list"></div>
 <div class="sec-title sec-strong sec-red ci-title" id="copy-info-title"><span>Copy Info</span><button class="ci-clear lockable" onclick="clearCopyInfo()" aria-label="Clear operator, camera, picture profile and notes" title="Clear operator, camera, picture profile and notes"><!-- lucide.dev · brush-cleaning --><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 22-1-4"/><path d="M19 13.99a1 1 0 0 0 1-1V12a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v.99a1 1 0 0 0 1 1"/><path d="M5 14h14l1.973 6.767A1 1 0 0 1 20 22H4a1 1 0 0 1-.973-1.233z"/><path d="m8 22 1-4"/></svg></button></div>
 <div class="meta-sec lockable" id="global-meta-sec">
+<div class="row3">
 <div class="mf"><div class="mf-label">Operator</div>
-<input id="meta-cam" type="text" placeholder="Operator"
+<input id="meta-cam" type="text" placeholder="Operator" data-opcb
 oninput="sanitizeMeta(this);persistPrefs();syncDefaultsToSources()"></div>
-<div class="mf"><div class="mf-label">Camera model</div>
+<div class="mf"><div class="mf-label">Camera</div>
 <input id="meta-model" type="text" placeholder="Camera"
 oninput="sanitizeMeta(this);persistPrefs();syncDefaultsToSources()"></div>
-<div class="mf"><div class="mf-label">Picture profile</div>
-<input id="meta-pp" type="text" placeholder="SLOG3" list="pp-list"
+<div class="mf"><div class="mf-label">Profile</div>
+<input id="meta-pp" type="text" data-pp aria-label="Picture profile"
 oninput="sanitizePP(this);persistPrefs();syncDefaultsToSources()"></div>
-<datalist id="pp-list">
-<option value="SLOG2"></option><option value="SLOG3"></option><option value="VLOG"></option>
-<option value="DLOG"></option><option value="DLOG2"></option><option value="DLOGM"></option>
-<option value="LOGC3"></option><option value="LOGC4"></option><option value="CLOG"></option>
-<option value="CLOG2"></option><option value="CLOG3"></option><option value="NLOG"></option>
-<option value="FLOG"></option><option value="FLOG2"></option><option value="RLOG"></option>
-<option value="BRAW"></option><option value="HLG"></option><option value="HLG3"></option>
-<option value="REC709"></option>
-</datalist>
+</div>
 <div class="mf">
-<div class="mf-label">Notes</div>
-<textarea id="meta-note"
-style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:4px;
-padding:5px 8px;color:var(--text);font-size:15px;font-family:var(--font);
-outline:none;resize:vertical;min-height:52px;max-height:120px;line-height:1.4;
-transition:border-color .15s;-webkit-user-select:text;user-select:text;"
-placeholder="Shooting notes, lens info, location…"
-oninput="persistPrefs();syncDefaultsToSources()"
-onfocus="this.style.borderColor='rgba(255,255,255,.18)'"
-onblur="this.style.borderColor=''"></textarea>
+<textarea id="meta-note" data-mdn data-mdn-label="Notes" data-mdn-lc="mf-label"
+placeholder="Shooting notes, lens info, location…" aria-label="Notes"
+oninput="persistPrefs();syncDefaultsToSources()"></textarea>
 </div>
 </div>
 <div class="sec-title sec-strong sec-violet" style="display:flex;align-items:center;gap:6px;">Counter<button class="info-btn" onclick="showCounterInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
@@ -1899,22 +1986,22 @@ Save
         <div class="k-lbl k-src" style="justify-content:space-between;"><span style="display:flex;align-items:center;gap:8px;"><span class="k-dot"></span>SOURCE</span><span class="k-cardno" id="k-cardno">CARD 000</span></div>
         <div id="k-source"></div>
       </div>
+      <div class="row3">
       <div class="k-field">
         <div class="k-lbl">Operator</div>
-        <input id="k-op" class="k-input" type="text" placeholder="Name" oninput="sanitizeMeta(this);kioskUpdateStart()">
+        <input id="k-op" class="k-input" type="text" placeholder="Name" data-opcb oninput="sanitizeMeta(this);kioskUpdateStart()">
       </div>
       <div class="k-field">
-        <div class="k-lbl">Camera model <span id="k-cam-auto" class="k-auto"></span></div>
+        <div class="k-lbl">Camera <span id="k-cam-auto" class="k-auto"></span></div>
         <input id="k-cam" class="k-input" type="text" placeholder="Camera" oninput="sanitizeMeta(this);kioskCamTyped()">
       </div>
       <div class="k-field">
-        <div class="k-lbl">Picture profile</div>
-        <input id="k-pp" class="k-input" type="text" placeholder="SLOG3" list="pp-list"
-               oninput="sanitizePP(this)">
+        <div class="k-lbl">Profile</div>
+        <input id="k-pp" class="k-input" type="text" data-pp aria-label="Picture profile" oninput="sanitizePP(this)">
+      </div>
       </div>
       <div class="k-field">
-        <div class="k-lbl">Notes</div>
-        <textarea id="k-note" class="k-input k-ta" placeholder="Shot description…"></textarea>
+        <textarea id="k-note" class="k-input k-ta" data-mdn data-mdn-label="Notes" data-mdn-lc="k-lbl" aria-label="Notes" placeholder="Shot description…"></textarea>
       </div>
       <button id="k-start" class="k-start" onclick="kioskStart()" disabled>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>Start Ingest
@@ -2237,6 +2324,8 @@ const S = {
   showHidden:false,         // when true, hidden volumes are shown (dimmed) so they can be un-hidden
   tokens:[],
   counter:1,           // next counter value (auto or overridden)
+  noteMode:'rich',     // notes shown formatted ('rich') or as markdown ('md'), saved in prefs
+  sessionOps:[],       // operators of this session, most recent first. NEVER saved: empty at each launch
   counterOverride:false, // true = user set a manual value
   counterMax:0,          // highest counter found in destinations
   copying:false, paused:false,
@@ -2320,7 +2409,13 @@ window.addEventListener('DOMContentLoaded', async ()=>{
         : '<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
     });
   }
+  // Before the preferences: the fields must be built and hooked when the
+  // saved values are written into them.
+  try{ fieldsInit(document); }catch(e){ console.error('fieldsInit', e); }
   const prefs=(await window.ingesto.loadPrefs())||{};   // a failed read must not stop the boot
+  // Applied directly, not through setNoteMode(): that one saves the
+  // preferences, and a save now would write them before they are restored.
+  if(prefs.noteMode==='md'){ S.noteMode='md'; document.querySelectorAll('.mdn').forEach(mdnApplyMode); }
   if(Array.isArray(prefs.presets)) S.presets=normPresets(prefs.presets, prefs.tplVersion!==2);
   if(prefs.fileFilterFormats && typeof prefs.fileFilterFormats==='object'){
     S.fileFilterFormats=prefs.fileFilterFormats;
@@ -2569,6 +2664,7 @@ function persistPrefsNow(){
     camera:document.getElementById('meta-model')?.value||'',
     pp:document.getElementById('meta-pp')?.value||'',
     note:document.getElementById('meta-note')?.value||'',
+    noteMode:S.noteMode==='md'?'md':'rich',
     activePreset:S.activePreset,
     // kioskMode and kioskPin are intentionally absent — see the loader. A
     // forgotten PIN must never outlive the session that set it.
@@ -3474,6 +3570,7 @@ function updatePreview(){
   // The folder names now live under each destination, so anything that changes
   // the template, the counter or a card has to redraw that list.
   if (document.getElementById('dst-list')) renderZoneList('dst');
+  refreshNoteFooters();
 }
 // Destination + subfolders + the card's own folder, coloured like the chips.
 function paintPreviewPath(segs){
@@ -3892,10 +3989,10 @@ function renderSourceInfoCards(){
         <div class="sic-preview" id="sicprev-${i}">${esc(previewForSource(src,i))}</div>
       </div>
       <div class="src-info-body">
-        <div class="sif-grid">
+        <div class="sif-grid row3">
           <div>
             <div class="sif-label">OPERATOR</div>
-            <input class="sif-input" type="text" value="${esc(op)}"
+            <input class="sif-input" type="text" value="${esc(op)}" data-opcb
               aria-label="Operator of card ${esc(src.name)}"
               placeholder="Operator"
               oninput="sanitizeMeta(this);updateSrcField(${i},'operator',this.value)">
@@ -3908,16 +4005,14 @@ function renderSourceInfoCards(){
               oninput="sanitizeMeta(this);markForced(${i},'camera');updateSrcField(${i},'camera',this.value)">
           </div>
           <div>
-            <div class="sif-label">PICTURE PROFILE</div>
-            <input class="sif-input" type="text" value="${esc(pp)}"
+            <div class="sif-label">PROFILE</div>
+            <input class="sif-input" type="text" value="${esc(pp)}" data-pp
               aria-label="Picture profile of card ${esc(src.name)}"
-              placeholder="SLOG3" list="pp-list"
               oninput="sanitizePP(this);updateSrcField(${i},'pp',this.value)">
           </div>
         </div>
         <div>
-          <div class="sif-label">NOTES</div>
-          <textarea class="sif-textarea"
+          <textarea class="sif-textarea" data-mdn data-mdn-label="NOTES" data-mdn-lc="sif-label" data-i="${i}"
             aria-label="Notes for card ${esc(src.name)}"
             placeholder="Shooting notes, lens info, location…"
             oninput="updateSrcField(${i},'note',this.value)">${esc(note)}</textarea>
@@ -3925,6 +4020,7 @@ function renderSourceInfoCards(){
       </div>
     </div>`;
   }).join('');
+  fieldsInit(list);
   updatePreview();
   applyIngestLock();   // the cards are rebuilt at START — bring the lock back
 }
@@ -3980,6 +4076,448 @@ function syncDefaultsToSources(){
   });
   renderSourceInfoCards();
 }
+
+// ═══════════════════════════════════════════════════════
+// Copy Info fields (2.8.0): notes in markdown, picture profile menu,
+// operators of the session
+// ═══════════════════════════════════════════════════════
+// The three are built AROUND the original fields rather than in place of them.
+// #meta-note, #k-note and each card's note stay real <textarea>s holding the
+// markdown; #meta-pp, #k-pp and each card's profile stay real <input>s holding
+// the value. Every line of code that reads or writes .value (prefs, kiosk,
+// the broom, startCopy, the report) keeps working unchanged, and a value set
+// by script is mirrored on screen by hookValue() below.
+
+// Lets a field tell its on-screen companion that .value was set by script.
+// Typing does not go through the setter, so the 'input' event covers that.
+function hookValue(el, after){
+  if(!el || el._hooked) return;
+  const proto = Object.getPrototypeOf(el);
+  const d = Object.getOwnPropertyDescriptor(proto, 'value');
+  if(!d || !d.set) return;
+  Object.defineProperty(el, 'value', {
+    configurable: true,
+    get(){ return d.get.call(this); },
+    set(v){ d.set.call(this, v); try{ after(this); }catch(_){} },
+  });
+  el._setRaw = v => d.set.call(el, v);   // write without notifying (the editor itself)
+  el._hooked = true;
+}
+
+// ── Markdown <-> formatted text ─────────────────────────────────────────────
+// Only what the toolbar can produce: bold, italic, underline (<u>, markdown has
+// no underline), strikethrough, a heading level, bulleted, numbered and
+// checklist items. Everything is ESCAPED first: the note is typed by whoever
+// stands at the station and ends up in the report, so no tag can survive
+// except the ones built here.
+function mdEscape(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function mdInline(s){
+  s = mdEscape(s);
+  s = s.replace(/&lt;u&gt;([\s\S]+?)&lt;\/u&gt;/g, '<u>$1</u>');
+  s = s.replace(/\*\*([^*]+?)\*\*/g, '<b>$1</b>');
+  s = s.replace(/~~([^~]+?)~~/g, '<s>$1</s>');
+  s = s.replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<i>$2</i>');
+  return s;
+}
+function mdToHtml(md){
+  const out = []; let list = null;
+  const close = () => { if(list){ out.push(`</${list.tag}>`); list = null; } };
+  const open = (tag, cls) => {
+    if(!list || list.tag !== tag || list.cls !== cls){ close(); out.push(`<${tag}${cls ? ` class="${cls}"` : ''}>`); list = { tag, cls }; }
+  };
+  for(const line of String(md == null ? '' : md).replace(/\r\n?/g, '\n').split('\n')){
+    let m;
+    if((m = line.match(/^\s*[-*] \[( |x|X)\] ?(.*)$/))){ open('ul', 'task'); out.push(`<li${m[1] !== ' ' ? ' class="done"' : ''}>${mdInline(m[2])}</li>`); }
+    else if((m = line.match(/^\s*[-*] (.*)$/))){ open('ul', ''); out.push(`<li>${mdInline(m[1])}</li>`); }
+    else if((m = line.match(/^\s*\d+[.)] (.*)$/))){ open('ol', ''); out.push(`<li>${mdInline(m[1])}</li>`); }
+    else if((m = line.match(/^#{1,6} (.*)$/))){ close(); out.push(`<h3>${mdInline(m[1])}</h3>`); }
+    else { close(); out.push(line.trim() ? `<p>${mdInline(line)}</p>` : '<p><br></p>'); }
+  }
+  close();
+  // A trailing empty paragraph is only the last line break.
+  while(out.length > 1 && out[out.length - 1] === '<p><br></p>') out.pop();
+  return out.join('');
+}
+function mdInlineOf(node){
+  let s = '';
+  node.childNodes.forEach(n => {
+    if(n.nodeType === 3){ s += n.nodeValue.replace(/ /g, ' '); return; }
+    if(n.nodeType !== 1) return;
+    const t = n.tagName;
+    if(t === 'BR'){ s += '\n'; return; }
+    const inner = mdInlineOf(n);
+    if(!inner.trim()){ s += inner; return; }
+    // Markers hug the words: "** bold**" is not bold in markdown.
+    const wrap = (o, c) => { const lead = inner.match(/^\s*/)[0], tail = inner.match(/\s*$/)[0];
+      return lead + o + inner.trim() + c + tail; };
+    if(t === 'B' || t === 'STRONG') s += wrap('**', '**');
+    else if(t === 'I' || t === 'EM') s += wrap('*', '*');
+    else if(t === 'U') s += wrap('<u>', '</u>');
+    else if(t === 'S' || t === 'STRIKE' || t === 'DEL') s += wrap('~~', '~~');
+    else s += inner;
+  });
+  return s;
+}
+function htmlToMd(root){
+  const lines = [];
+  // Text and inline formatting sitting side by side make ONE line: typing in
+  // the empty field and pressing Cmd+B leaves "Salle B " and <b>Interviews</b>
+  // as two siblings of the same line, not two lines.
+  let run = [];
+  const flush = () => { if(run.length){ lines.push(...mdInlineOf({ childNodes: run }).split('\n')); run = []; } };
+  const INLINE = /^(B|STRONG|I|EM|U|S|STRIKE|DEL|SPAN|FONT|A|CODE|SMALL|MARK|SUB|SUP)$/;
+  const block = n => {
+    if(n.nodeType === 3){ run.push(n); return; }
+    if(n.nodeType !== 1) return;
+    const t = n.tagName;
+    if(INLINE.test(t)){ run.push(n); return; }
+    flush();
+    if(t === 'UL' || t === 'OL'){
+      let k = 1; const task = n.classList.contains('task');
+      n.querySelectorAll(':scope > li').forEach(li => {
+        const txt = mdInlineOf(li).replace(/\n+/g, ' ').trim();
+        if(task) lines.push(`- [${li.classList.contains('done') ? 'x' : ' '}] ${txt}`);
+        else lines.push(t === 'OL' ? `${k++}. ${txt}` : `- ${txt}`);
+      });
+    } else if(/^H[1-6]$/.test(t)) lines.push('### ' + mdInlineOf(n).replace(/\n+/g, ' ').trim());
+    else if(t === 'BR'){ /* flush() above ended the line; a second one is an empty line */ if(n.previousSibling && n.previousSibling.nodeName === 'BR') lines.push(''); }
+    else if(t === 'DIV' && n.querySelector('ul,ol,h1,h2,h3,h4,h5,h6,p,div')){ n.childNodes.forEach(block); flush(); }
+    else lines.push(...mdInlineOf(n).split('\n'));
+  };
+  root.childNodes.forEach(block);
+  flush();
+  return lines.map(l => l.replace(/\s+$/, '')).join('\n').replace(/\n{3,}/g, '\n\n').replace(/^\n+|\s+$/g, '');
+}
+
+// ── The notes editor ────────────────────────────────────────────────────────
+const MDN_ICONS = {
+  bold:'<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/>',
+  italic:'<line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/>',
+  underline:'<path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" x2="20" y1="20" y2="20"/>',
+  strike:'<path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" x2="20" y1="12" y2="12"/>',
+  h:'<path d="M6 12h12"/><path d="M6 20V4"/><path d="M18 20V4"/>',
+  ul:'<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
+  ol:'<path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>',
+  task:'<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+};
+const MDN_TIPS = { bold:'Bold', italic:'Italic', underline:'Underline', strike:'Strikethrough',
+                   h:'Heading', ul:'Bulleted list', ol:'Numbered list', task:'Checklist' };
+const MDN_WRAP = { bold:['**','**'], italic:['*','*'], underline:['<u>','</u>'], strike:['~~','~~'] };
+const MDN_PREFIX = { h:'### ', ul:'- ', ol:'1. ', task:'- [ ] ' };
+const MDN_EXEC = { bold:'bold', italic:'italic', underline:'underline', strike:'strikeThrough' };
+
+// One mode for every notes field, remembered in the preferences: someone who
+// writes markdown wants it on every card, not only on the one they switched.
+function setNoteMode(mode){
+  mode = mode === 'md' ? 'md' : 'rich';
+  if(S.noteMode === mode) return;
+  S.noteMode = mode;
+  document.querySelectorAll('.mdn').forEach(box => mdnApplyMode(box));
+  persistPrefs();
+}
+function mdnApplyMode(box){
+  const mode = S.noteMode === 'md' ? 'md' : 'rich';
+  box.dataset.mode = mode;
+  box.querySelectorAll('.mdn-sw button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.m === mode)));
+  if(mode === 'rich') mdnRender(box);
+}
+// The formatted view, rebuilt from the markdown. Never while it is the one
+// being typed in: rebuilding would throw the caret to the start.
+function mdnRender(box){
+  const ta = box.querySelector('textarea'), ed = box.querySelector('.mdn-ed');
+  if(!ta || !ed || box._typing) return;
+  ed.innerHTML = ta.value ? mdToHtml(ta.value) : '';
+}
+function mdnFromRich(box){
+  const ta = box.querySelector('textarea'), ed = box.querySelector('.mdn-ed');
+  ta._setRaw(htmlToMd(ed));
+  box._typing = true;
+  try{ ta.dispatchEvent(new Event('input', { bubbles:true })); } finally { box._typing = false; }
+}
+function mdnCommand(box, cmd){
+  if(box.querySelector('textarea').disabled) return;
+  if(box.dataset.mode === 'md'){
+    const ta = box.querySelector('textarea'); const a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
+    if(MDN_WRAP[cmd]){
+      const [o, c] = MDN_WRAP[cmd]; const sel = v.slice(a, b);
+      ta.value = v.slice(0, a) + o + sel + c + v.slice(b);
+      ta.setSelectionRange(a + o.length, a + o.length + sel.length);
+    } else {
+      const ls = v.lastIndexOf('\n', a - 1) + 1; const p = MDN_PREFIX[cmd];
+      ta.value = v.slice(0, ls) + p + v.slice(ls);
+      ta.setSelectionRange(a + p.length, b + p.length);
+    }
+    ta.focus();
+    ta.dispatchEvent(new Event('input', { bubbles:true }));
+    return;
+  }
+  const ed = box.querySelector('.mdn-ed'); ed.focus();
+  if(MDN_EXEC[cmd]) document.execCommand(MDN_EXEC[cmd]);
+  else if(cmd === 'h') document.execCommand('formatBlock', false, 'h3');
+  else if(cmd === 'ul') document.execCommand('insertUnorderedList');
+  else if(cmd === 'ol') document.execCommand('insertOrderedList');
+  else if(cmd === 'task'){
+    document.execCommand('insertUnorderedList');
+    let n = getSelection().anchorNode; while(n && n !== ed && n.tagName !== 'UL') n = n.parentNode;
+    if(n && n !== ed) n.classList.add('task');
+  }
+  mdnFromRich(box); mdnRefreshButtons(box);
+}
+function mdnRefreshButtons(box){
+  const ed = box.querySelector('.mdn-ed');
+  const inside = box.dataset.mode === 'rich' && ed && ed.contains(getSelection().anchorNode);
+  box.querySelectorAll('.mdn-tb button').forEach(b => {
+    const c = MDN_EXEC[b.dataset.cmd];
+    let on = false; try{ on = !!(inside && c && document.queryCommandState(c)); }catch(_){}
+    b.classList.toggle('on', on);
+  });
+}
+// Wraps every <textarea data-mdn> found under root. Idempotent: a card list
+// redrawn twice does not get two toolbars.
+function mdnInit(root){
+  (root || document).querySelectorAll('textarea[data-mdn]').forEach(ta => {
+    if(ta.closest('.mdn')) return;
+    const box = document.createElement('div'); box.className = 'mdn';
+    const lc = ta.getAttribute('data-mdn-lc') || 'mf-label';
+    const btn = k => `<button type="button" data-cmd="${k}" aria-label="${MDN_TIPS[k]}" title="${MDN_TIPS[k]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${MDN_ICONS[k]}</svg></button>`;
+    box.innerHTML =
+      `<div class="mdn-hd"><div class="${lc}">${esc(ta.getAttribute('data-mdn-label') || 'Notes')}</div>`+
+        `<div class="mdn-sw" role="radiogroup" aria-label="Note format">`+
+          `<button type="button" data-m="rich" role="radio" title="Formatted text">Aa</button>`+
+          `<button type="button" data-m="md" role="radio" title="Markdown source">MD</button></div></div>`+
+      `<div class="mdn-box"><div class="mdn-tb">${btn('bold')}${btn('italic')}${btn('underline')}${btn('strike')}<span class="sep"></span>${btn('h')}${btn('ul')}${btn('ol')}${btn('task')}</div>`+
+        `<div class="mdn-ed" contenteditable="true" role="textbox" aria-multiline="true" data-mdn-ed spellcheck="true"></div>`+
+        `<div class="mdn-ft"></div></div>`;
+    ta.before(box);
+    box.querySelector('.mdn-ed').before(ta);
+    ta.classList.add('mdn-src');
+    const ed = box.querySelector('.mdn-ed');
+    ed.setAttribute('data-ph', ta.getAttribute('placeholder') || '');
+    ed.setAttribute('aria-label', ta.getAttribute('aria-label') || 'Notes');
+    hookValue(ta, () => mdnRender(box));
+    box.querySelectorAll('.mdn-tb button').forEach(b => {
+      b.addEventListener('mousedown', e => e.preventDefault());   // keep the selection
+      b.addEventListener('click', () => mdnCommand(box, b.dataset.cmd));
+    });
+    box.querySelectorAll('.mdn-sw button').forEach(b => b.addEventListener('click', () => setNoteMode(b.dataset.m)));
+    ed.addEventListener('input', () => mdnFromRich(box));
+    // Plain text only: a paste from a web page or a mail would bring fonts,
+    // links and images that markdown cannot keep.
+    ed.addEventListener('paste', e => {
+      e.preventDefault();
+      const t = (e.clipboardData && e.clipboardData.getData('text/plain')) || '';
+      document.execCommand('insertText', false, t);
+    });
+    ed.addEventListener('drop', e => e.preventDefault());
+    ed.addEventListener('click', e => {
+      const li = e.target.closest && e.target.closest('ul.task > li');
+      if(!li || ed.getAttribute('contenteditable') !== 'true') return;
+      if(e.clientX - li.getBoundingClientRect().left < 18){ li.classList.toggle('done'); mdnFromRich(box); }
+    });
+    ['keyup','mouseup','focus'].forEach(ev => ed.addEventListener(ev, () => mdnRefreshButtons(box)));
+    mdnApplyMode(box);
+    mdnRender(box);
+  });
+  refreshNoteFooters();
+}
+// What the note will be called on the drive, under each notes field.
+function refreshNoteFooters(){
+  const width = S.counterWidth;
+  const set = (ta, n) => { const f = ta && ta.closest('.mdn') && ta.closest('.mdn').querySelector('.mdn-ft');
+                           if(f) f.textContent = padCounter(n, width) + '_note.md'; };
+  set(document.getElementById('meta-note'), S.counter);
+  set(document.getElementById('k-note'), S.counter);
+  document.querySelectorAll('#src-info-list textarea[data-mdn]').forEach(ta => set(ta, S.counter + Number(ta.dataset.i || 0)));
+}
+
+// ── Picture profile menu ────────────────────────────────────────────────────
+// [label shown, value written]. The value is the short name the trade uses
+// (CLOG3, not CANONLOG3), already in the form normPP() gives: picking SLOG3
+// here and typing "S-Log3" by hand make the same folder name. Completed from
+// user feedback.
+const PP_GROUPS = [
+  ['Sony',        [['S-Log3','SLOG3'],['S-Log2','SLOG2'],['S-Cinetone','SCINETONE'],['HLG3','HLG3']]],
+  ['Canon',       [['Canon Log 3','CLOG3'],['Canon Log 2','CLOG2'],['Canon Log','CLOG']]],
+  ['Panasonic',   [['V-Log','VLOG'],['Cinelike D2','CINELIKED2']]],
+  ['Fujifilm',    [['F-Log2 C','FLOG2C'],['F-Log2','FLOG2'],['F-Log','FLOG'],['Eterna','ETERNA']]],
+  ['ARRI',        [['LogC4','LOGC4'],['LogC3','LOGC3']]],
+  ['RED / Nikon', [['Log3G10','LOG3G10'],['N-Log','NLOG']]],
+  ['Blackmagic',  [['Film Gen 5','BMDFILM5'],['Blackmagic RAW','BRAW']]],
+  ['DJI',         [['D-Log','DLOG'],['D-Log M','DLOGM']]],
+  ['Smartphones', [['Apple Log 2','APPLELOG2'],['Apple Log','APPLELOG'],['Samsung Log','SAMSUNGLOG']]],
+  ['Other',       [['L-Log (Leica, Sigma)','LLOG'],['I-Log (Insta360)','ILOG'],['Z-Log2 (Z CAM)','ZLOG2'],['KineLog3','KINELOG3']]],
+  ['Standard',    [['Rec.709','REC709'],['HLG','HLG'],['PQ','PQ']]],
+];
+const PP_COLUMNS = [['Sony','Canon','Panasonic','Fujifilm'],['ARRI','RED / Nikon','Blackmagic','DJI'],['Smartphones','Other','Standard']];
+let _ppMenu = null, _ppFor = null;
+function ppMenuEl(){
+  if(_ppMenu) return _ppMenu;
+  const G = Object.fromEntries(PP_GROUPS);
+  const m = document.createElement('div'); m.className = 'pp-menu'; m.id = 'pp-menu'; m.setAttribute('role', 'menu');
+  m.innerHTML = `<div class="pp-cols">${PP_COLUMNS.map(col => `<div>${col.map(g => `<div class="pp-g"><div class="pp-gh">${esc(g)}</div>${
+      G[g].map(([l, w]) => `<button type="button" class="pp-it" role="menuitemradio" data-w="${w}"><span>${esc(l)}</span><span class="w">${w}</span></button>`).join('')
+    }</div>`).join('')}</div>`).join('')}</div>`+
+    `<div class="pp-foot"><input type="text" maxlength="16" spellcheck="false" aria-label="Other picture profile" placeholder="Other profile, type it and press Enter"><button type="button" class="none">None</button></div>`+
+    `<div class="pp-hint">The value on the right is what {pp} writes in the folder name.</div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e => {
+    const it = e.target.closest('.pp-it'); if(it){ ppApply(it.dataset.w); return; }
+    if(e.target.closest('.none')) ppApply('');
+  });
+  const inp = m.querySelector('input');
+  inp.addEventListener('input', () => sanitizePP(inp));
+  inp.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); const w = normPP(inp.value); if(w) ppApply(w); }
+  });
+  document.addEventListener('mousedown', e => {
+    if(_ppFor && !m.contains(e.target) && !(_ppFor._ppBtn && _ppFor._ppBtn.contains(e.target))) ppClose();
+  }, true);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && _ppFor) ppClose(); }, true);
+  window.addEventListener('resize', ppClose);
+  document.addEventListener('scroll', e => { if(_ppFor && !m.contains(e.target)) ppClose(); }, true);
+  _ppMenu = m; return m;
+}
+function ppLabel(input){
+  const b = input && input._ppBtn; if(!b) return;
+  const v = b.querySelector('.v'); const val = input.value;
+  v.textContent = val || 'None'; v.classList.toggle('ph', !val);
+}
+function ppApply(w){
+  const input = _ppFor; if(!input) return;
+  input.value = normPP(w);
+  input.dispatchEvent(new Event('input', { bubbles:true }));   // the field's own handlers run, as if typed
+  ppClose();
+  if(input._ppBtn) input._ppBtn.focus();
+}
+function ppClose(){
+  if(_ppMenu) _ppMenu.classList.remove('open');
+  if(_ppFor && _ppFor._ppBtn) _ppFor._ppBtn.setAttribute('aria-expanded', 'false');
+  _ppFor = null;
+}
+function ppOpen(input){
+  if(!input || input.disabled) return;
+  if(_ppFor === input) return ppClose();
+  ppClose();
+  const m = ppMenuEl(); _ppFor = input;
+  input._ppBtn.setAttribute('aria-expanded', 'true');
+  m.querySelectorAll('.pp-it').forEach(it => it.classList.toggle('cur', it.dataset.w === input.value));
+  m.querySelector('input').value = '';
+  m.classList.add('open');
+  // Below the button if it fits, else above, else beside it: the menu must
+  // never need scrolling, down to the smallest window (1280 x 760).
+  const r = input._ppBtn.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight, W = innerWidth, H = innerHeight, g = 6;
+  let left, top;
+  if(r.bottom + g + mh <= H - 8){ top = r.bottom + g; left = r.left; }
+  else if(r.top - g - mh >= 8){ top = r.top - g - mh; left = r.left; }
+  else { top = Math.max(8, Math.min(r.top, H - 8 - mh)); left = (r.right + g + mw <= W - 8) ? r.right + g : r.left - g - mw; }
+  left = Math.max(8, Math.min(left, W - 8 - mw));
+  m.style.left = left + 'px'; m.style.top = top + 'px';
+  const cur = m.querySelector('.pp-it.cur') || m.querySelector('.pp-it'); if(cur) cur.focus();
+}
+// Turns every <input data-pp> under root into a button that opens the menu.
+function ppInit(root){
+  (root || document).querySelectorAll('input[data-pp]').forEach(input => {
+    if(input._ppBtn) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pp-btn';
+    b.setAttribute('aria-haspopup', 'menu'); b.setAttribute('aria-expanded', 'false');
+    b.setAttribute('aria-label', input.getAttribute('aria-label') || 'Picture profile');
+    b.title = 'Picture profile';
+    b.innerHTML = '<span class="v"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+    input.hidden = true;
+    input.after(b);
+    input._ppBtn = b;
+    b.addEventListener('click', () => ppOpen(input));
+    hookValue(input, ppLabel);
+    // The lock disables the field; the button follows it.
+    new MutationObserver(() => { b.disabled = input.disabled; }).observe(input, { attributes:true, attributeFilter:['disabled'] });
+    b.disabled = input.disabled;
+    ppLabel(input);
+  });
+}
+
+// ── Operators of this session ───────────────────────────────────────────────
+// Kept in memory ONLY: never written to the preferences, so the list is empty
+// again every time ingesto starts. Filled at START, not while typing, or
+// "N", "NO" and "NOA" would join it on the way to "NOAR". Most recent first.
+const SESSION_OPS_MAX = 30;
+function rememberOperators(names){
+  if(!Array.isArray(S.sessionOps)) S.sessionOps = [];
+  for(const raw of names){
+    const n = String(raw == null ? '' : raw).trim(); if(!n) continue;
+    S.sessionOps = [n, ...S.sessionOps.filter(x => x.toLowerCase() !== n.toLowerCase())];
+  }
+  S.sessionOps = S.sessionOps.slice(0, SESSION_OPS_MAX);
+}
+let _opList = null, _opFor = null, _opHl = 0, _opItems = [];
+function opListEl(){
+  if(_opList) return _opList;
+  const l = document.createElement('div'); l.className = 'op-list'; l.id = 'op-list'; l.setAttribute('role', 'listbox');
+  document.body.appendChild(l);
+  l.addEventListener('mousedown', e => { const it = e.target.closest('.op-it'); if(it){ e.preventDefault(); opPick(it.dataset.n); } });
+  document.addEventListener('scroll', e => { if(_opFor && !l.contains(e.target)) opClose(); }, true);
+  window.addEventListener('resize', opClose);
+  _opList = l; return l;
+}
+function opClose(){ if(_opList) _opList.classList.remove('open'); if(_opFor) _opFor.setAttribute('aria-expanded', 'false'); _opFor = null; }
+function opPick(n){
+  const i = _opFor; if(!i) return;
+  opClose();
+  i.value = n;
+  i.dispatchEvent(new Event('input', { bubbles:true }));
+  i.focus();
+}
+function opRender(input, showAll){
+  const l = opListEl();
+  const all = Array.isArray(S.sessionOps) ? S.sessionOps : [];
+  const q = showAll ? '' : input.value.trim().toLowerCase();
+  _opItems = all.filter(n => !q || (n.toLowerCase().startsWith(q) && n.toLowerCase() !== q));
+  if(!showAll && (!q || !_opItems.length)) return opClose();
+  _opFor = input; input.setAttribute('aria-expanded', 'true');
+  _opHl = Math.max(0, Math.min(_opHl, _opItems.length - 1));
+  l.innerHTML = `<div class="op-lh">This session</div>` + (_opItems.length
+    ? _opItems.map((n, k) => `<div class="op-it${k === _opHl ? ' hl' : ''}" role="option" data-n="${esc(n)}">${
+        q ? `<b>${esc(n.slice(0, q.length))}</b>${esc(n.slice(q.length))}` : esc(n)}</div>`).join('')
+    : `<div class="op-empty">Names are added here when an ingest starts.</div>`);
+  l.classList.add('open');
+  const r = input.getBoundingClientRect(); const w = Math.max(180, r.width);
+  let top = r.bottom + 6; if(top + l.offsetHeight > innerHeight - 8) top = Math.max(8, r.top - 6 - l.offsetHeight);
+  l.style.minWidth = w + 'px';
+  l.style.left = Math.max(8, Math.min(r.left, innerWidth - 8 - Math.max(w, l.offsetWidth))) + 'px';
+  l.style.top = top + 'px';
+}
+// Wraps every <input data-opcb> under root.
+function opInit(root){
+  (root || document).querySelectorAll('input[data-opcb]').forEach(input => {
+    if(input.closest('.op-cb')) return;
+    const w = document.createElement('div'); w.className = 'op-cb';
+    input.before(w); w.append(input);
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('role', 'combobox'); input.setAttribute('aria-expanded', 'false'); input.setAttribute('aria-autocomplete', 'list');
+    const a = document.createElement('button'); a.type = 'button'; a.className = 'op-arrow'; a.tabIndex = -1;
+    a.setAttribute('aria-label', 'Operators of this session'); a.title = 'Operators of this session';
+    a.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+    w.append(a);
+    new MutationObserver(() => { a.disabled = input.disabled; }).observe(input, { attributes:true, attributeFilter:['disabled'] });
+    a.disabled = input.disabled;
+    input.addEventListener('input', () => { if(input._opPicking) return; _opHl = 0; opRender(input, false); });
+    input.addEventListener('keydown', e => {
+      const open = _opFor === input;
+      if(e.key === 'ArrowDown'){ e.preventDefault(); if(!open){ _opHl = 0; opRender(input, true); } else { _opHl = Math.min(_opHl + 1, _opItems.length - 1); opRender(input, !input.value.trim()); } }
+      else if(e.key === 'ArrowUp' && open){ e.preventDefault(); _opHl = Math.max(_opHl - 1, 0); opRender(input, !input.value.trim()); }
+      else if(e.key === 'Enter' && open && _opItems[_opHl]){ e.preventDefault(); opPick(_opItems[_opHl]); }
+      else if(e.key === 'Escape' && open){ e.preventDefault(); e.stopPropagation(); opClose(); }
+      else if(e.key === 'Tab' && open) opClose();
+    });
+    input.addEventListener('blur', () => setTimeout(() => { if(_opFor === input && document.activeElement !== input) opClose(); }, 150));
+    a.addEventListener('mousedown', e => {
+      e.preventDefault(); if(input.disabled) return;
+      if(_opFor === input) return opClose();
+      _opHl = 0; input.focus(); opRender(input, true);
+    });
+  });
+}
+function fieldsInit(root){ ppInit(root); opInit(root); mdnInit(root); }
 
 // ═══════════════════════════════════════════════════════
 // Counter warning
@@ -4880,6 +5418,9 @@ async function startCopy(){
     runId:      new Date().toISOString().replace(/\.\d{3}Z$/,'Z') + '-' +
                 Math.random().toString(36).slice(2, 6),
   };
+  // The names this run really uses join the session list, at START and not
+  // while they were typed. Kiosk goes through here too.
+  rememberOperators(S.run.sources.map(x => x.operator));
   setIngestLock(true);
   // The centre column stops listing volumes and shows the transfers instead.
   tfEnter();
@@ -5669,7 +6210,7 @@ function sessDetails(row){
     + (phases?cell('PHASES', esc(phases), true):'')
     + cell('DESTINATIONS', esc(row.drives.join(', ')), true)
     + (who?cell('OPERATOR · CAMERA · PROFILE', esc(who), true):'')
-    + (r.note?cell('NOTE', esc(r.note), true):'')
+    + (r.note?cell('NOTE', `<div class="md-note">${mdToHtml(r.note)}</div>`, true):'')
     + (r.rclass==='r-err'||r.rclass==='r-suspect'?cell('RESULT', esc(r.result||''), true):'')
     + `</div>`;
 }
@@ -5795,6 +6336,9 @@ function applyIngestLock(){
       ? [root] : root.querySelectorAll('input,textarea,button,select');
     els.forEach(el => { el.disabled = on; });
     root.querySelectorAll('[draggable]').forEach(el => el.setAttribute('draggable', on ? 'false' : 'true'));
+    // The formatted notes view is not a form field: disabled does not exist
+    // for it, contenteditable does.
+    root.querySelectorAll('[data-mdn-ed]').forEach(el => el.setAttribute('contenteditable', on ? 'false' : 'true'));
   });
 }
 
@@ -7926,7 +8470,9 @@ async function buildReportHtml(created, updated, destPath, records){
         `<span class="t-sep">/</span>`+
         `<span class="tv ${r.v2Ms>0?'t-v2':'t-na'}">${escH(fmtReportDur(r.v2Ms))}</span>`+
       `</td>`+
-      `<td class="c-txt c-mut">${escH(r.note)}</td></tr>`;
+      // The note is markdown since 2.8.0: shown formatted, built by
+      // mdToHtml(), which escapes everything first.
+      `<td class="c-txt c-mut">${r.note ? `<div class="md-note">${mdToHtml(r.note)}</div>` : ''}</td></tr>`;
     if(!hasFl) return main;
     return main+`<tr class="det" id="det-${ri}" style="display:none;"><td></td><td colspan="11"></td></tr>`;
   }).join('');
@@ -7980,6 +8526,9 @@ tbody tr.rec td:last-child{border-radius:0 9px 9px 0;}
 td.m-fast,td.m-sizecheck,td.m-verified,td.m-secure,td.m-pro{white-space:normal;min-width:132px;}
 .c-path{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10px;color:#6f757f;margin-top:4px;}
 .c-txt{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;white-space:normal;max-width:190px;}
+.md-note p,.md-note h3,.md-note ul,.md-note ol{margin:0;}.md-note h3{font-size:inherit;font-weight:700;}
+.md-note ul,.md-note ol{padding-left:16px;}.md-note ul.task{list-style:none;padding-left:0;}
+.md-note ul.task li::before{content:'☐ ';}.md-note ul.task li.done::before{content:'☑ ';}.md-note ul.task li.done{text-decoration:line-through;opacity:.7;}
 /* One colour code, the app's: FAST grey, SIZE CHECK blue, SECURE orange, PRO
    violet. m-verified is the old class name of SIZE CHECK, kept so a report
    written before 2.7.0 stops printing an unverified mode in green. */

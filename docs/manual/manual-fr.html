@@ -2,9 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>ingesto 2.7.2 Manuel d'utilisation</title>
+<title>ingesto 2.8.0 Manuel d'utilisation</title>
 <link rel="stylesheet" href="manual.css">
-<style>@page { @bottom-left { content: "ingesto 2.7.2 · Manuel d’utilisation"; } } @page :first { @bottom-left { content: none; } }</style>
+<style>@page { @bottom-left { content: "ingesto 2.8.0 · Manuel d’utilisation"; } } @page :first { @bottom-left { content: none; } }</style>
 </head>
 <body>
 
@@ -14,7 +14,7 @@
   <h1>Manuel d'utilisation</h1>
   <div class="sub">Copiez vos cartes caméra sur plusieurs disques à la fois, et sachez que chaque fichier est arrivé intact.</div>
   <div class="shot"><img src="images/13-ingest-copy.png" alt=""></div>
-  <div class="foot"><span>Version 2.7.2 · octobre 2026</span><span>Just Edit · github.com/noar-justedit/ingesto</span></div>
+  <div class="foot"><span>Version 2.8.0 · octobre 2026</span><span>Just Edit · github.com/noar-justedit/ingesto</span></div>
 </div>
 
 
@@ -82,6 +82,7 @@
   <li>Glissez <strong>ingesto</strong> dans votre dossier <strong>Applications</strong>.</li>
   <li>Lancez-le par un double-clic normal. L'application est signée et notariée par Apple : aucun avertissement de sécurité.</li>
 </ol>
+<p>ingesto 2.8.0 demande <strong>macOS 13 Ventura ou plus récent</strong>, sur un Mac Apple Silicon. Sous macOS 12, gardez la version 2.7.2.</p>
 
 <h4>Windows</h4>
 <ol>
@@ -162,12 +163,12 @@
 <div class="side">
   <figure style="flex-basis:38%"><img src="images/30-card-details.png" alt=""></figure>
   <div class="txt">
-    <p>Chaque carte a quatre champs :</p>
+    <p>Chaque carte a quatre champs. Les trois premiers sont sur la même ligne :</p>
     <ul>
       <li><span class="ui">OPERATOR</span> : qui a tourné.</li>
       <li><span class="ui">CAMERA</span> : le modèle de caméra.</li>
-      <li><span class="ui">PICTURE PROFILE</span> : SLOG3, CLOG, VLOG, HLG… choisi dans la liste ou tapé librement.</li>
-      <li><span class="ui">NOTES</span> : texte libre, repris dans le rapport et la notification.</li>
+      <li><span class="ui">PROFILE</span> : le profil d'image, choisi dans un menu (voir plus bas).</li>
+      <li><span class="ui">NOTES</span> : la note de tournage, enregistrée à côté des rushes et reprise dans le rapport et la notification.</li>
     </ul>
     <p>Ces valeurs peuvent servir dans le nom du dossier et apparaissent dans le rapport.</p>
   </div>
@@ -176,7 +177,38 @@
   <li><strong>Reprises d'une carte à l'autre :</strong> opérateur, caméra et profil d'image sont conservés pour la carte suivante. Les notes décrivent une seule carte et sont effacées après chaque ingest.</li>
   <li><strong>(A) ou (M) :</strong> un petit <strong>(A)</strong> vert à côté de <span class="ui">CAMERA</span> signifie qu'ingesto a lu le modèle sur la carte. Un <strong>(M)</strong> gris signifie qu'il a été saisi à la main.</li>
   <li><strong>Le balai</strong> à côté de <span class="ui">LOADED CARDS</span> vide les quatre champs d'un clic.</li>
-  <li>Opérateur et caméra n'acceptent que lettres et chiffres, pour des noms de dossiers propres. Le profil d'image est écrit en majuscules et sans espaces : <code>s-log 3</code> devient <code>SLOG3</code>.</li>
+  <li>Opérateur et caméra n'acceptent que lettres et chiffres, pour des noms de dossiers propres.</li>
+</ul>
+
+<h3>Le menu des profils d'image</h3>
+<figure><img src="images/35-pp-menu.png" alt=""><figcaption>Le menu Profile, groupé par fabricant.</figcaption></figure>
+<p>Cliquez sur <span class="ui">PROFILE</span> pour ouvrir le menu : les profils courants, groupés par fabricant. À droite de chaque entrée, en petites capitales, ce que <code>{pp}</code> écrira dans le nom du dossier. Le profil en cours est surligné.</p>
+<ul>
+  <li>Absent de la liste ? Tapez-le dans le champ en bas du menu et appuyez sur <span class="ui">Entrée</span>. Il est écrit en majuscules et sans espaces : <code>s-log 3</code> devient <code>SLOG3</code>.</li>
+  <li><span class="ui">None</span> vide le profil. Laissé vide, il ne crée ni dossier ni séparateur orphelin.</li>
+</ul>
+
+<h3>Les opérateurs de la journée</h3>
+<div class="side">
+  <figure style="flex-basis:34%"><img src="images/36-op-list.png" alt=""></figure>
+  <div class="txt">
+    <p>Le champ <span class="ui">OPERATOR</span> retient les noms utilisés depuis l'ouverture d'ingesto. Cliquez sur sa petite flèche pour les voir, le plus récent en haut, ou tapez les premières lettres : la liste se réduit aux noms qui correspondent. Cliquez sur un nom, ou appuyez sur <span class="ui">Entrée</span>.</p>
+    <p>Un nom entre dans la liste au démarrage d'un ingest, pas pendant la frappe. La liste n'est jamais enregistrée : elle est vide à la prochaine ouverture d'ingesto. Le mode kiosk l'a aussi.</p>
+  </div>
+</div>
+
+<h3>Les notes en markdown</h3>
+<div class="side">
+  <figure style="flex-basis:46%"><img src="images/37-notes.png" alt=""><figcaption>Texte mis en forme (Aa).</figcaption></figure>
+  <figure style="flex-basis:46%"><img src="images/38-notes-md.png" alt=""><figcaption>La même note en markdown (MD).</figcaption></figure>
+</div>
+<p>Le champ des notes est un petit traitement de texte. Ses boutons mettent en gras, en italique, soulignent, barrent, créent un titre, une liste à puces, une liste numérotée et une liste à cocher ; <span class="ui">Cmd+B</span>, <span class="ui">Cmd+I</span> et <span class="ui">Cmd+U</span> marchent aussi (<span class="ui">Ctrl</span> sous Windows et Linux). Cliquez sur la case d'un élément de liste à cocher pour la cocher.</p>
+<ul>
+  <li><strong>Aa ou MD :</strong> le sélecteur au-dessus du champ montre la note mise en forme (<span class="ui">Aa</span>) ou en markdown (<span class="ui">MD</span>), pour taper le markdown vous-même. Les deux modifient la même note, et ingesto retient votre choix.</li>
+  <li><strong>Sur le disque :</strong> la note est enregistrée dans le dossier de la carte sous le nom <code>001_note.md</code> (avec le numéro de la carte), sous un en-tête qui donne la date, le compteur, la carte, l'opérateur, la caméra et le profil. Tout lecteur markdown la met en page. Les versions 2.7 et antérieures écrivaient <code>001_note.txt</code> ; Verify reconnaît les deux.</li>
+  <li><strong>Le souligné</strong> n'existe pas en markdown : il est écrit <code>&lt;u&gt;texte&lt;/u&gt;</code>, que la plupart des lecteurs markdown affichent.</li>
+  <li>Le rapport HTML et l'historique des ingests affichent la note mise en forme. Le rapport CSV et la notification sur téléphone gardent le texte markdown.</li>
+  <li>Un texte collé depuis ailleurs arrive en texte simple.</li>
 </ul>
 
 <h3>Plusieurs cartes</h3>
@@ -539,7 +571,7 @@
 <h3>Pour la personne qui fait l'ingest</h3>
 <ol class="steps">
   <li>Insérez la carte, ou cliquez sur <span class="ui">Browse a card…</span>.</li>
-  <li>Tapez votre nom dans <span class="ui">Operator</span> (obligatoire). Caméra, profil et notes sont facultatifs ; la caméra est souvent remplie automatiquement.</li>
+  <li>Tapez votre nom dans <span class="ui">Operator</span> (obligatoire), ou choisissez-le parmi les noms déjà utilisés dans la journée avec la petite flèche. Caméra, profil et notes sont facultatifs ; la caméra est souvent remplie automatiquement.</li>
   <li>Cliquez sur <span class="ui">START INGEST</span> et suivez le grand anneau de progression.</li>
   <li>Lisez le résultat, puis cliquez sur <span class="ui">Next card</span>.</li>
 </ol>

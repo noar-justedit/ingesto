@@ -416,6 +416,7 @@ console.log('\nan ingest history line opens on its details');
   const ctx = vm.createContext({ String, Number, isFinite, Math, Array,
     esc: (x) => String(x == null ? '' : x) });
   vm.runInContext([extractFn(REND, 'fmtReportDur'), extractFn(REND, 'fmtSize'), extractFn(REND, 'fmtSpd'),
+                   extractFn(REND, 'mdEscape'), extractFn(REND, 'mdInline'), extractFn(REND, 'mdToHtml'),
                    extractFn(REND, 'sessDetails')].join('\n'), ctx);
   const html = ctx.sessDetails({ drives:['RAID_SHOOT','NAS_BACKUP'], rec:{
     date:'24.09.2026 09:12', files:168, bytes:26.4e9, copyMs:40000, v1Ms:30000, v2Ms:0,
@@ -427,6 +428,11 @@ console.log('\nan ingest history line opens on its details');
   ok(/RAID_SHOOT, NAS_BACKUP/.test(html), 'every destination, named');
   ok(/copy 40s · verify 30s/.test(html) && !/source re-read/.test(html), 'the phases that ran, and only those');
   ok(/NOAR · FX6 · SLOG3/.test(html) && /Interviews/.test(html), 'who, which camera, which profile, the note');
+  // 2.8.0: the note is markdown, shown formatted, and nothing typed in it can
+  // become a tag of the history.
+  const md = ctx.sessDetails({ drives:['X'], rec:{ files:1, bytes:1, note:'**Plateau B** <img src=x onerror=alert(1)>\n- [x] son' } });
+  ok(/<b>Plateau B<\/b>/.test(md) && /class="task"/.test(md), 'a markdown note is shown formatted');
+  ok(!/<img/.test(md) && /&lt;img/.test(md), 'and a tag typed in it stays text');
   const old = ctx.sessDetails({ drives:['X'], rec:{ files:3, bytes:0 } });
   ok(/DURATION<\/div><div class="sd-v">-</.test(old) && /COPY SPEED<\/div><div class="sd-v">-</.test(old),
      'a report from an older version, without timings, reads "-", not 0 or NaN');

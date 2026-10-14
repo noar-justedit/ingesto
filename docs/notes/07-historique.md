@@ -1,9 +1,29 @@
 # 07 · Historique et points ouverts
 
-État au 03.10.2026 : dossier en **2.7.3** (suivi du projet et publication,
-aucun changement de l'application), dernière Release publiée : **2.7.2**.
-Depuis la 2.7.3, ce dossier `docs/notes/` est publié avec le code : le résumé à
-jour est dans `ETAT_PROJET.md` et `CHANGELOG.md` à la racine.
+État au 13.10.2026 : dossier en **2.8.0**, dernière Release publiée : **2.7.2**
+(la 2.7.3 n'a pas été publiée seule, la 2.8.0 la contient). Le résumé à jour
+est dans `ETAT_PROJET.md` et `CHANGELOG.md` à la racine.
+
+## Journal 10.10 au 13.10 (Cowork) : 2.8.0
+- Electron 44.7.1 (macOS 13 minimum, accepté par Noar). Essai réel sous
+  Electron 44 : l'app démarre, ingest SECURE et PRO réels, copies identiques
+  à la carte, koffi chargé, note `001_note.md` écrite.
+- Copy Info : Operator / Camera / Profile sur une ligne (Copy Info, cartes,
+  kiosk), menu Profile (`PP_GROUPS`), liste des opérateurs de la session
+  (`S.sessionOps`, mémoire seulement), notes markdown (`mdnInit`, `mdToHtml`,
+  `htmlToMd`). Maquettes validées par Noar le 13.10.
+- Les champs d'origine sont gardés (`<input>` caché, `<textarea>`) et suivis par
+  `hookValue()` : aucun code qui lit `.value` n'a changé.
+- Nouveau `scripts/test-copy-info.js` (46 vérifications), tests note, profil et
+  historique mis à jour. 15 mutations, toutes détectées.
+- Manuel EN/FR passé en 2.8.0 : version, macOS 13, champs, trois sections
+  nouvelles (menu Profile, opérateurs de la journée, notes en markdown),
+  captures 35 à 38 ajoutées dans `capture.js`, toutes les captures refaites,
+  PDF reconstruits (36 et 37 pages). Les 4 captures du README refaites avec
+  les mêmes données de démo qu'en 2.7.1, script gardé hors du dépôt.
+- Piège trouvé en essai : texte puis Cmd+B dans un champ vide laisse deux nœuds
+  frères ; `htmlToMd` les lisait comme deux lignes. Corrigé (suite de nœuds en
+  ligne = une ligne), testé.
 
 ## Journal 03.10 (Cowork) : 2.7.3
 - Règles ARNO DEV adoptées : `AGENTS.md` (règles générales), `ETAT_PROJET.md`

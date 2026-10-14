@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>ingesto 2.7.2 User Manual</title>
+<title>ingesto 2.8.0 User Manual</title>
 <link rel="stylesheet" href="manual.css">
-<style>@page { @bottom-left { content: "ingesto 2.7.2 · User Manual"; } } @page :first { @bottom-left { content: none; } }</style>
+<style>@page { @bottom-left { content: "ingesto 2.8.0 · User Manual"; } } @page :first { @bottom-left { content: none; } }</style>
 </head>
 <body>
 
@@ -14,7 +14,7 @@
   <h1>User Manual</h1>
   <div class="sub">Copy your camera cards to several drives at once, and know that every file arrived intact.</div>
   <div class="shot"><img src="images/13-ingest-copy.png" alt=""></div>
-  <div class="foot"><span>Version 2.7.2 · October 2026</span><span>Just Edit · github.com/noar-justedit/ingesto</span></div>
+  <div class="foot"><span>Version 2.8.0 · October 2026</span><span>Just Edit · github.com/noar-justedit/ingesto</span></div>
 </div>
 
 
@@ -79,6 +79,7 @@
   <li>Drag <strong>ingesto</strong> into your <strong>Applications</strong> folder.</li>
   <li>Launch it with a normal double-click. The app is signed and notarised by Apple: no security warning.</li>
 </ol>
+<p>ingesto 2.8.0 needs <strong>macOS 13 Ventura or later</strong> on a Mac with Apple Silicon. On macOS 12, keep version 2.7.2.</p>
 
 <h4>Windows</h4>
 <ol>
@@ -107,7 +108,7 @@
   <li><strong>Connect</strong> your card reader and your destination drives. They appear under <span class="ui">MOUNTED VOLUMES</span>.</li>
   <li><strong>Drag the card</strong> onto the <span class="ui">SOURCES</span> zone on the left (or right-click it → <span class="ui">Set as SOURCE</span>).</li>
   <li><strong>Drag one or more drives</strong> onto the <span class="ui">DESTINATIONS</span> zone on the right (or right-click → <span class="ui">Set as DESTINATION</span>).</li>
-  <li><strong>Fill in</strong> the operator, camera, picture profile and notes for the card, if you need them in the folder name or the report.</li>
+  <li><strong>Fill in</strong> the operator, camera, profile and notes for the card, if you need them in the folder name or the report.</li>
   <li><strong>Check the folder name</strong> shown in green under each destination. Change the <span class="ui">FOLDER STRUCTURE</span> if needed.</li>
   <li><strong>Choose the copy mode.</strong> Keep <span class="badge b-secure">SECURE</span> unless you have a reason not to.</li>
   <li><strong>Click <span class="ui">START INGEST</span>.</strong> Wait for the green summary <span class="ui">ALL FILES COPIED &amp; VERIFIED</span> before you do anything with the card.</li>
@@ -159,12 +160,12 @@
 <div class="side">
   <figure style="flex-basis:38%"><img src="images/30-card-details.png" alt=""></figure>
   <div class="txt">
-    <p>Each card has four fields:</p>
+    <p>Each card has four fields. The first three share one row:</p>
     <ul>
       <li><span class="ui">OPERATOR</span>: who shot it.</li>
       <li><span class="ui">CAMERA</span>: the camera model.</li>
-      <li><span class="ui">PICTURE PROFILE</span>: SLOG3, CLOG, VLOG, HLG… pick one from the list or type your own.</li>
-      <li><span class="ui">NOTES</span>: free text, recorded in the report and the notification.</li>
+      <li><span class="ui">PROFILE</span>: the picture profile, picked from a menu (see below).</li>
+      <li><span class="ui">NOTES</span>: the shooting note, saved next to the footage and recorded in the report and the notification.</li>
     </ul>
     <p>These values can be used in the folder name and appear in the report.</p>
   </div>
@@ -173,7 +174,38 @@
   <li><strong>Carried over:</strong> operator, camera and picture profile are kept from one card to the next. Notes describe one card and are cleared after each ingest.</li>
   <li><strong>(A) or (M):</strong> a small green <strong>(A)</strong> next to <span class="ui">CAMERA</span> means ingesto read the model off the card. A grey <strong>(M)</strong> means it was typed by hand.</li>
   <li><strong>The broom</strong> next to <span class="ui">LOADED CARDS</span> clears the four fields in one click.</li>
-  <li>Operator and camera accept letters and digits only, so the folder names stay clean. The picture profile is written in capitals and without spaces: <code>s-log 3</code> becomes <code>SLOG3</code>.</li>
+  <li>Operator and camera accept letters and digits only, so the folder names stay clean.</li>
+</ul>
+
+<h3>The picture profile menu</h3>
+<figure><img src="images/35-pp-menu.png" alt=""><figcaption>The Profile menu, grouped by manufacturer.</figcaption></figure>
+<p>Click <span class="ui">PROFILE</span> to open the menu: the usual profiles, grouped by manufacturer. On the right of each entry, in small capitals, is what <code>{pp}</code> will write in the folder name. The current profile is highlighted.</p>
+<ul>
+  <li>Not in the list? Type it in the field at the bottom of the menu and press <span class="ui">Enter</span>. It is written in capitals and without spaces: <code>s-log 3</code> becomes <code>SLOG3</code>.</li>
+  <li><span class="ui">None</span> clears the profile. Left empty, it creates no folder and no leftover separator.</li>
+</ul>
+
+<h3>The operators of the day</h3>
+<div class="side">
+  <figure style="flex-basis:34%"><img src="images/36-op-list.png" alt=""></figure>
+  <div class="txt">
+    <p>The <span class="ui">OPERATOR</span> field remembers the names used since ingesto was opened. Click its small arrow to see them, most recent first, or type the first letters: the list narrows to the matching names. Click a name, or press <span class="ui">Enter</span>.</p>
+    <p>A name joins the list when an ingest starts, not while it is typed. The list is never saved: it is empty again the next time ingesto opens. Kiosk mode has it too.</p>
+  </div>
+</div>
+
+<h3>Notes in markdown</h3>
+<div class="side">
+  <figure style="flex-basis:46%"><img src="images/37-notes.png" alt=""><figcaption>Formatted text (Aa).</figcaption></figure>
+  <figure style="flex-basis:46%"><img src="images/38-notes-md.png" alt=""><figcaption>The same note in markdown (MD).</figcaption></figure>
+</div>
+<p>The notes field is a small text editor. Its buttons apply bold, italic, underline, strikethrough, a heading, a bulleted list, a numbered list and a checklist; <span class="ui">Cmd+B</span>, <span class="ui">Cmd+I</span> and <span class="ui">Cmd+U</span> work too (<span class="ui">Ctrl</span> on Windows and Linux). Click the box of a checklist item to tick it.</p>
+<ul>
+  <li><strong>Aa or MD:</strong> the switch above the field shows the note formatted (<span class="ui">Aa</span>) or as markdown (<span class="ui">MD</span>), to type the markdown yourself. Both edit the same note, and ingesto remembers your choice.</li>
+  <li><strong>On the drive:</strong> the note is saved in the card folder as <code>001_note.md</code> (with the card's number), under a header giving the date, the counter, the card, the operator, the camera and the profile. Any markdown viewer lays it out. Versions 2.7 and earlier wrote <code>001_note.txt</code>; both are recognised by Verify.</li>
+  <li><strong>Underline</strong> has no markdown form: it is written <code>&lt;u&gt;text&lt;/u&gt;</code>, which most markdown viewers display.</li>
+  <li>The HTML report and the ingest history show the note formatted. The CSV report and the phone notification keep the markdown text.</li>
+  <li>Text pasted from elsewhere arrives as plain text.</li>
 </ul>
 
 <h3>Several cards</h3>
@@ -536,7 +568,7 @@
 <h3>For the person ingesting</h3>
 <ol class="steps">
   <li>Insert the card, or click <span class="ui">Browse a card…</span>.</li>
-  <li>Type your name in <span class="ui">Operator</span> (required). Camera, profile and notes are optional; the camera is often filled in automatically.</li>
+  <li>Type your name in <span class="ui">Operator</span> (required), or pick it from the names already used today with the small arrow. Camera, profile and notes are optional; the camera is often filled in automatically.</li>
   <li>Click <span class="ui">START INGEST</span> and follow the large progress ring.</li>
   <li>Read the result, then click <span class="ui">Next card</span>.</li>
 </ol>

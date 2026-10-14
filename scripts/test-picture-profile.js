@@ -138,14 +138,23 @@ console.log('\none form, whatever was typed');
                                        REND.indexOf('cameraman: s.operator || globalOp') + 260)),
      'and so does the payload handed to the engine');
   // The suggestions have to be in the form the folders will carry, or picking
-  // one from the list and typing the same thing by hand give two answers.
-  const list = REND.slice(REND.indexOf('<datalist id="pp-list">'),
-                          REND.indexOf('</datalist>'));
-  const opts = [...list.matchAll(/value="([^"]*)"/g)].map(m => m[1]);
-  ok(opts.length >= 12, `the suggestion list was read (${opts.length} profiles)`);
-  ok(opts.every(o => n(o) === o), 'every suggestion is already in that form: ' + opts.join(' '));
-  for (const must of ['SLOG3', 'DLOG2', 'CLOG', 'HLG'])
+  // one from the menu and typing the same thing by hand give two answers.
+  // Since 2.8.0 they are the Profile menu, grouped by manufacturer.
+  const g0 = REND.indexOf('const PP_GROUPS = ['), g1 = REND.indexOf('const PP_COLUMNS = ');
+  const c1 = REND.indexOf('\n', g1);
+  const menu = vm.createContext({});
+  vm.runInContext(REND.slice(g0, c1).replace(/^const /gm, 'var '), menu);
+  const groups = menu.PP_GROUPS || [], cols = menu.PP_COLUMNS || [];
+  const opts = groups.flatMap(g => g[1].map(e => e[1]));
+  ok(opts.length >= 12, `the profile menu was read (${opts.length} profiles)`);
+  ok(opts.every(o => n(o) === o), 'every value is already in that form: ' + opts.join(' '));
+  ok(new Set(opts).size === opts.length, 'and none is offered twice');
+  for (const must of ['SLOG3', 'VLOG', 'CLOG', 'HLG', 'LOGC4', 'REC709'])
     ok(opts.includes(must), `${must} is offered`);
+  // A group missing from the columns would never be shown at all.
+  const placed = cols.flat();
+  ok(groups.every(g => placed.includes(g[0])) && placed.length === groups.length,
+     'every manufacturer group has its place in the menu, once');
 }
 
 console.log('\nan empty profile leaves no orphan separator behind');
@@ -244,15 +253,16 @@ console.log('\nthe profile is in the shooting note');
   // have to be guessed from the picture.
   // lastIndexOf, not indexOf: the first occurrence is the NOTE_HEADER constant
   // Verify uses to recognise our own note, not the block that writes it.
-  const noteAt = MAIN.lastIndexOf('ingesto - Shooting Note');
+  // Since 2.8.0 the note is markdown and its header a list of bold labels.
+  // lastIndexOf: the first one is in isShootingNote(), which only reads it.
+  const noteAt = MAIN.lastIndexOf("'# ' + NOTE_HEADER");
   const note = MAIN.slice(noteAt, noteAt + 800);
-  ok(/Profile\s*:\s*'\s*\+\s*\(source\.pp/.test(note), 'the note writes a Profile line from source.pp');
+  ok(noteAt > 0, 'the markdown note block was found');
+  ok(/'- \*\*Profile:\*\* '\s*\+\s*mdEscapeText\(source\.pp/.test(note), 'the note writes a Profile line from source.pp');
   ok(note.includes("'Unknown'"), 'and says Unknown rather than leaving it blank');
-  // The columns of that little block line up in a fixed-width font; a label of
-  // the wrong length would step out of the column.
-  const labels = [...note.matchAll(/'([A-Za-z]+ *): '/g)].map(m => m[1]);
-  ok(labels.length >= 5, `the labels were read (${labels.length})`);
-  ok(new Set(labels.map(l => l.length)).size === 1, 'every label is the same width: ' + labels.join('|'));
+  const labels = [...note.matchAll(/'- \*\*([A-Za-z]+):\*\* '/g)].map(m => m[1]);
+  ok(['Date','Counter','Card','Operator','Camera','Profile'].every(l => labels.includes(l)),
+     'every header line is there: ' + labels.join('|'));
 }
 
 console.log('\nthe profile survives the run payload, frozen at START');
@@ -471,15 +481,17 @@ console.log('\nthe interface offers the field, everywhere a card is described');
   ok(/(?:addTok|insPick)\('var','pp'\)/.test(REND), 'and the Insert menu offers the variable');
   // The same sanitiser as the operator and the camera: what goes in a folder
   // name is letters and digits, decided in one place rather than three.
-  const PP_LBL = '<div class="sif-label">PICTURE PROFILE</div>';
+  const PP_LBL = '<div class="sif-label">PROFILE</div>';
   const perCard = REND.slice(REND.indexOf(PP_LBL), REND.indexOf(PP_LBL) + 380);
   ok(/sanitizePP\(this\);updateSrcField/.test(perCard), 'the per-card field is normalised as it is typed');
   const global = REND.slice(REND.indexOf('id="meta-pp"'), REND.indexOf('id="meta-pp"') + 200);
   ok(/sanitizePP\(this\)/.test(global), 'so is the global one');
   const kiosk = REND.slice(REND.indexOf('id="k-pp"'), REND.indexOf('id="k-pp"') + 220);
   ok(/sanitizePP\(this\)/.test(kiosk), 'and so is the kiosk one');
-  ok(/list="pp-list"/.test(global), 'and it suggests the usual profiles');
-  ok(/<datalist id="pp-list">/.test(REND), 'from a list the page carries');
+  // 2.8.0: the three fields are shown as a button opening the Profile menu.
+  ok(/data-pp\b/.test(global) && /data-pp\b/.test(kiosk) && /data-pp\b/.test(perCard),
+     'and all three open the Profile menu');
+  ok(!/<datalist id="pp-list">/.test(REND), 'the old suggestion list is gone');
 
   // 2.7.1: the profile is KEPT for the next card (it rarely changes on a
   // shoot), and the broom beside the title clears it with the rest.

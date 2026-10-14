@@ -78,6 +78,10 @@ macOS · Windows · Linux.
 Since v2.5.5 the macOS app is **signed and notarized by Apple** — it opens with
 a normal double-click, no security warning, no workaround.
 
+**System requirements (since v2.8.0):** macOS 13 Ventura or later on Apple
+Silicon, Windows 10 or 11 (64-bit), Linux x64. The 2.7 versions still run on
+macOS 12 Monterey.
+
 Prefer building it yourself? Follow the steps below.
 
 ### Step 1 — Install Node.js
@@ -137,8 +141,22 @@ Three columns: what you copy, what is happening, where it goes.
 
 **Sources** (left)
 
-- Each loaded card has its own **Operator**, **Camera**, **Picture profile**
-  and **Notes**, and shows the folder it will create.
+- Each loaded card has its own **Operator**, **Camera**, **Profile** (picture
+  profile) and **Notes**, and shows the folder it will create. Operator, Camera
+  and Profile share one row.
+- **Profile** opens a menu of the usual picture profiles, grouped by
+  manufacturer (Sony, Canon, Panasonic, Fujifilm, ARRI, RED, Nikon, Blackmagic,
+  DJI, smartphones...). Each entry shows what `{pp}` will write. Anything else
+  can be typed at the bottom of the menu.
+- **Operator** remembers the names used since ingesto was opened: the arrow
+  lists them, and typing the first letters narrows the list. A name joins the
+  list when an ingest starts. The list is never saved: it is empty again at
+  the next launch.
+- **Notes** are written in markdown. Type with the formatting buttons (bold,
+  italic, underline, strikethrough, heading, lists, checklist), or switch to
+  **MD** to type the markdown itself. The note is saved next to the footage as
+  `001_note.md` (2.7 and earlier wrote `001_note.txt`; both are recognised by
+  Verify). Underline has no markdown form and is written `<u>text</u>`.
 - Operator, camera and picture profile are **kept from one card to the next**:
   a new card starts from the last values entered, until you change them. Notes
   describe one card and are cleared after each ingest. The **broom** beside the
@@ -193,7 +211,7 @@ Three columns: what you copy, what is happening, where it goes.
 2. **Drag** a source volume into the **Sources** zone (left)
    — or right-click a volume → **Set as SOURCE**
 3. **Drag** one or more destination drives into the **Destinations** zone (right)
-4. Enter the **operator**, **camera model**, **picture profile** and notes if
+4. Enter the **operator**, **camera**, **profile** and notes if
    needed — globally, or per card
 5. Choose a **copy mode** (below)
 6. Build the **folder structure** from the **Insert** menu, or load a template
@@ -321,9 +339,9 @@ still load.
 
 **Example**: `001_A001_JohnDoe_SonyFX3_260429_1435`
 
-`{pp}` is the picture profile the camera was set to. The field suggests the
-usual ones (`SLOG3`, `DLOG2`, `CLOG`, `LOGC4`, `VLOG`, `HLG`...) and accepts
-anything else you type. Spaces and punctuation are dropped and the value is
+`{pp}` is the picture profile the camera was set to. The Profile menu offers
+the usual ones (`SLOG3`, `CLOG3`, `VLOG`, `FLOG2`, `LOGC4`, `HLG`...) and
+accepts anything else you type. Spaces and punctuation are dropped and the value is
 written in capitals, so `s-log 3` and `SLog3` both become `SLOG3`: one shoot
 never ends up with two folders for the same profile. Like every other field it
 is optional, and left empty it creates no folder and no leftover separator.

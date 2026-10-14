@@ -196,13 +196,16 @@ const run = (card, dst, o) => call('start-copy', {
     const leaf = R[0].destPath;
 
     // The fixture must really contain what the test claims to be about.
-    ok(fs.existsSync(path.join(leaf, '001_note.txt')), 'the shooting note was written');
+    ok(fs.existsSync(path.join(leaf, '001_note.md')), 'the shooting note was written, as markdown (2.8.0)');
+    ok(!fs.existsSync(path.join(leaf, '001_note.txt')), 'and no longer as .txt');
+    ok(fs.readFileSync(path.join(leaf, '001_note.md'), 'utf8').startsWith('# ingesto - Shooting Note\n'),
+       'its first line is the header as a markdown title');
     ok(fs.existsSync(path.join(leaf, 'ascmhl')), 'the ASC MHL history was written');
 
     const v = await call('verify-folder', leaf);
     ok(v.matched === 2 && v.corrupted.length === 0 && v.missing.length === 0,
        'the two clips verify clean');
-    ok(!v.extra.includes('001_note.txt'),
+    ok(!v.extra.includes('001_note.md'),
        'the shooting note is not listed as an unknown file');
     ok(!v.extra.some(f => f.startsWith('ascmhl/')),
        'no ASC MHL file is listed as an unknown file (' + JSON.stringify(v.extra) + ')');
@@ -215,6 +218,19 @@ const run = (card, dst, o) => call('start-copy', {
     ok(v2.extra.includes('002_note.txt'),
        'a *_note.txt without the INGESTO header is still reported');
     fs.unlinkSync(path.join(leaf, '002_note.txt'));
+    fs.writeFileSync(path.join(leaf, '002_note.md'), '# my own notes');
+    const v2b = await call('verify-folder', leaf);
+    ok(v2b.extra.includes('002_note.md'),
+       'a *_note.md without the INGESTO header is still reported');
+    fs.unlinkSync(path.join(leaf, '002_note.md'));
+
+    // Folders written by 2.7 and earlier carry the .txt note. They must still
+    // verify clean after the update, or every old ingest turns red.
+    fs.writeFileSync(path.join(leaf, '000_note.txt'),
+                     'ingesto - Shooting Note\n----------------------------------------\nold');
+    const vOld = await call('verify-folder', leaf);
+    ok(!vOld.extra.includes('000_note.txt'), 'a 2.7 note (.txt) is still recognised as ours');
+    fs.unlinkSync(path.join(leaf, '000_note.txt'));
 
     // Only at the root. A note-looking file inside a card subfolder is media
     // territory and stays visible.

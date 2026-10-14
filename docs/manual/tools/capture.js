@@ -24,11 +24,11 @@ const VOLS = [
 const fl = (pfx, n, sz) => Array.from({ length: n }, (_, i) => ({ path: `XDROOT/Clip/${pfx}${String(i + 1).padStart(3, '0')}.MXF`, size: sz }));
 const REC = [
   { n:'001', date:'24.09.2026 09:12', card:'A001', folder:'001_A001_ALEX_FX6_260924_0912', operator:'ALEX', cam:'FX6', pp:'SLOG3',
-    mode:'Secure', modeClass:'m-secure', files:168, bytes:26.4e9, result:'OK', rclass:'r-ok', copyMs:412000, v1Ms:251000, v2Ms:0, note:'Interviews', fileList: fl('A001C', 6, 4.4e9) },
+    mode:'Secure', modeClass:'m-secure', files:168, bytes:26.4e9, result:'OK', rclass:'r-ok', copyMs:412000, v1Ms:251000, v2Ms:0, note:'**Interviews**, room B', fileList: fl('A001C', 6, 4.4e9) },
   { n:'002', date:'24.09.2026 11:31', card:'B001', folder:'002_B001_MARC_FX3_260924_1131', operator:'MARC', cam:'FX3', pp:'SLOG3',
     mode:'PRO · xxHash64', modeClass:'m-pro', files:92, bytes:14.1e9, result:'OK', rclass:'r-ok', copyMs:221000, v1Ms:139000, v2Ms:120000, note:'B-roll' },
   { n:'003', date:'24.09.2026 15:02', card:'A002', folder:'003_A002_ALEX_FX6_260924_1502', operator:'ALEX', cam:'FX6', pp:'SLOG3',
-    mode:'Secure', modeClass:'m-secure', files:121, bytes:19.8e9, result:'OK', rclass:'r-ok', copyMs:318000, v1Ms:190000, v2Ms:0, note:'' },
+    mode:'Secure', modeClass:'m-secure', files:121, bytes:19.8e9, result:'OK', rclass:'r-ok', copyMs:318000, v1Ms:190000, v2Ms:0, note:'**Exteriors**, car park\n- [x] Sound checked' },
 ];
 
 async function open(browser, { width = 1500, height = 940, startNever = false, prefs = {} } = {}) {
@@ -96,6 +96,8 @@ async function loadCardDest(p, cards = ['A001'], dsts = ['RAID_SHOOT', 'NAS_BACK
   }, { cards, dsts });
   await wait(p, 1500);
 }
+// La note de demo, en markdown depuis la 2.8.0.
+const NOTE_DEMO = '### Day 1\n**Interviews**, room B\n- [x] Sound checked\n- [ ] Copy card B';
 const DEST_PREFS = { destPaths: [{ path: '/Volumes/RAID_SHOOT', name: 'RAID_SHOOT' }, { path: '/Volumes/NAS_BACKUP', name: 'NAS_BACKUP' }] };
 
 const S = {};
@@ -104,7 +106,7 @@ S['01-first-launch'] = async b => { const p = await open(b); await shot(p, '01-f
 
 S['02-ready'] = async b => {
   const p = await open(b); await loadCardDest(p);
-  await p.evaluate(() => { const n = document.querySelector('#src-info-list textarea'); if (n) { n.value = 'Interviews, day 1'; n.dispatchEvent(new Event('input', { bubbles: true })); } });
+  await p.evaluate((NOTE) => { const n = document.querySelector('#src-info-list textarea'); if (n) { n.value = NOTE; n.dispatchEvent(new Event('input', { bubbles: true })); } }, NOTE_DEMO);
   await shot(p, '02-ready');
 };
 
@@ -223,7 +225,9 @@ S['26-kiosk'] = async b => {
   await p.evaluate(() => addToZone('dst', { path: '/Volumes/RAID_SHOOT', name: 'RAID_SHOOT' }));
   await p.evaluate(() => addToZone('src', { path: '/Volumes/A001', name: 'A001' }));
   await wait(p, 1200);
-  await p.evaluate(() => { const o = document.getElementById('k-op'); o.value = 'ALEX'; o.dispatchEvent(new Event('input', { bubbles: true })); });
+  // The destination is added AFTER entering kiosk here, which a real station
+  // never does: redraw the card number the scan of that destination changed.
+  await p.evaluate(() => { const o = document.getElementById('k-op'); o.value = 'ALEX'; o.dispatchEvent(new Event('input', { bubbles: true })); renderKioskCounter(); });
   await shot(p, '26b-kiosk-card', '#kiosk-ov > *');
 };
 S['27-kiosk-result'] = async b => {
@@ -240,7 +244,7 @@ S['28-unformatted'] = async b => {
 
 S['30-crops'] = async b => {
   let p = await open(b); await loadCardDest(p, ['A001', 'A002']);
-  await p.evaluate(() => { const n = document.querySelector('#src-info-list textarea'); if (n) { n.value = 'Interviews, day 1'; n.dispatchEvent(new Event('input', { bubbles: true })); } });
+  await p.evaluate((NOTE) => { const n = document.querySelector('#src-info-list textarea'); if (n) { n.value = NOTE; n.dispatchEvent(new Event('input', { bubbles: true })); } }, NOTE_DEMO);
   await region(p, '30-card-details', '#src-info-title', '#src-info-list');
   await region(p, '31-dest-list', '#dst-zone', '#dst-list');
   await p.click('#ins-btn'); await wait(p, 600);
@@ -255,6 +259,23 @@ S['30-crops'] = async b => {
     { name: 'Short', tokens: tok('{counter} _ {cardname}') }, null, null] } });
   await loadCardDest(p);
   await region(p, '34-templates', '#presets-row', '#presets-row');
+};
+
+
+// 2.8.0 : le menu Profile, la liste des operateurs de la session, la note en markdown.
+S['35-fields'] = async b => {
+  const p = await open(b); await loadCardDest(p, ['A001'], ['RAID_SHOOT']);
+  await p.evaluate((NOTE) => { const n = document.querySelector('#src-info-list textarea'); n.value = NOTE; n.dispatchEvent(new Event('input', { bubbles: true })); }, NOTE_DEMO);
+  await p.click('#sic-0 .pp-btn'); await wait(p, 600);
+  await region(p, '35-pp-menu', '#sic-0 .pp-btn', '#pp-menu', 8);
+  await p.keyboard.press('Escape');
+  await p.evaluate(() => rememberOperators(['LEA', 'MARC', 'MARIE', 'ALEX']));
+  const op = p.locator('#sic-0 .op-cb input'); await op.fill(''); await op.type('MA'); await wait(p, 500);
+  await region(p, '36-op-list', '#sic-0 .op-cb', '#op-list', 8);
+  await p.keyboard.press('Escape'); await op.fill('ALEX'); await p.locator('body').click({ position: { x: 700, y: 20 } });
+  await region(p, '37-notes', '#sic-0 .mdn', '#sic-0 .mdn', 6);
+  await p.click('#sic-0 .mdn-sw button[data-m="md"]'); await wait(p, 400);
+  await region(p, '38-notes-md', '#sic-0 .mdn', '#sic-0 .mdn', 6);
 };
 
 // Le logo de la couverture : celui de la barre de titre de l'appli.

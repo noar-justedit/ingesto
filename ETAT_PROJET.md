@@ -9,11 +9,15 @@ caméra vers plusieurs destinations à la fois et vérifie chaque fichier (DIT,
 tournage). Mac, Windows et Linux. Dépôt : github.com/noar-justedit/ingesto.
 Auteur : Noar (Arnaud Augst, Just Edit).
 
-- Version du dossier : **2.7.3** (03.10.2026). Rien ne change dans l'application
-  par rapport à la 2.7.2 : la 2.7.3 met en place le suivi du projet et la
-  publication par `scripts/push_github.command`.
+- Version du dossier : **2.8.0** (13.10.2026) : Electron 44, notes en
+  markdown, menu des picture profiles, liste des opérateurs de la session,
+  Operator / Camera / Profile sur une ligne (Copy Info, cartes, kiosk).
+- La 2.7.3 (suivi du projet, `push_github.command`) a été préparée mais n'était
+  pas sur GitHub au 13.10 : la 2.8.0 la contient.
 - Dernière version publiée avec binaires : 2.7.2 (tags GitHub `vX.Y.Z`).
-- Tests : `npm test`, 30 suites, 1832 vérifications (1826 en 2.7.2, plus 6 pour les deux scripts de publication), toutes vertes au 03.10.2026.
+- Electron **44.7.1** : **macOS 13 Ventura minimum** (les 2.7 tournent encore
+  sur macOS 12), Windows 10/11 64 bits, Linux x64.
+- Tests : `npm test`, 31 suites, 1890 vérifications, toutes vertes au 13.10.2026.
 
 ## Emplacements de la version
 À mettre à jour ensemble à chaque bump, puis vérifier avec
@@ -28,7 +32,7 @@ Auteur : Noar (Arnaud Augst, Just Edit).
 4. `CHANGELOG.md` : nouvelle entrée.
 
 Hors liste, volontairement : le manuel (`docs/manual/`) porte le numéro de la
-version qu'il décrit (2.7.2 aujourd'hui). Il se met à jour quand on le
+version qu'il décrit (2.8.0 aujourd'hui). Il se met à jour quand on le
 régénère (`docs/manual/tools/README.md`), pas à chaque bump.
 
 ## Règles propres à ingesto (s'ajoutent à `AGENTS.md`)
@@ -88,7 +92,9 @@ CHECK tailles, SECURE relecture sans cache + xxHash64, PRO SECURE + manifestes
 ## Publier une version
 1. Noar confirme le numéro ; bump de tous les emplacements ci-dessus.
 2. `npm test` vert. Note de version en anglais pour la Release (titre
-   `# ingesto X.Y.Z`, sections par thème, section `## Tests` avec le compte réel).
+   `# ingesto X.Y.Z`, sections par thème, section `## Tests` avec le compte réel),
+   écrite dans `docs/notes/releases/RELEASE_NOTE_X.Y.Z.md` et livrée dans le ZIP
+   (décision de Noar du 12.10.2026). Noar la colle dans la Release GitHub.
 3. Livraison de `ingesto_vX.Y.Z.zip`.
 4. Noar décompresse, double-clique `scripts/push_github.command` : le code part,
    `version.json` est retenu.
@@ -108,6 +114,25 @@ CHECK tailles, SECURE relecture sans cache + xxHash64, PRO SECURE + manifestes
   de GitHub ne supprimait rien et perdait le bit exécutable des scripts.
 - **Scripts de build renommés en `build_*.command`** (03.10.2026) : convention
   commune aux projets de Noar.
+- **Electron 44** (10.10.2026, appliqué en 2.8.0) : décision de Noar.
+  Conséquence acceptée : macOS 12 n'est plus pris en charge.
+- **Notes en markdown** (13.10.2026, 2.8.0) : fichier `001_note.md` (en-tête
+  markdown, valeurs échappées). Verify reconnaît `_note.md` ET `_note.txt`,
+  sinon les dossiers des versions 2.7 passeraient au rouge. Le champ reste un
+  `<textarea>` qui porte le markdown ; la vue mise en forme est construite
+  autour (`mdnInit`) : tout le code qui lit `.value` est inchangé. Le
+  souligné, absent du markdown, est écrit `<u>texte</u>` (choix de Noar).
+  Rapport HTML et historique : note mise en forme par `mdToHtml()`, qui
+  échappe tout d'abord. CSV et ntfy : markdown brut. Mode Aa/MD unique pour
+  tous les champs, gardé dans les préférences (`noteMode`).
+- **Menu Profile** (13.10.2026, 2.8.0) : liste figée dans `PP_GROUPS`, à
+  compléter au fil des retours. `DLOG2` et `RLOG` de l'ancienne liste n'y
+  sont plus (non confirmés comme profils réels) : toujours possibles via le
+  champ libre du menu.
+- **Liste des opérateurs** (13.10.2026, 2.8.0) : en mémoire seulement
+  (`S.sessionOps`), jamais dans les préférences, remplie au START, 30 noms
+  maximum, aussi en kiosk. Le dernier opérateur reste pré-rempli au lancement,
+  comme depuis la 2.7.1.
 - **Suivi du projet public** (03.10.2026) : `docs/notes/` et les fichiers de
   suivi sont dans le dépôt pour qu'une autre IA reprenne avec le ZIP seul.
   Aucun secret dedans (vérifié : seulement des noms de profil de trousseau).
@@ -130,6 +155,13 @@ CHECK tailles, SECURE relecture sans cache + xxHash64, PRO SECURE + manifestes
   extension semblent mordre sur leur libellé (vu sur le harnais seulement).
 - `test-ascmhl.js` saute 4 cas sans `pip install ascmhl` : normal.
 
+- **Notes markdown lues ailleurs** : deux lignes qui se suivent forment un seul
+  paragraphe dans certains lecteurs markdown (GitHub, par exemple) ; ingesto et
+  Obsidian les affichent sur deux lignes.
+- La mise en forme dans l'éditeur passe par `document.execCommand`, déclarée
+  obsolète par les navigateurs mais toujours présente dans Chromium. À
+  remplacer si elle disparaît un jour.
+
 ## Pièges pour qui modifie le code
 - `index.html` contient aussi le gabarit du rapport HTML dans une chaîne :
   attention aux remplacements globaux. Les retouches de style vont dans le bloc
@@ -140,6 +172,10 @@ CHECK tailles, SECURE relecture sans cache + xxHash64, PRO SECURE + manifestes
   objet est lu comme un refus.
 - `test-p0.js` / `test-ascmhl.js` extraient des fonctions de `main.js` dans un
   contexte `vm` : une nouvelle fonction appelée par elles doit y être ajoutée.
+- `#meta-pp`, `#k-pp` et les profils des cartes sont des `<input>` cachés, et
+  les notes des `<textarea>` : le bouton et la vue mise en forme suivent leur
+  `.value` grâce à `hookValue()`. Écrire `.value` par script suffit, ne pas
+  toucher au bouton ni à la vue directement.
 - Un fichier qui change seulement de droits d'exécution est presque toujours un
   accident de décompression : `push_github.command` le signale avant l'envoi.
 

@@ -192,28 +192,36 @@ console.log('\na file being SKIPPED is not residue, even when it is named like r
 
 console.log('\nthe shooting note never replaces a file the card carried');
 {
-  // writeFileAtomic renames onto its target. A card holding "001_note.txt" had
+  // writeFileAtomic renames onto its target. A card holding "001_note.md" had
   // that file replaced by the note: silently in FAST, and in SECURE it was the
   // NOTE that got quarantined while the card's file was still missing.
   const card = fresh('c-note'), dst = fresh('d-note');
-  mk(card, { '001_note.txt': 'THE CARD OWN FILE', 'A.MOV': 'clip' });
+  mk(card, { '001_note.md': 'THE CARD OWN FILE', 'A.MOV': 'clip' });
   const r = (await run(card, dst, { mode: 'slow' }, { note: 'Jour 3, plateau B.' }))[0];
   ok(r.success === true && r.errors === 0, 'the run succeeds');
-  ok(fs.readFileSync(path.join(r.destPath, '001_note.txt'), 'utf8') === 'THE CARD OWN FILE',
+  ok(fs.readFileSync(path.join(r.destPath, '001_note.md'), 'utf8') === 'THE CARD OWN FILE',
      'the card\'s own file is still its own');
-  const alt = fs.readdirSync(r.destPath).find(n => /^001-\d+_note\.txt$/.test(n));
+  const alt = fs.readdirSync(r.destPath).find(n => /^001-\d+_note\.md$/.test(n));
   ok(!!alt, 'the shooting note went to a free name (' + alt + ')');
-  ok(fs.readFileSync(path.join(r.destPath, alt || 'nope'), 'utf8').startsWith('ingesto - Shooting Note'),
+  ok(fs.readFileSync(path.join(r.destPath, alt || 'nope'), 'utf8').startsWith('# ingesto - Shooting Note'),
      'and it is the note');
-  // The suffix must sit before "_note.txt": Verify recognises our note by that
-  // ending, so "001_note.txt-2" would be reported as a stranger for ever.
-  ok(/_note\.txt$/.test(alt || ''), 'and Verify will still recognise it as ours');
+  // The suffix must sit before "_note.md": Verify recognises our note by that
+  // ending, so "001_note.md-2" would be reported as a stranger for ever.
+  ok(/_note\.md$/.test(alt || ''), 'and Verify will still recognise it as ours');
   ok((r.notes || []).some(n => n.code === 'CV-10'), 'a remark says what happened');
   // And with no clash the note keeps its plain name.
   const card2 = fresh('c-note2'), dst2 = fresh('d-note2');
   mk(card2, { 'A.MOV': 'clip' });
   const r2 = (await run(card2, dst2, { mode: 'slow' }, { note: 'ok' }))[0];
-  ok(fs.existsSync(path.join(r2.destPath, '001_note.txt')), 'normally it is 001_note.txt');
+  ok(fs.existsSync(path.join(r2.destPath, '001_note.md')), 'normally it is 001_note.md');
+  // The header values are escaped: a card called "A_001" must not turn
+  // italic in a markdown viewer, and the note itself is written as typed.
+  const card3 = fresh('c-note3'), dst3 = fresh('d-note3');
+  mk(card3, { 'A.MOV': 'clip' });
+  const r3 = (await run(card3, dst3, { mode: 'slow' }, { name: 'A_001', note: '**Bold** and\r\n- [ ] to do' }))[0];
+  const md3 = fs.readFileSync(path.join(r3.destPath, '001_note.md'), 'utf8');
+  ok(md3.includes('- **Card:** A\\_001\n'), 'the card name is escaped in the header (A\\_001)');
+  ok(md3.includes('**Bold** and\n- [ ] to do'), 'the note is written as typed, line endings made plain');
   ok(!(r2.notes || []).some(n => n.code === 'CV-10'), 'with no remark');
 }
 

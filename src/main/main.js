@@ -596,18 +596,25 @@ function isIngestoTemp(name) { return name.endsWith(ATOMIC_TMP_SUFFIX); }
 // manifest: a text file people open and correct would then be read back as
 // "corrupted". Recognised by its name AND by its first line, so a rush that
 // happens to be called "001_note.txt" is never waved through on the name alone.
+// Since 2.8.0 the note is markdown, "001_note.md", and its first line is the
+// same header as a level-1 title. Folders written by 2.7 and earlier hold the
+// .txt form: both stay ours.
 const NOTE_HEADER = 'ingesto - Shooting Note';
 function isShootingNote(rel, abs) {
-  if (!/^[^/]*_note\.txt$/.test(rel)) return false;   // root of the folder only
+  if (!/^[^/]*_note\.(txt|md)$/.test(rel)) return false;   // root of the folder only
   if (!abs) return false;
   try {
     const fd = fs.openSync(abs, 'r');
     const buf = Buffer.alloc(64);
     let n = 0;
     try { n = fs.readSync(fd, buf, 0, 64, 0); } finally { fs.closeSync(fd); }
-    return buf.subarray(0, n).toString('utf8').startsWith(NOTE_HEADER);
+    const head = buf.subarray(0, n).toString('utf8');
+    return /\.md$/.test(rel) ? head.startsWith('# ' + NOTE_HEADER) : head.startsWith(NOTE_HEADER);
   } catch (_) { return false; }
 }
+// A value from the interface written into the markdown header of the note:
+// "A_001" or "*B*" must read as typed, not as italics.
+function mdEscapeText(v) { return String(v == null ? '' : v).replace(/[\\`*_{}\[\]<>#|~]/g, '\\$&'); }
 function isIngestoSidecar(rel, destBase, abs) {
   // `rel` is the path RELATIVE TO THE DESTINATION FOLDER, forward slashes, and
   // it keeps its folders: the ASC MHL test below needs them. Passing a
@@ -2611,35 +2618,37 @@ async function performCopyMulti(source, destinations, options, onProgress) {
     // put the note outside the destination folder. Every other write of the
     // engine already checks this; this one did not.
     const counterSafe = String(source.counter || '001').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) || '001';
-    const noteFileName = `${counterSafe}_note.txt`;
-    const sep = '-'.repeat(40);
+    // Markdown since 2.8.0: the note is typed formatted or as markdown in the
+    // interface, and it is written as it was typed, under a header that any
+    // markdown viewer lays out.
+    const noteFileName = `${counterSafe}_note.md`;
     const noteContent = [
-      'ingesto - Shooting Note', sep,
-      'Date    : ' + new Date().toLocaleString(),
-      'Counter : ' + (source.counter || '001'),
-      'Card    : ' + source.name,
-      'Operator: ' + (source.cameraman || 'Unknown'),
-      'Camera  : ' + (source.camera || 'Unknown'),
-      'Profile : ' + (source.pp || 'Unknown'),
-      sep, '', srcNote.trim(), ''
+      '# ' + NOTE_HEADER, '',
+      '- **Date:** ' + mdEscapeText(new Date().toLocaleString()),
+      '- **Counter:** ' + mdEscapeText(source.counter || '001'),
+      '- **Card:** ' + mdEscapeText(source.name),
+      '- **Operator:** ' + mdEscapeText(source.cameraman || 'Unknown'),
+      '- **Camera:** ' + mdEscapeText(source.camera || 'Unknown'),
+      '- **Profile:** ' + mdEscapeText(source.pp || 'Unknown'),
+      '', '---', '', srcNote.trim().replace(/\r\n?/g, '\n'), ''
     ].join('\n');
     for (const r of R) {
       if (!r.active) continue;
       // Never over a file this run delivered. writeFileAtomic renames onto its
-      // target, so a card carrying "001_note.txt" of its own had that file
+      // target, so a card carrying "001_note.md" of its own had that file
       // replaced by the note: silently in FAST, and in SECURE the NOTE was the
       // one quarantined while the card's file was still missing from the
-      // folder. The note steps aside to "001-2_note.txt" instead.
+      // folder. The note steps aside to "001-2_note.md" instead.
       //
-      // The suffix goes BEFORE "_note.txt", not at the end of the path: Verify
-      // recognises our own note by a name ending in "_note.txt", so a note
-      // called "001_note.txt-2" would be reported as a stranger for ever.
+      // The suffix goes BEFORE "_note.md", not at the end of the path: Verify
+      // recognises our own note by a name ending in "_note.md", so a note
+      // called "001_note.md-2" would be reported as a stranger for ever.
       let notePath = path.join(r.destPath, noteFileName);
       if (r.copied.some(c => c.dest === notePath)) {
         const stem = counterSafe;
-        notePath = path.join(r.destPath, `${stem}-${Date.now()}_note.txt`);
+        notePath = path.join(r.destPath, `${stem}-${Date.now()}_note.md`);
         for (let i = 2; i < 1000; i++) {
-          const cand = path.join(r.destPath, `${stem}-${i}_note.txt`);
+          const cand = path.join(r.destPath, `${stem}-${i}_note.md`);
           if (!fs.existsSync(cand) && !r.copied.some(c => c.dest === cand)) { notePath = cand; break; }
         }
         (r.notes || (r.notes = [])).push({
