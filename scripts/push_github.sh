@@ -1,7 +1,8 @@
 #!/bin/bash
 #
-# Publishes this folder to GitHub so that the repository becomes exactly its
-# content: added, changed AND removed files. Launched by push_github.command.
+# Publishes this folder to GitHub so that the repository becomes its content:
+# added, changed AND removed files, except the private tracking files listed
+# in PRIVATE below. Launched by push_github.command.
 #
 # Why this script exists: the GitHub web uploader never deletes a file and
 # drops the executable bit of the scripts (it happened, fixed by dd8a2f7 on
@@ -96,6 +97,13 @@ fi
 
 # Stage this folder against the clone: adds, changes and removals at once.
 "${GIT[@]}" add -A || fail "git n'a pas pu lire le dossier."
+# Files that only concern Noar and the AI working on the project: they travel
+# in the ZIP, so the development can be picked up from it, but they are not
+# published. Already on GitHub (2.8.0)? They are removed there, and the list
+# below shows them as D.
+PRIVATE=(CLAUDE.md AGENTS.md ETAT_PROJET.md docs/notes)
+"${GIT[@]}" rm -r -q --cached --ignore-unmatch -- "${PRIVATE[@]}" >/dev/null \
+  || fail "impossible d'ecarter les fichiers de suivi (${PRIVATE[*]})."
 HOLD_VERSION=""
 if [ "$RELEASE_OK" != "yes" ]; then
   if ! "${GIT[@]}" diff --cached --quiet -- version.json 2>/dev/null; then
@@ -116,6 +124,8 @@ if "${GIT[@]}" diff --cached --quiet; then
   exit 0
 fi
 
+echo
+echo "Restent hors de GitHub (dans le ZIP seulement) : ${PRIVATE[*]}"
 echo
 echo "Changements qui vont partir sur GitHub :"
 echo "  (A ajoute, M modifie, D supprime, R renomme)"

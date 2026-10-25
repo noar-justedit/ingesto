@@ -113,7 +113,7 @@ console.log('\na clip rewritten in place, same size, is caught too');
 
   ok(r.success === false && r.failedFiles.includes('REWRITTEN.MOV'), 'reported as failed');
   ok(!fs.existsSync(path.join(r.destPath, 'REWRITTEN.MOV')), 'and not delivered');
-  ok(/written again while INGESTO was reading it/.test(
+  ok(/written again while ingesto was reading it/.test(
        (r.errorList.find(e => e.file === 'REWRITTEN.MOV') || {}).error || ''),
      'and the message says the file was rewritten');
 }
@@ -132,7 +132,7 @@ console.log('\na clip cut short the instant the read finished is caught too');
 
   ok(r.success === false && r.failedFiles.includes('CUT.MOV'), 'reported as failed');
   ok(!fs.existsSync(path.join(r.destPath, 'CUT.MOV')), 'and not delivered');
-  ok(/was 4\.0 KB when the card was scanned and is 100 bytes now/.test(
+  ok(/was 4\.1 KB when the card was scanned and is 100 bytes now/.test(
        (r.errorList.find(e => e.file === 'CUT.MOV') || {}).error || ''),
      'and the message gives both sizes in plain units');
   ok(fs.existsSync(path.join(r.destPath, 'STILL.MOV')), 'the rest of the card is delivered');

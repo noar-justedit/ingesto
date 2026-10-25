@@ -422,9 +422,9 @@ console.log('\nan ingest history line opens on its details');
     date:'24.09.2026 09:12', files:168, bytes:26.4e9, copyMs:40000, v1Ms:30000, v2Ms:0,
     mode:'Secure', operator:'NOAR', cam:'FX6', pp:'SLOG3', note:'Interviews', rclass:'r-ok' } });
   ok(/24\.09\.2026 09:12/.test(html) && />168</.test(html), 'date and time, number of files');
-  ok(/24\.6 GB/.test(html), 'total size');
+  ok(/26\.4 GB/.test(html), 'total size, in decimal units like the Finder (26.4e9 bytes is 26.4 GB)');
   ok(/>1m10s</.test(html), 'duration: copy plus verification');
-  ok(/629\.\d MB\/s/.test(html), 'copy speed: size over copy time');
+  ok(/660\.0 MB\/s/.test(html), 'copy speed: size over copy time');
   ok(/RAID_SHOOT, NAS_BACKUP/.test(html), 'every destination, named');
   ok(/copy 40s · verify 30s/.test(html) && !/source re-read/.test(html), 'the phases that ran, and only those');
   ok(/NOAR · FX6 · SLOG3/.test(html) && /Interviews/.test(html), 'who, which camera, which profile, the note');
@@ -591,7 +591,7 @@ console.log('\nthe ingest history can be cleared, and nothing on a drive is eras
     Map, Set, Array, String, Number, Promise, Date, console,
   });
   vm.runInContext('let _sessBusy=false,_sessAgain=false,_sessRows=[];', ctx3);
-  for (const f of ['historyKey', 'refreshSessionLog', 'clearIngestHistory', 'restoreIngestHistory'])
+  for (const f of ['tr', 'historyKey', 'refreshSessionLog', 'clearIngestHistory', 'restoreIngestHistory'])
     vm.runInContext(extractFn(REND, f), ctx3);
   const settle = () => new Promise(r => setTimeout(r, 20));
 
@@ -630,6 +630,48 @@ console.log('\nthe ingest history can be cleared, and nothing on a drive is eras
                           REND.indexOf('S.historyHidden = Array.isArray(prefs.historyHidden)') + 220);
   ok(/typeof k === 'string'/.test(load) && /slice\(-5000\)/.test(load),
      'only strings are read back from the preferences, and at most 5000');
+}
+
+console.log('\nthe history says VERIFIED only when the copy was read back (2.9.1)');
+{
+  // renderSessionLog() run on three records, its HTML read back.
+  const c = vm.createContext({ S: { historyHidden: [] }, _sessOpen: new Set(), historyKey: r => r.n,
+    esc: x => String(x == null ? '' : x).replace(/[&<>"]/g, ''), fmtSize: () => '1 GB', sessDetails: () => '',
+    SESS_ICON: { 'r-ok': '', 'r-err': '', 'r-suspect': '' }, Number, String, Array, Set, Math,
+    document: { getElementById: (id) => (c.__els[id] = c.__els[id] || { innerHTML: '', textContent: '', disabled: false, querySelectorAll: () => [] }) },
+    __els: {} });
+  vm.runInContext(extractFn(REND, 'renderSessionLog'), c);
+  const row = (n, modeClass, rclass) => ({ rec: { n, card: 'A' + n, modeClass, rclass: rclass || 'r-ok' }, drives: ['D'] });
+  c.renderSessionLog([row('1', 'm-fast'), row('2', 'm-sizecheck'), row('3', 'm-secure'), row('4', 'm-pro'), row('5', 'm-fast', 'r-err')]);
+  const html = c.__els['sess-list'].innerHTML;
+  const badges = [...html.matchAll(/>(VERIFIED|COPIED|FAILED|SUSPECT)</g)].map(m => m[1]);
+  ok(badges.join(',') === 'COPIED,COPIED,VERIFIED,VERIFIED,FAILED',
+     'FAST and SIZE CHECK: COPIED; SECURE and PRO: VERIFIED; an error: FAILED (' + badges.join(',') + ')');
+}
+
+console.log('\none format for sizes, durations and dates (2.9.1)');
+{
+  const f = vm.createContext({ Math, String, isFinite, Number });
+  vm.runInContext(['fmtSize', 'fmtSizePair', 'fmtEta', 'fmtReportDur', 'fmtReportDate'].map(n => extractFn(REND, n)).join('\n'), f);
+  ok(f.fmtSize(128e9) === '128.0 GB', 'a 128 GB card reads 128.0 GB, as in the Finder (' + f.fmtSize(128e9) + ')');
+  ok(f.fmtSize(512) === '512 B' && f.fmtSize(1500) === '1.5 KB', 'small sizes too');
+  ok(/64\.0 GB/.test(f.fmtSizePair(64e9, 128e9)) && /128\.0 GB/.test(f.fmtSizePair(64e9, 128e9)), 'the pair shares the same decimal scale (' + f.fmtSizePair(64e9, 128e9) + ')');
+  ok(f.fmtEta(663) === '11m03s' && f.fmtEta(663) === f.fmtReportDur(663000), 'durations are spelled the same in the window and the report (11m03s)');
+  ok(f.fmtEta(3900) === '1h05m' && f.fmtEta(3900) === f.fmtReportDur(3900000), 'and past an hour (1h05m)');
+  ok(/^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}$/.test(f.fmtReportDate('2026-09-24T07:12:00Z')), 'dates read DD.MM.YYYY HH:MM');
+  ok(/const dateStr=`\$\{p\(now\.getDate\(\)\)\}\.\$\{p\(now\.getMonth\(\)\+1\)\}\.\$\{now\.getFullYear\(\)\}/.test(REND), 'and each report line carries the year');
+  ok(/dateStr = fmtReportDate\(d\.toISOString\(\)\)/.test(REND), 'and so does the "not formatted since" window');
+}
+
+console.log('\nleaving kiosk mode redraws the main window (2.9.1)');
+{
+  const fn = extractFn(REND, 'applyKioskMode');
+  const exit = fn.slice(fn.indexOf('} else {'));
+  ok(/renderZoneList\('src'\)/.test(exit) && /renderSourceInfoCards\(\)/.test(exit) && /updateBtn\(\)/.test(exit),
+     'the source list, the card panel and the button are redrawn');
+  const start = extractFn(REND, 'onStartBtn');
+  ok(/if\(!S\.sources\.length \|\| !S\.dests\.length\)\{ updateBtn\(\); return; \}/.test(start),
+     'and START with no card or no destination does nothing');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

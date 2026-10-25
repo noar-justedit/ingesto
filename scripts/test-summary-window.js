@@ -78,7 +78,7 @@ vm.runInContext([
   // The real failure grouping, so "thirty corrupt files are ONE line" is a fact
   // this suite can check rather than a claim in a comment.
   extractFn(REND, 'humanErrno'), extractFn(REND, 'buildFailureGroups'),
-  extractFn(REND, 'driveNameOf'), extractFn(REND, 'failureVerdict'),
+  extractFn(REND, 'tr'), extractFn(REND, 'driveNameOf'), extractFn(REND, 'failureVerdict'),
   // Wrapped, not stubbed: the gate inside it is what decides whether a DIT is
   // offered the button that comes just before formatting the card.
   // The flag is set where the function stops being a gate and starts offering
@@ -133,7 +133,7 @@ console.log('\nSECURE, one card, nothing skipped');
      'row 1 is what was moved: ' + JSON.stringify(tiles(v.grid)));
   ok(JSON.stringify(tiles(v.grid2)) === '["Copy","Verify","Total","Avg speed"]',
      'row 2 is the tempos then the speed: ' + JSON.stringify(tiles(v.grid2)));
-  ok(!/2nd read/.test(v.grid2), 'no second-read tile: SECURE never reads the card twice');
+  ok(!/Re-read/.test(v.grid2), 'no second-read tile: SECURE never reads the card twice');
   ok(!/color:var\(--green\)/.test(v.grid2) && !/color:var\(--blue\)/.test(v.grid2),
      'the tempos carry no colour: they are measurements, not verdicts');
   ok(/color:var\(--orange\)/.test(v.grid), 'only the MODE tile is coloured');
@@ -160,17 +160,17 @@ console.log('\nPRO with the double read on');
   const v = show([card({ mode:'pro', proAlgo:'xxh128', proDoubleRead:true, verify2Ms:150000 })]);
   ok(v.title === 'ALL FILES COPIED & VERIFIED', 'same promise as SECURE');
   ok(/xxHash128/.test(v.sub), 'the algorithm the operator picked is named');
-  ok(/PRO<span class="sr-opt"> \+ DOUBLE READ<\/span>/.test(v.grid),
+  ok(/PRO<span class="sr-opt"> \+ CARD RE-READ<\/span>/.test(v.grid),
      'the option rides on the SAME line as the mode, smaller');
-  ok(JSON.stringify(tiles(v.grid2)) === '["Copy","Verify","2nd read","Total","Avg speed"]',
+  ok(JSON.stringify(tiles(v.grid2)) === '["Copy","Verify","Re-read","Total","Avg speed"]',
      'five tempo tiles: ' + JSON.stringify(tiles(v.grid2)));
   ok(/n5/.test(v.g2class), 'and the row switches to its tighter type size');
 }
 console.log('\nPRO without it says nothing at all about it');
 {
   const v = show([card({ mode:'pro', proAlgo:'xxh64', proDoubleRead:false })]);
-  ok(!/DOUBLE READ/.test(v.grid), 'never "double read: no"');
-  ok(!/2nd read/.test(v.grid2), 'and no empty tile reserved for it');
+  ok(!/CARD RE-READ/.test(v.grid), 'never "double read: no"');
+  ok(!/Re-read/.test(v.grid2), 'and no empty tile reserved for it');
 }
 
 console.log('\nfiles passed over: "ALL" has to go');

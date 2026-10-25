@@ -75,7 +75,7 @@ border-bottom:1px solid var(--border);z-index:100;gap:10px;
 }
 .t-logo{font-family:var(--font-logo);font-size:24px;font-weight:700;letter-spacing:.02em;text-transform:lowercase;-webkit-app-region:no-drag;display:flex;align-items:center;gap:0;}
 .t-logo .t-name{display:inline-block;color:var(--text);}
-.t-logo > span{color:var(--green);}
+.t-logo > span{color:var(--accent);}   /* the logo dot: violet everywhere (2.9.1) */
 .t-spacer{flex:1;}
 .t-filters{display:flex;gap:7px;-webkit-app-region:no-drag;}
 [data-tip]{position:relative;}
@@ -132,7 +132,7 @@ display:flex;align-items:center;gap:7px;animation:slideIn .18s ease;}
 .zi-badge{font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:4px;flex-shrink:0;border:1px solid transparent;}
 .zi-src .zi-badge{background:var(--red-d);color:var(--red);border-color:var(--red-g);}
 .zi-dst .zi-badge{background:var(--green-d);color:var(--green);border-color:var(--green-g);}
-/* A card INGESTO could not inspect. Without this the "already ingested" window
+/* A card ingesto could not inspect. Without this the "already ingested" window
    simply never opens, and the silence reads as "this card is new". */
 .zi-dot{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;
 margin-left:6px;border-radius:50%;background:var(--orange-d);color:var(--orange);
@@ -529,6 +529,12 @@ box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
 #start-btn.danger:not(:disabled){background:#341819;border-color:rgba(242,85,90,.5);color:var(--red);
 animation:btnGlowRed 1.9s ease-in-out infinite;}
 #start-btn:disabled{background:var(--bg3);color:var(--text3);cursor:not-allowed;border-color:transparent;}
+/* INSERT YOUR CARD — no card loaded: orange tint, breathing (2.9.0). */
+#start-btn.insert:disabled{background:#2c1f0e;border-color:rgba(242,160,61,.45);color:var(--orange);cursor:default;
+animation:btnGlowOrange 1.9s ease-in-out infinite;}
+@keyframes btnGlowOrange{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 6px 0 rgba(242,160,61,.32);}
+50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 18px 2px rgba(242,160,61,.75);}}
+@media (prefers-reduced-motion:reduce){#start-btn.insert:disabled{animation:none;}}
 @keyframes btnGlowRed{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 6px 0 rgba(242,85,90,.35);}
 50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 18px 2px rgba(242,85,90,.8);}}
 @keyframes btnGlowGreen{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 6px 0 rgba(53,201,139,.32);}
@@ -789,6 +795,12 @@ overflow:hidden;text-overflow:ellipsis;}
 /* Five tempo tiles leave about 88px each: the label shrinks before the value. */
 .sum-grid2.n5 .sr-lbl{font-size:9.5px;letter-spacing:.04em;}
 .sum-grid2.n5 .sr-val{font-size:13.5px;}
+/* A label longer than its tile (French "VÉRIFICATION", "DÉBIT MOYEN") goes on
+   two lines instead of being cut; the values stay on one baseline because each
+   tile puts its value at the bottom (2.9.1). English labels fit on one line. */
+.sum-grid2 .srow{display:flex;flex-direction:column;justify-content:space-between;}
+.sum-grid2 .sr-lbl{white-space:normal;overflow:hidden;text-overflow:clip;line-height:1.2;}
+.sum-grid2.n5 .sr-lbl{letter-spacing:0;}
 /* MODE tile: the only coloured one. The tempos are measurements, not verdicts.
    The option rides on the SAME line, smaller; without it, nothing is written. */
 .sr-mode{font-size:16px;font-weight:800;margin-top:3px;font-family:var(--mono);line-height:1.15;
@@ -967,7 +979,7 @@ overflow:auto;padding:30px 16px;}
 .k-card{width:100%;max-width:460px;background:var(--bg);border:1px solid #1f1f24;border-radius:14px;overflow:hidden;}
 .k-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--bg3);}
 .k-logo{font-weight:800;font-size:18px;letter-spacing:-.01em;color:var(--text);}
-.k-logo span{color:var(--blue);}
+.k-logo span{color:var(--accent);}
 .k-badge{font-size:10px;font-weight:700;letter-spacing:.13em;color:var(--green);background:var(--green-d);border:1px solid var(--green-g);padding:2px 8px;border-radius:4px;white-space:nowrap;}
 .k-cardno{font-size:12px;font-weight:800;letter-spacing:.08em;color:var(--blue);background:var(--blue-d);border:1px solid var(--accent-g);padding:2px 9px;border-radius:4px;font-family:var(--mono);white-space:nowrap;}
 .k-admin{margin-left:auto;}
@@ -1072,6 +1084,7 @@ text-wrap:balance;}
 .set-lbl{font-size:14px;color:var(--text);}
 .set-field{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
 .set-field label{width:64px;flex-shrink:0;font-size:13px;color:var(--text3);}
+.set-select{flex:1;background:var(--bg2);border:1px solid #26262c;border-radius:var(--rs);padding:9px 11px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;}
 .set-field input{flex:1;background:var(--bg2);border:1px solid #26262c;border-radius:var(--rs);padding:9px 11px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;}
 .set-field input:focus{border-color:var(--blue);}
 .set-hint{font-size:12px;color:var(--text3);line-height:1.5;margin:8px 0 14px;}
@@ -1370,6 +1383,12 @@ html,body{background:var(--page);}
 .drop-zone.dst-z{border-color:rgba(53,201,139,.28) !important;}
 .drop-zone.over.src-z{border-color:var(--red) !important;background:var(--red-d) !important;}
 .drop-zone.over.dst-z{border-color:var(--green) !important;background:var(--green-d) !important;}
+/* Nothing loaded yet (2.9.0): the empty zone is tinted, red for the cards,
+   green for the destinations, in the manner of Presto's RUNNING button. */
+.drop-zone.src-z.dz-empty:not(.over){background:rgba(242,85,90,.10) !important;border-color:rgba(242,85,90,.45) !important;}
+.drop-zone.dst-z.dz-empty:not(.over){background:rgba(53,201,139,.09) !important;border-color:rgba(53,201,139,.42) !important;}
+.drop-zone.src-z.dz-empty .dz-hint{color:#e7a0a2;}
+.drop-zone.dst-z.dz-empty .dz-hint{color:#8fd9b6;}
 
 
 /* 2. Le focus clavier n avait plus aucun repere : les regles de base posent
@@ -1552,6 +1571,10 @@ textarea.mdn-src::placeholder{color:#6f757f;}
 
 
 </style>
+<!-- Interface languages (2.9.0). index.html stays in English; i18n.js
+     replaces the visible texts. One file per language in lang/. -->
+<script src="lang/fr.js"></script>
+<script src="i18n.js"></script>
 </head>
 <body>
 <div id="app">
@@ -1579,7 +1602,7 @@ textarea.mdn-src::placeholder{color:#6f757f;}
 <div class="panel panel-left">
 <div class="panel-hd"><div class="hd-dot src"></div><h2 class="src-h">Sources</h2></div>
 <div class="panel-scroll" ondragover="onDZ(event,'src')" ondrop="dropDZ(event,'src')">
-<div class="drop-zone src-z lockable" id="src-zone"
+<div class="drop-zone src-z lockable dz-empty" id="src-zone"
 ondragover="onDZ(event,'src')" ondragleave="offDZ(event,'src')" ondrop="dropDZ(event,'src')">
 <span class="dz-hint">Drop your card here</span>
 <button class="dz-browse" onclick="browseFolder('src')">+ Browse</button>
@@ -1606,16 +1629,16 @@ placeholder="Shooting notes, lens info, location…" aria-label="Notes"
 oninput="persistPrefs();syncDefaultsToSources()"></textarea>
 </div>
 </div>
-<div class="sec-title sec-strong sec-violet" style="display:flex;align-items:center;gap:6px;">Counter<button class="info-btn" onclick="showCounterInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
+<div class="sec-title sec-strong sec-violet" style="display:flex;align-items:center;gap:6px;">Counter<button class="info-btn" onclick="showCounterInfo()" title="What does this do?" aria-label="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
 <div class="lockable" style="padding:0 12px 10px;flex-shrink:0;">
 <div class="counter-row">
-<button class="counter-pm" onclick="stepCounter(-1)">−</button>
+<button class="counter-pm" onclick="stepCounter(-1)" aria-label="Lower the counter" title="Lower the counter">−</button>
 <div class="counter-val-wrap">
 <input class="counter-val" id="counter-input" type="text" inputmode="numeric"
 value="001" oninput="onCounterInput()" onblur="renderCounter()">
 <span id="counter-max-info" style="font-size:11px;color:var(--text3);font-family:var(--mono);"></span>
 </div>
-<button class="counter-pm" onclick="stepCounter(1)">+</button>
+<button class="counter-pm" onclick="stepCounter(1)" aria-label="Raise the counter" title="Raise the counter">+</button>
 <button class="counter-reset" id="counter-auto-btn" onclick="resetCounterOverride()" data-tip="Rescans the destination and picks the next free number">Auto</button>
 </div>
 </div>
@@ -1692,7 +1715,7 @@ value="001" oninput="onCounterInput()" onblur="renderCounter()">
 <div id="center-controls">
 <div class="cc-group">
 <div class="cc-label cc-label-neutral">Copy Mode
-<button class="info-btn" onclick="showModesInfo()" title="What do these modes do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
+<button class="info-btn" onclick="showModesInfo()" title="What do these modes do?" aria-label="What do these modes do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
 <div class="modes-row lockable">
 <button class="mbtn" id="mode-fast" onclick="setMode('fast')">
 <div class="minfo">
@@ -1721,7 +1744,7 @@ value="001" oninput="onCounterInput()" onblur="renderCounter()">
 </div>
 <div id="pro-algo" class="pro-algo lockable" style="display:none;">
 <div class="pa-line">
-<div class="pa-item pa-item-dr"><label class="switch"><input type="checkbox" aria-label="Double source read" id="pro-dr-toggle" onchange="setProDouble(this.checked)"><span class="slider"></span></label><span class="pa-cap">Double source read</span><button class="info-btn" onclick="showDrInfo()" title="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
+<div class="pa-item pa-item-dr"><label class="switch"><input type="checkbox" aria-label="Card re-read" id="pro-dr-toggle" onchange="setProDouble(this.checked)"><span class="slider"></span></label><span class="pa-cap">Card re-read</span><button class="info-btn" onclick="showDrInfo()" title="What does this do?" aria-label="What does this do?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button></div>
 <div class="pa-ck">
 <div class="pa-item"><label class="switch sw-pro"><input type="checkbox" data-algo="xxh64" onchange="algoSwitch(this)"><span class="slider"></span></label><span class="pa-cap">xxHash64</span></div>
 <div class="pa-item on"><label class="switch sw-pro"><input type="checkbox" data-algo="xxh128" checked onchange="algoSwitch(this)"><span class="slider"></span></label><span class="pa-cap">xxHash128</span></div>
@@ -1736,7 +1759,7 @@ value="001" oninput="onCounterInput()" onblur="renderCounter()">
 <div class="panel panel-right">
 <div class="panel-hd"><div class="hd-dot dst"></div><h2 class="dst-h">Destinations</h2></div>
 <div class="panel-scroll" ondragover="onDZ(event,'dst')" ondrop="dropDZ(event,'dst')">
-<div class="drop-zone dst-z lockable" id="dst-zone"
+<div class="drop-zone dst-z lockable dz-empty" id="dst-zone"
 ondragover="onDZ(event,'dst')" ondragleave="offDZ(event,'dst')" ondrop="dropDZ(event,'dst')">
 <span class="dz-hint">Drop your destinations here</span>
 <button class="dz-browse" onclick="browseFolder('dst')">+ Browse</button>
@@ -1776,7 +1799,7 @@ ondragover="onDZ(event,'dst')" ondragleave="offDZ(event,'dst')" ondrop="dropDZ(e
     </div>
   </span>
   <span class="tipwrap">
-    <button class="tpl-slash" aria-label="Insert a subfolder separator" onclick="addTok('sep','/')">/</button>
+    <button class="tpl-slash" aria-label="Insert a subfolder separator" title="Insert a subfolder separator" onclick="addTok('sep','/')">/</button>
     <span class="tip" role="tooltip">Starts a subfolder : everything after / is the card&#39;s own folder.</span>
   </span>
 </div>
@@ -1882,7 +1905,7 @@ Save
 <div id="modes-info-ov" onclick="if(event.target===this)hideModesInfo()">
 <div class="mi-card">
 <div class="mi-h">Copy verification modes</div>
-<div class="mi-sub">How INGESTO checks your footage after copying each card.</div>
+<div class="mi-sub">How ingesto checks your footage after copying each card.</div>
 
 <div class="mi-row">
 <span class="mi-badge" style="background:var(--grey-d);color:var(--grey);">FAST</span>
@@ -1891,22 +1914,22 @@ Save
 
 <div class="mi-row">
 <span class="mi-badge" style="background:var(--blue-d);color:var(--blue);">SIZE CHECK</span>
-<div class="mi-body"><b>Copy + size check.</b> After copying, INGESTO compares the byte size of each source and destination file. Catches incomplete or truncated copies (disconnected drive, full disk, interrupted write) at almost no time cost. It does <b>not</b> detect silent bit-level corruption, because the content itself isn't read back.</div>
+<div class="mi-body"><b>Copy + size check.</b> After copying, ingesto compares the byte size of each source and destination file. Catches incomplete or truncated copies (disconnected drive, full disk, interrupted write) at almost no time cost. It does <b>not</b> detect silent bit-level corruption, because the content itself isn't read back.</div>
 </div>
 
 <div class="mi-row">
 <span class="mi-badge" style="background:var(--orange-d);color:var(--orange);">SECURE</span>
-<div class="mi-body"><b>Copy + xxHash content check.</b> INGESTO computes a 64-bit xxHash fingerprint of the source and of the written copy and compares them. Detects any data corruption down to a single flipped bit. This is the broadcast/archive-grade mode (same family of checks as Silverstack / YoYotta). Slower, because it reads every file back, and noticeably so on cards with thousands of tiny files.</div>
+<div class="mi-body"><b>Copy + xxHash content check.</b> ingesto computes a 64-bit xxHash fingerprint of the source and of the written copy and compares them. Detects any data corruption down to a single flipped bit. This is the broadcast/archive-grade mode (same family of checks as Silverstack / YoYotta). Slower, because it reads every file back, and noticeably so on cards with thousands of tiny files.</div>
 </div>
 
 <div class="mi-row">
 <span class="mi-badge" style="background:rgba(168,128,255,.16);color:var(--pro);">PRO</span>
-<div class="mi-body"><b>Copy + checksum content check + checksum list.</b> Does everything SECURE does, using the algorithm you pick (<b>xxHash64 / xxHash128 / MD5</b>), and additionally writes a checksum list in each destination folder (<b>.xxh / .xxh3 / .md5</b>, TeraCopy-style) so the copy can be re-verified later with INGESTO, TeraCopy, <code>xxhsum -c</code> / <code>md5sum -c</code>, or your own tool. For advanced archival/hand-off workflows. SECURE already guarantees copy integrity for almost everyone; MD5 is notably slower.</div>
+<div class="mi-body"><b>Copy + checksum content check + checksum list.</b> Does everything SECURE does, using the algorithm you pick (<b>xxHash64 / xxHash128 / MD5</b>), and additionally writes a checksum list in each destination folder (<b>.xxh / .xxh3 / .md5</b>, TeraCopy-style) so the copy can be re-verified later with ingesto, TeraCopy, <code>xxhsum -c</code> / <code>md5sum -c</code>, or your own tool. For advanced archival/hand-off workflows. SECURE already guarantees copy integrity for almost everyone; MD5 is notably slower.</div>
 </div>
 
 <div class="mi-row">
-<span class="mi-badge" style="background:rgba(168,128,255,.16);color:var(--pro);">PRO · Double read</span>
-<div class="mi-body"><b>Optional in PRO, detects a failing card.</b> After verifying the copies, INGESTO reads the <b>source a second time</b> and checks it still returns the same data. A card that gives different bytes on re-read is dying, and those files are flagged as suspect (and left out of the checksum list). <b>Limit:</b> the second read only reaches the card if the data no longer sits in the OS RAM cache. That is the case on real offloads (footage larger than your RAM), but <b>not guaranteed on a small test copy on a high-RAM machine</b>. It roughly doubles verify time. Hard read errors are always caught, cache or not.</div>
+<span class="mi-badge" style="background:rgba(168,128,255,.16);color:var(--pro);">PRO · Card re-read</span>
+<div class="mi-body"><b>Optional in PRO, detects a failing card.</b> After verifying the copies, ingesto reads the <b>source a second time</b> and checks it still returns the same data. A card that gives different bytes on re-read is dying, and those files are flagged as suspect (and left out of the checksum list). <b>Limit:</b> the second read only reaches the card if the data no longer sits in the OS RAM cache. That is the case on real offloads (footage larger than your RAM), but <b>not guaranteed on a small test copy on a high-RAM machine</b>. It roughly doubles verify time. Hard read errors are always caught, cache or not.</div>
 </div>
 
 <button class="mi-close" onclick="hideModesInfo()">Got it</button>
@@ -1917,7 +1940,7 @@ Save
 
 <div id="dr-info-ov" class="modes-info-ov-like" onclick="if(event.target===this)hideDrInfo()">
 <div class="mi-card">
-<div class="mi-h">Double source read</div>
+<div class="mi-h">Card re-read</div>
 <div class="mi-sub">An extra safety check for the card itself (PRO mode).</div>
 <div class="mi-row" style="border-top:none;">
 <div class="mi-body"><b>What it does.</b> Once the copy is finished and verified, ingesto reads the whole card a second time and compares it with what was read during the copy. If the card gives different answers the second time, the card itself is unreliable, something a single read can never reveal.</div>
@@ -1933,13 +1956,13 @@ Save
 <div class="mi-h">Counter</div>
 <div class="mi-sub">How the ingest number for each card is chosen.</div>
 <div class="mi-row" style="border-top:none;">
-<div class="mi-body"><b>Auto (default).</b> INGESTO scans your destinations and picks the next free number, so cards get consecutive numbers even across sessions. It rescans automatically whenever a destination is added or a copy finishes.</div>
+<div class="mi-body"><b>Auto (default).</b> ingesto scans your destinations and picks the next free number, so cards get consecutive numbers even across sessions. It rescans automatically whenever a destination is added or a copy finishes.</div>
 </div>
 <div class="mi-row">
 <div class="mi-body"><b>Manual override.</b> Typing a number, or using +/−, locks the counter to that value. It stays locked until you click <b>Auto</b> again, which rescans the destinations and returns to automatic mode.</div>
 </div>
 <div class="mi-row">
-<div class="mi-body"><b>How it is written.</b> Pick the number of digits. It is a <b>minimum</b>, not a maximum: after 99 comes 100, never 00. Changing it does not disturb folders already on your drives, and it does not restart the counter.
+<div class="mi-body"><span><b>How it is written.</b> Pick the number of digits. It is a <b>minimum</b>, not a maximum: after 99 comes 100, never 00. Changing it does not disturb folders already on your drives, and it does not restart the counter.</span>
 <div class="counter-pad" id="counter-pad">
 <button type="button" class="cpad" data-w="2" onclick="setCounterWidth(2)"></button>
 <button type="button" class="cpad" data-w="3" onclick="setCounterWidth(3)"></button>
@@ -2095,6 +2118,14 @@ Save
 <div id="settings-ov" class="modes-info-ov-like" onclick="if(event.target===this)closeSettings()">
 <div class="mi-card" style="max-width:520px;max-height:82vh;overflow-y:auto;">
 <div class="mi-h">Settings</div>
+
+<div class="set-section" id="set-lang-sec">
+<div class="set-sec-title" style="margin-bottom:4px;">Language</div>
+<div class="set-desc">Language of the interface and of the reports.</div>
+<div class="set-details" style="display:block;">
+<div class="set-field"><label for="set-language">Language</label><select id="set-language" class="set-select" data-i18n-skip></select></div>
+</div>
+</div>
 
 <div class="set-section">
 <div class="set-hd"><label class="switch"><input type="checkbox" aria-label="Card Tracking" id="sentinel-toggle" onchange="onSentinelToggle(this)"><span class="slider"></span></label><span class="set-sec-title">Card Tracking</span></div>
@@ -2277,12 +2308,12 @@ function padCounter(n, width){
   return String(n).padStart(w,'0');
 }
 
-// The preferences file is a file on disk. INGESTO writes it, and it is also
+// The preferences file is a file on disk. ingesto writes it, and it is also
 // editable by anyone, syncable by anything, and truncatable by a power cut.
 // Everything read out of it is checked before it becomes state.
 //
 // The counter is a number the folder name is built from. A string, a NaN or a
-// zero went straight into S.counter and into every folder INGESTO created.
+// zero went straight into S.counter and into every folder ingesto created.
 function prefsCounter(prefs){
   const raw = prefs && prefs.counter;
   // The type first: Number([4]) is 4, and a counter that arrived as an array
@@ -2416,6 +2447,13 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   // Applied directly, not through setNoteMode(): that one saves the
   // preferences, and a save now would write them before they are restored.
   if(prefs.noteMode==='md'){ S.noteMode='md'; document.querySelectorAll('.mdn').forEach(mdnApplyMode); }
+  // Language: i18n.js has already applied its quick copy (localStorage), so
+  // the window never flashes in English. The prefs file is the reference: if
+  // the two disagree (new machine, web storage cleared), the file wins.
+  try{
+    if(prefs.language && window.INGESTO_I18N && prefs.language!==window.INGESTO_I18N.getLanguage())
+      window.INGESTO_I18N.setLanguage(prefs.language);
+  }catch(e){ console.error('language', e); }
   if(Array.isArray(prefs.presets)) S.presets=normPresets(prefs.presets, prefs.tplVersion!==2);
   if(prefs.fileFilterFormats && typeof prefs.fileFilterFormats==='object'){
     S.fileFilterFormats=prefs.fileFilterFormats;
@@ -2535,7 +2573,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   // A permanent, harmless refusal is a toast, not a window: the person who
   // double-clicked the icon twice is already looking at the window they wanted.
   if(window.ingesto.onSecondInstance) window.ingesto.onSecondInstance(()=>{
-    showToast('INGESTO is already open. A second window would share the same drives and could give '+
+    showToast('ingesto is already open. A second window would share the same drives and could give '+
               'two cards the same counter.', 'info', 6000);
   });
   window.ingesto.onPauseHeld(onPauseHeld);
@@ -2581,13 +2619,48 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   });
 
   loadVolumes();
+  // The button says what is missing from the very first frame, not only
+  // after a card has come and gone.
+  try{ updateBtn(); }catch(_){}
 });
 
-// Item 7 — OPERATOR / CAMERA MODEL: allow only [A-Za-z0-9]; strip spaces & specials live.
+// ── What a folder name may hold (2.9.0) ─────────────────────────────────────
+// The rule follows the language of the interface, decided with Noar on
+// 23.10.2026:
+//   'ascii'   English, French (and any language not listed below): no accent,
+//             no space, no special character in anything that becomes a folder
+//             name. "é" becomes "e", "œ" becomes "oe"; spaces and other signs
+//             are removed. Only the shooting note accepts everything.
+//   'unicode' Chinese: wibi8bo's rule. Only what a filesystem forbids is
+//             removed (/ \ : * ? " < > | and control characters).
+// The template variables ({counter}, {cardname}...) are English in every
+// language. The engine is told the rule with each card (nameRule), the same
+// rule as the preview.
+function nameRule(){
+  const l = (typeof INGESTO_I18N!=='undefined' && INGESTO_I18N) ? INGESTO_I18N.getLanguage() : 'en';
+  return /^zh/.test(l) ? 'unicode' : 'ascii';
+}
+// Accents and joined letters to plain ASCII. Mirrored in main.js
+// resolveTemplateVars() and in resolveTplSegs() below.
+function asciiFold(x){
+  return String(x==null?'':x).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[œŒæÆßøØđĐłŁþÞð]/g, c=>({'œ':'oe','Œ':'OE','æ':'ae','Æ':'AE','ß':'ss','ø':'o','Ø':'O','đ':'d','Đ':'D','ł':'l','Ł':'L','þ':'th','Þ':'TH','ð':'d'})[c]);
+}
+// A piece of fixed text of the template (DAY1, CLIENT...), under the rule.
+function tplText(x){
+  return nameRule()==='ascii' ? asciiFold(x).replace(/[^A-Za-z0-9_\-\/]/g,'') : String(x==null?'':x);
+}
+
+// Item 7 — OPERATOR / CAMERA MODEL, under the folder-name rule, applied live.
+// ascii: letters and digits only, accents turned into the plain letter
+// ("Hélène" gives "Helene", not "Hlne" as before 2.9.0).
+// unicode: only what a filesystem forbids is removed.
 function sanitizeMeta(el){
   const start = el.selectionStart;
   const before = el.value;
-  const after  = before.replace(/[^A-Za-z0-9]/g,'');
+  const after  = nameRule()==='ascii'
+    ? asciiFold(before).replace(/[^A-Za-z0-9]/g,'')
+    : before.replace(/[\/\\:*?"<>|\x00-\x1f]/g,'');
   if (after !== before){
     el.value = after;
     // keep caret from jumping to the end when a char is stripped
@@ -2650,6 +2723,7 @@ document.addEventListener('focusout', (e) => { if(e.target && e.target.tagName &
 function persistPrefsNow(){
   window.ingesto.savePrefs({
     presets:S.presets,counter:S.counter,counterOverride:S.counterOverride,
+    language:(window.INGESTO_I18N && window.INGESTO_I18N.getLanguage()) || 'en',
     mode:S.mode,
     proAlgo:S.proAlgo,
     proDoubleRead:S.proDoubleRead,
@@ -3129,7 +3203,7 @@ async function onSourceAdded(entry) {
       }
     }
   } catch (_) {}
-  // 2. Sentinel inspection — ONLY when the user has opted in (otherwise INGESTO
+  // 2. Sentinel inspection — ONLY when the user has opted in (otherwise ingesto
   //    touches the card in no way: no read of the log, no write probe).
   if (!S.writeSentinel) return;
   try {
@@ -3146,7 +3220,7 @@ async function onSourceAdded(entry) {
       showRefusal({ code:'PF-R18', kind:'warn',
         lead:'Your footage is not affected.',
         title:[`${entry.name} is`, 'write-protected'],
-        cause:'INGESTO cannot write its tracking log on the card, so it will not be able to tell you '+
+        cause:'ingesto cannot write its tracking log on the card, so it will not be able to tell you '+
               'later which files were already copied.',
         action:'The copy itself works normally. Unlock the card if you want the tracking.',
         buttons:[{ label:'CONTINUE', value:'go', style:'go' },
@@ -3156,7 +3230,7 @@ async function onSourceAdded(entry) {
     // A tracking log that exists but can no longer be read: say so, rather than
     // silently treating the card as never ingested.
     if (info.sentinelDamaged) {
-      showToast(`Card "${entry.name}" has a tracking log INGESTO cannot read, so it cannot tell you which files were already copied. The copy itself is unaffected.`, 'warn', 7000);
+      showToast(`Card "${entry.name}" has a tracking log ingesto cannot read, so it cannot tell you which files were already copied. The copy itself is unaffected.`, 'warn', 7000);
     }
     // Already-ingested detection
     if (info.hasSentinel && info.counts.alreadyIngested > 0) {
@@ -3165,10 +3239,10 @@ async function onSourceAdded(entry) {
   } catch (e) {
     // Silent until now, and the silence reads as "this card is new": the
     // "card has not been formatted" window simply never opens. A dot on the
-    // card in the source list, and a tooltip that says what INGESTO could not
+    // card in the source list, and a tooltip that says what ingesto could not
     // check, so the operator is not deciding on an assumption.
     console.error('inspectCard error:', e);
-    entry._inspectFailed = "INGESTO could not read this card's tracking log, so it cannot tell you "
+    entry._inspectFailed = "ingesto could not read this card's tracking log, so it cannot tell you "
                          + 'whether it was already ingested.';
     try{ renderZoneList('src'); }catch(_){}
   }
@@ -3203,6 +3277,7 @@ function renderZoneList(z){
   setTimeout(applyIngestLock,0);
   const arr=z==='src'?S.sources:S.dests;
   const list=document.getElementById(`${z}-list`);
+  const zone=document.getElementById(`${z}-zone`); if(zone) zone.classList.toggle('dz-empty', !arr.length);   // not 'empty': a generic .empty rule exists
   if(!arr.length){list.innerHTML='';return;}
   const tag=z==='src'?'SRC':'DST';
   list.innerHTML=arr.map((e,i)=>{
@@ -3309,7 +3384,7 @@ function showUpdateNotice({ version, url }){
   ov.innerHTML =
     `<div class="mi-card">`+
     `<div class="mi-h">New version available</div>`+
-    `<div class="mi-sub">INGESTO v${esc(version)} is available. You're on v${esc(S.appVersion||'')}.</div>`+
+    `<div class="mi-sub">ingesto v${esc(version)} is available. You're on v${esc(S.appVersion||'')}.</div>`+
     `<div class="pw-actions">`+
     `<button class="pw-back" id="upd-later">Later</button>`+
     `<button class="pw-use" id="upd-go">Get it</button></div>`+
@@ -3355,7 +3430,7 @@ function tokChipHtml(t,i,cut){
       ondragover="tokOver2(event,${t.id})"
       ondragleave="tokLeave(event)"
       ondrop="tokDrop(event,${t.id})">
-    ${lbl}<button class="tok-rm" onclick="removeTok(${t.id})">×</button></div>`;
+    ${lbl}<button class="tok-rm" onclick="removeTok(${t.id})" aria-label="Remove from the template" title="Remove from the template">×</button></div>`;
 }
 // A literal run typed in the text field becomes several tokens, so that a "/"
 // can be dragged and removed on its own and a fixed text keeps its own chip.
@@ -3388,6 +3463,7 @@ function tokensFromStored(list, legacy){
     if(t && t.type==='var'){ out.push(mkTok('var', canonKey(String(t.key||'')))); continue; }
     let key=String((t&&t.key)||'');
     if(legacy) key=key.replace(/\//g,'_');
+    key=tplText(key);   // the folder-name rule, so the chips show what is written
     for(const lit of litTokens(key)) out.push(mkTok('sep', lit.key));
   }
   return out;
@@ -3432,7 +3508,7 @@ async function addTxtTok(){
   // Typed by hand, and it must stay TEXT: "{" would turn it into a variable on
   // the next round trip through the text field, "/" into a subfolder — neither
   // is what the prompt offered.
-  for(const tok of litTokens(t.replace(/[<>:"|?*\\\/{}]/g,'_'))) S.tokens.push(mkTok('sep',tok.key));
+  for(const tok of litTokens(tplText(t.replace(/[<>:"|?*\\\/{}]/g,'_')))) S.tokens.push(mkTok('sep',tok.key));
   renderTemplate();syncRaw();persistPrefs();
 }
 function addTok(type,key){S.tokens.push(mkTok(type,key));renderTemplate();syncRaw();persistPrefs();}
@@ -3525,8 +3601,11 @@ function tokDrop(e,tid){
   renderTemplate();syncRaw();persistPrefs();
 }
 
+// The fixed text goes through the folder-name rule here too: a template saved
+// before 2.9.0, or imported, may still hold "Journée". The engine and the
+// counter scan both receive this string, so both see the same folder names.
 function buildTplStr(){
-  return S.tokens.map(t=>t.type==='var'?`{${t.key}}`:t.key).join('');
+  return S.tokens.map(t=>t.type==='var'?`{${t.key}}`:tplText(t.key)).join('');
 }
 
 // Sync raw input from tokens
@@ -3545,12 +3624,12 @@ function onRawInput(){
     if(m.index>last){
       // literal text before this var — split so "/" and fixed texts each get
       // their own chip (DAY1/ → the text DAY1, then the subfolder mark).
-      parts.push(...litTokens(raw.slice(last,m.index)));
+      parts.push(...litTokens(tplText(raw.slice(last,m.index))));
     }
     parts.push({type:'var',key:canonKey(m[1])});
     last=m.index+m[0].length;
   }
-  if(last<raw.length) parts.push(...litTokens(raw.slice(last)));
+  if(last<raw.length) parts.push(...litTokens(tplText(raw.slice(last))));
   tokId=400;
   S.tokens=parts.map(t=>({...t,id:tokId++}));
   // Update token bar without touching raw input
@@ -3651,8 +3730,10 @@ function renderPresets(){
       + ' onclick="slotClick(' + i + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();slotClick(' + i + ');}"'
       + ' oncontextmenu="slotRightClick(event,' + i + ')">'
       + '<div class="mem-body">'
-      +   '<div class="mem-name">' + esc(displayName) + '</div>'
-      +   '<div class="mem-motif">' + esc(motif) + '</div>'
+      // A saved template's name and motif are the user's: never translated.
+      // An empty slot's "Template 2" and "empty" are interface text.
+      +   '<div class="mem-name"' + (p ? ' data-i18n-skip' : '') + '>' + esc(displayName) + '</div>'
+      +   '<div class="mem-motif"' + (p ? ' data-i18n-skip' : '') + '>' + esc(motif) + '</div>'
       + '</div>'
       + (isActive ? '<svg class="mem-tick" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-label="in use"><title>in use</title><path d="M20 6 9 17l-5-5"/></svg>' : '')
       + '</div>';
@@ -3768,7 +3849,7 @@ function ctxDelete(e){
   const slot=S.ctxSlot;
   closeCtx();
   if(slot<0||!S.presets[slot])return;
-  if(!confirm(`Delete template ${slot+1}?`))return;
+  if(!confirm(trf('Delete template {n}?', {n:slot+1})))return;
   S.presets[slot]=null;
   if(S.activePreset===slot)S.activePreset=-1;
   renderPresets();persistPrefs();
@@ -3894,7 +3975,7 @@ async function scanCounter(applyResult=false){
       const autoBtn = document.getElementById('counter-auto-btn');
       if(info)  info.textContent = '';
       if(autoBtn && !S.counterOverride){
-        autoBtn.setAttribute('data-tip','Add a destination so INGESTO can scan for the next free number');
+        autoBtn.setAttribute('data-tip','Add a destination so ingesto can scan for the next free number');
       }
       return;
     }
@@ -4540,10 +4621,8 @@ function showUnformattedCardDialog(entry, info) {
   let dateStr = '-';
   try {
     const d = new Date(info.lastIngest.date);
-    dateStr = d.toLocaleString(undefined, {
-      day:'2-digit', month:'2-digit', year:'numeric',
-      hour:'2-digit', minute:'2-digit'
-    });
+    // The same DD.MM.YYYY HH:MM as the history and the report (2.9.1).
+    if (!isNaN(d)) dateStr = fmtReportDate(d.toISOString());
   } catch(_) {}
   // Destination folder display (basename only, with full path on hover)
   const destFull = info.lastIngest.destination || '-';
@@ -4554,7 +4633,7 @@ function showUnformattedCardDialog(entry, info) {
   const already = (info.alreadyIngestedPreview || []);
   const fullItems = already.map(f => {
     const base = f.p.split('/').pop();
-    const sizeMB = (f.s / (1024*1024)).toFixed(1);
+    const sizeMB = (f.s / 1e6).toFixed(1);   // decimal, like fmtSize and the Finder
     return `<div class="ufc-fitem">${esc(base)} <span class="ufc-fsize">${sizeMB} MB</span></div>`;
   }).join('') || '<div class="ufc-fitem">The list could not be read back from the card.</div>';
   S._ufcList = already.map(f => f.p).join('\n');
@@ -4573,7 +4652,7 @@ function showUnformattedCardDialog(entry, info) {
         </div>
         <div style="min-width:0">
           <div class="sum-h1 t-warn">CARD HAS NOT BEEN&nbsp;FORMATTED</div>
-          <div class="sum-h2" style="font-family:var(--font)">This card was previously ingested by INGESTO
+          <div class="sum-h2" style="font-family:var(--font)">This card was previously ingested by ingesto
           and has not been formatted&nbsp;since.</div>
         </div>
       </div>
@@ -4707,7 +4786,13 @@ function showToast(msg, type='info', duration=4000){
 // ═══════════════════════════════════════════════════════
 // Launch
 // ═══════════════════════════════════════════════════════
-function onStartBtn(){ if(S.copying) doCancelCopy(); else startCopy(); }
+function onStartBtn(){
+  if(S.copying){ doCancelCopy(); return; }
+  // Nothing to copy, or nowhere to copy it: the button was out of date, never
+  // a reason to start (2.9.1).
+  if(!S.sources.length || !S.dests.length){ updateBtn(); return; }
+  startCopy();
+}
 // Transport icons — official lucide.dev shapes (play / pause / square / eject)
 const PAUSE_SVG='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/></svg>';
 const PLAY_SVG='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>';
@@ -4756,9 +4841,11 @@ function updateBtn(){
     // of thirty where the software said nothing at all.
     const noSrc = S.sources.length===0, noDst = S.dests.length===0;
     b.disabled = noSrc || noDst;
-    b.innerHTML = PLAY_SVG + (noSrc ? ' Load a card'
-                            : noDst ? ' Choose a destination'
-                            : ' Start Ingest');
+    // No card yet (2.9.0, asked by Noar): the button says what to do, without
+    // the play icon, and breathes in orange until a card is there.
+    b.classList.toggle('insert', noSrc);
+    b.innerHTML = noSrc ? 'Insert your card'
+                : PLAY_SVG + (noDst ? ' Choose a destination' : ' Start Ingest');
     p.style.display='none';
     S.paused=false;
     setPauseBadge(null);
@@ -4822,7 +4909,15 @@ function resolveTplSegs(tplStr, src, i, refDate){
   const now=refDate||new Date(),p=x=>String(x).padStart(2,'0');
   // A "/" only ever comes from the TEMPLATE — a value carrying one would add a
   // level nobody asked for. Same flattening as main.js resolveTemplateVars().
-  const v = x => String(x==null?'':x).replace(/[\/\\]/g,'_');
+  // Folder-name rule (see nameRule()): 'ascii' turns accents into plain
+  // letters and drops anything else that is not a letter, a digit, "_" or
+  // "-". Written out here so the function stays self-contained, and mirrored
+  // character for character in main.js resolveTemplateVars().
+  const rule = src.nameRule || (typeof nameRule==='function' ? nameRule() : 'unicode');
+  const fold = x => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[œŒæÆßøØđĐłŁþÞð]/g, c=>({'œ':'oe','Œ':'OE','æ':'ae','Æ':'AE','ß':'ss','ø':'o','Ø':'O','đ':'d','Đ':'D','ł':'l','Ł':'L','þ':'th','Þ':'TH','ð':'d'})[c])
+    .replace(/[^A-Za-z0-9_\-]/g,'');
+  const v = x => { const f = String(x==null?'':x).replace(/[\/\\]/g,'_'); return rule==='ascii' ? fold(f) : f; };
   const cam = v((src.operator || document.getElementById('meta-cam')?.value   || '').trim());
   const mdl = v((src.camera   || document.getElementById('meta-model')?.value || '').trim());
   // The rule is applied again here, not trusted. Written out rather than
@@ -5244,7 +5339,7 @@ async function startCopy(){
         lead:'Nothing has been written.',
         title:[ S.dests.length===1 ? `${dn} could not be read` : 'The destinations could not be read',
                 'to check the counter' ],
-        cause:`INGESTO could not list the destination to see which counters are already there. `+
+        cause:`ingesto could not list the destination to see which counters are already there. `+
               `Starting blind could write this card onto an existing one.`,
         action:'Check that the drive is still mounted and readable. On a network share, check the '+
                `connection.<div style="margin-top:8px;opacity:.65;font-size:12px">${esc(String(e&&e.message||e))}</div>`,
@@ -5316,7 +5411,7 @@ async function startCopy(){
         const answer = await showRefusal({ code:'PF-R11', kind:'block',
           lead:'Nothing has been written.',
           title:[ one ? `${dn} could not` : 'The destinations could not', 'be read' ],
-          cause:`INGESTO could not list the destination to check whether counter `+
+          cause:`ingesto could not list the destination to check whether counter `+
                 `<span class="m">${esc(padCounter(S.counter))}</span> is already there. `+
                 `It will not start blind: the ingest could land on an existing card.`,
           action:'Check that the drive is still mounted and readable. On a network share, check the '+
@@ -5376,6 +5471,7 @@ async function startCopy(){
   // depend on a lock holding.
   S.run = {
     tpl:        buildTplStr(),
+    nameRule:   nameRule(),
     mode:       S.mode,
     proAlgo:    S.proAlgo,
     proDouble:  S.proDoubleRead,
@@ -5473,6 +5569,7 @@ async function startCopy(){
     camera:    s.camera   || globalCam || '',
     pp:        normPP(s.pp || globalPP),
     note:      s.note     || '',
+    nameRule:  S.run.nameRule,
   }));
   // Group sources by their skipKeys signature (sources without skip → one batch; sources
   // with skip → individual calls). To keep things simple here, if ANY source has skipKeys,
@@ -5624,7 +5721,7 @@ function pushSpark(speedBps){
 // separate copy bar per destination would imply N independent operations that
 // the engine never performs.
 const TF_LBL = { queued:'QUEUED', copy:'COPYING', copied:'COPIED',
-                 verify:'VERIFYING', source:'DOUBLE SOURCE READ',
+                 verify:'VERIFYING', source:'CARD RE-READ',
                  done:'VERIFIED ✓', err:'ERROR',
                  // a finished card in a mode that reads nothing back
                  doneFast:'COPIED ✓ (not verified)', doneNormal:'COPIED ✓ (sizes checked)' };
@@ -6122,7 +6219,8 @@ function historyKey(r){ return [r && r.n, r && r.card, r && r.date].map(x => Str
 // cleared after a restart, and the empty state offers to show it again.
 function clearIngestHistory(){
   if(!_sessRows.length) return;
-  if(!confirm('Clear the ingest history?\n\nThe lines are only hidden in ingesto. The reports on the drives are kept, untouched.')) return;
+  // Translated paragraph by paragraph, so the blank line between them stays.
+  if(!confirm(tr('Clear the ingest history?')+'\n\n'+tr('The lines are only hidden in ingesto. The reports on the drives are kept, untouched.'))) return;
   const keep = Array.isArray(S.historyHidden) ? S.historyHidden : [];
   const add = _sessRows.map(row => historyKey(row.rec));
   // Capped so the preferences file cannot grow without end: the oldest keys go
@@ -6196,10 +6294,11 @@ function sessDetails(row){
   const copy=num(r.copyMs), v1=num(r.v1Ms), v2=num(r.v2Ms), total=copy+v1+v2;
   const bytes=num(Number(r.bytes));
   const speed=(copy&&bytes)?bytes/(copy/1000):0;
-  const phases=[copy?`copy ${fmtReportDur(copy)}`:'', v1?`verify ${fmtReportDur(v1)}`:'', v2?`source re-read ${fmtReportDur(v2)}`:'']
+  const phases=[copy?`copy ${fmtReportDur(copy)}`:'', v1?`verify ${fmtReportDur(v1)}`:'', v2?`card re-read ${fmtReportDur(v2)}`:'']
     .filter(Boolean).join(' · ');
   const who=[r.operator, r.cam, r.pp].filter(x=>x).join(' · ');
-  const cell=(k,v,wide)=>`<div class="sd-cell${wide?' sd-wide':''}"><div class="sd-k">${k}</div><div class="sd-v">${v}</div></div>`;
+  // user=true: the value is the user's (names, note), never translated.
+  const cell=(k,v,wide,user)=>`<div class="sd-cell${wide?' sd-wide':''}"><div class="sd-k">${k}</div><div class="sd-v"${user?' data-i18n-skip':''}>${v}</div></div>`;
   return `<div class="sess-det">`
     + cell('DATE', esc(r.date||'-'))
     + cell('FILES', esc(String(r.files!=null?r.files:'-')))
@@ -6208,9 +6307,9 @@ function sessDetails(row){
     + cell('COPY SPEED', speed?esc(fmtSpd(speed)):'-')
     + cell('MODE', esc(r.mode||'-'))
     + (phases?cell('PHASES', esc(phases), true):'')
-    + cell('DESTINATIONS', esc(row.drives.join(', ')), true)
-    + (who?cell('OPERATOR · CAMERA · PROFILE', esc(who), true):'')
-    + (r.note?cell('NOTE', `<div class="md-note">${mdToHtml(r.note)}</div>`, true):'')
+    + cell('DESTINATIONS', esc(row.drives.join(', ')), true, true)
+    + (who?cell('OPERATOR · CAMERA · PROFILE', esc(who), true, true):'')
+    + (r.note?cell('NOTE', `<div class="md-note">${mdToHtml(r.note)}</div>`, true, true):'')
     + (r.rclass==='r-err'||r.rclass==='r-suspect'?cell('RESULT', esc(r.result||''), true):'')
     + `</div>`;
 }
@@ -6248,7 +6347,11 @@ function renderSessionLog(rows){
     const r=row.rec;
     const cls=['r-ok','r-err','r-suspect'].includes(r.rclass)?r.rclass:'r-ok';
     const col=cls==='r-err'?'#f2555a':(cls==='r-suspect'?'#f2a03d':'#35c98b');
-    const state=cls==='r-err'?'FAILED':(cls==='r-suspect'?'SUSPECT':'VERIFIED');
+    // "VERIFIED" only for a mode that read the copy back (SECURE, PRO). A
+    // FAST or SIZE CHECK line that went fine is COPIED: until 2.9.1 it was
+    // VERIFIED here while its own details said "not verified".
+    const readBack = !['m-fast','m-sizecheck','m-verified'].includes(r.modeClass);
+    const state=cls==='r-err'?'FAILED':(cls==='r-suspect'?'SUSPECT':(readBack?'VERIFIED':'COPIED'));
     // Two drives is the common case and reads better as a count; one drive is
     // named, because knowing WHICH one is the useful part.
     const drives=row.drives.length>1?`${row.drives.length} drives`:esc(row.drives[0]||'');
@@ -6260,7 +6363,7 @@ function renderSessionLog(rows){
       <span class="sess-n">${esc(r.n||'')}</span>
       <span class="sess-name">${esc(r.card||'')}</span>
       <span class="sess-folder">${esc(r.folder||r.card||'')}</span>
-      <span class="sess-drives">${drives}</span>
+      <span class="sess-drives"${row.drives.length>1?'':' data-i18n-skip'}>${drives}</span>
       <span style="font-size:9px;font-weight:700;letter-spacing:.06em;color:${col};background:${col}26;padding:2px 6px;border-radius:4px;flex-shrink:0;">${state}</span>
       <button class="sess-rev" data-i="${idx}" aria-label="Reveal ${esc(r.card||'')} on the destination" title="Reveal on the destination"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg></button>
     </div>${sessDetails(row)}</div>`;
@@ -6373,7 +6476,7 @@ function onProgress(d){
   if(S.kioskMode) kioskProgress(d);
   pushSpark(d.speed);
 
-  const phase = d.phase==='verify' ? (d.pass==='source'?'Double source read':'Verifying') : 'Copying';
+  const phase = d.phase==='verify' ? (d.pass==='source'?'Card re-read':'Verifying') : 'Copying';
   const col   = d.phase==='verify' ? (d.pass==='source'?'var(--pro)':'var(--blue)') : 'var(--green)';
   const strip = document.getElementById('tf-stats');
   if(strip) strip.style.setProperty('--pb-color', col);
@@ -6472,7 +6575,7 @@ function driveNameOf(r){
     for(const d of known){
       const dpath = String(d && d.path || '').replace(/\\/g,'/').replace(/\/+$/,'');
       if(dpath && (norm === dpath || norm.startsWith(dpath + '/')))
-        return d.name || dpath.split('/').filter(Boolean).pop() || 'the destination';
+        return d.name || dpath.split('/').filter(Boolean).pop() || tr('the destination');
     }
   }catch(_){}
   let root = dp;
@@ -6484,7 +6587,7 @@ function driveNameOf(r){
     root = dp.replace(/\\/g,'/').split('/').slice(0,-1).join('/');
   }
   const base = root.split('/').filter(Boolean).pop();
-  return base || 'the destination';
+  return base || tr('the destination');
 }
 
 // What the end-of-ingest window is allowed to say when something went wrong.
@@ -6594,9 +6697,9 @@ function humanErrno(msg){
     [/EDQUOT/i,      'The drive quota was reached.',                 'EDQUOT'],
     [/EIO\b/i,       'The drive or the card stopped answering.',     'EIO'],
     [/ENXIO|ENODEV/i,'The drive was disconnected during the copy.',  'ENODEV'],
-    [/EACCES|EPERM/i,'INGESTO was not allowed to write there.',      'EACCES'],
+    [/EACCES|EPERM/i,'ingesto was not allowed to write there.',      'EACCES'],
     [/EROFS/i,       'The drive is read-only.',                      'EROFS'],
-    [/ENOENT/i,      'The file was gone when INGESTO reached it.',   'ENOENT'],
+    [/ENOENT/i,      'The file was gone when ingesto reached it.',   'ENOENT'],
     [/ENAMETOOLONG/i,'The path is too long for this filesystem.',    'ENAMETOOLONG'],
     [/EBUSY/i,       'The file was in use by another program.',      'EBUSY'],
     [/ETIMEDOUT|ESTALE|ECONNRESET/i,'The network drive stopped responding.','network'],
@@ -6634,7 +6737,7 @@ function buildFailureGroups(R){
   }
   if(R.some(r=>r.scanIncomplete)){
     add(g,'scan','Part of the card could not be read at all',
-      'The file counts above describe what INGESTO could see. There may be more on the card.',
+      'The file counts above describe what ingesto could see. There may be more on the card.',
       '', 'folder').files.push('(the card could not be listed completely)');
   }
   for(const r of R) for(const e of (r.errorList||[])){
@@ -6754,14 +6857,14 @@ function showOneEngineRefusal(R){
       action:'Check at least one format, or turn the filter off.',
       buttons:[{ label:'OPEN FILE FILTER', value:'filter', style:'fix', act:()=>pfOpenFilter() }, CANCEL] },
     'PF-E8':{ title:[`${dest} disappeared`,'between the check and the copy'],
-      cause:'The drive was there when INGESTO checked, and gone when it started to write. Nothing was '+
+      cause:'The drive was there when ingesto checked, and gone when it started to write. Nothing was '+
             'copied.',
       action:'Reconnect it and start again.',
       // The button has to DO the recheck: without an act it was decoration.
       buttons:[{ label:'RECHECK DRIVES', value:'recheck', style:'fix',
                  act:()=>{ setIngestLock(false); setTimeout(()=>startCopy(), 0); } }, CANCEL] },
     'PF-E9':{ title:['That folder already exists','and holds files'],
-      cause:`${m(d.folder||'')} on ${m(dest)} is not empty. INGESTO never writes into an existing card `+
+      cause:`${m(d.folder||'')} on ${m(dest)} is not empty. ingesto never writes into an existing card `+
             `folder, that is how footage gets overwritten.`,
       action:'Use another counter, or check what is already in there.',
       buttons:[{ label:'CHANGE COUNTER', value:'counter', style:'fix', act:()=>pfChangeCounter() }]
@@ -6772,7 +6875,7 @@ function showOneEngineRefusal(R){
   // An unknown code must still produce a refusal window, not a summary window:
   // the one thing that must never change is "nothing has been written".
   const fallback = {
-    title:['This ingest was not started','by INGESTO'],
+    title:['This ingest was not started','by ingesto'],
     cause: esc(((r0.errorList||[])[0]||{}).error || 'The ingest was refused before it began.'),
     action:'Nothing is on the drive. Fix what the message names and start again.',
     buttons:[CANCEL] };
@@ -6929,7 +7032,7 @@ function showSummary(R, opt){
   const dbl = R.some(r=>r.proDoubleRead===true);
   const modeTile=`<div class="srow"><div class="sr-lbl">Mode</div>`+
     `<div class="sr-mode" style="color:${mCol}">${mName}`+
-    (dbl?`<span class="sr-opt"> + DOUBLE READ</span>`:'')+`</div></div>`;
+    (dbl?`<span class="sr-opt"> + CARD RE-READ</span>`:'')+`</div></div>`;
   const dash='<span style="color:var(--text3)">-</span>';
   // Per card, then summed: three cards passing over 10 files each is 30, and
   // taking the max across the whole run reported 10.
@@ -6945,7 +7048,8 @@ function showSummary(R, opt){
   // has no second read: an empty cell invites the question "why is it empty".
   const t2=[ srow('Copy', copyMs>0?fmtEta(copyMs/1000):dash) ];
   if(runMode==='slow'||runMode==='pro') t2.push(srow('Verify', v1Ms>0?fmtEta(v1Ms/1000):dash));
-  if(dbl) t2.push(srow('2nd read', v2Ms>0?fmtEta(v2Ms/1000):dash));
+  // The tile is narrow: the short form, as in the report columns.
+  if(dbl) t2.push(srow('Re-read', v2Ms>0?fmtEta(v2Ms/1000):dash));
   t2.push(srow('Total', fmtEta(dur/1000)));
   // Speed comes AFTER the tempos: they add up to the total, the speed is a
   // conclusion of another kind. On a batch it would average cards of different
@@ -7082,7 +7186,7 @@ function showSummary(R, opt){
         `border:1px solid rgba(242,160,61,.5);background:rgba(242,160,61,.12);color:var(--orange);font-size:12.5px;line-height:1.5">`+
         `<b>The extra card check did not really run</b><br>`+
         `Your footage is fine: every file was copied and verified on the destination.<br>`+
-        `But the second read of the card was answered by the computer's memory, not by the card itself, `+
+        `But the card re-read was answered by the computer's memory, not by the card itself, `+
         `so it couldn't test the card's health. Consider this ingest verified at <b>SECURE</b> level.`+
         `<div style="margin-top:5px;color:var(--text3);font-size:11px;">`+
         // The footnote must state what was actually measured. Until 2.4.7 this
@@ -7295,13 +7399,14 @@ function hideModesInfo(){ document.getElementById('modes-info-ov').classList.rem
 // Item 24 — card tracking (sentinel) switch. OFF by default; enabling requires confirmation.
 function onSentinelToggle(el){
   if(el.checked){
-    const ok = confirm(
-      'Enable card tracking?\n\n'+
-      'INGESTO will write a small log file (.ingesto.json) on the SOURCE card after each copy, '+
-      'so it can detect an already-ingested card next time.\n\n'+
-      'This requires write access to the card. While this option is OFF, INGESTO never writes anything on your cards.\n\n'+
-      'Do you want INGESTO to write on the source card?'
-    );
+    // Each paragraph through the dictionary (2.9.1: this one stayed in
+    // English in the French interface).
+    const ok = confirm([
+      tr('Enable card tracking?'),
+      tr('ingesto will write a small log file (.ingesto.json) on the SOURCE card after each copy, so it can detect an already-ingested card next time.'),
+      tr('This requires write access to the card. While this option is OFF, ingesto never writes anything on your cards.'),
+      tr('Do you want ingesto to write on the source card?')
+    ].join('\n\n'));
     if(!ok){ el.checked=false; S.writeSentinel=false; persistPrefs(); return; }
     S.writeSentinel=true;
   } else {
@@ -7540,7 +7645,7 @@ async function importSettingsFile(){
   if(importBusy()) return;
   if (!r || !r.ok) { if (r && r.error) showToast('Import failed: '+r.error, 'warn'); return; }
   const d = r.data;
-  if (!d || d.ingestoSettingsVersion !== 1 || !d.include){ showToast('Not a valid INGESTO settings file.', 'warn'); return; }
+  if (!d || d.ingestoSettingsVersion !== 1 || !d.include){ showToast('Not a valid ingesto settings file.', 'warn'); return; }
   const inc = d.include;
   // The file's own include map is authoritative — it says what it contains.
   if (inc.namingTemplate){
@@ -7621,7 +7726,7 @@ function tokenizeCommand(str){
 // ═══════════════════════════════════════════════════════
 // A document written once per card, describing what was really done with it,
 // so a script the operator owns can decide whether to hand that card to
-// something that erases it. INGESTO signs the form. It does not press the
+// something that erases it. ingesto signs the form. It does not press the
 // button.
 //
 // Built here rather than in the engine because it has to agree with the window:
@@ -7766,7 +7871,7 @@ function buildHandoff(rs, run, index){
     scanComplete: rs.every(r => r.scanIncomplete !== true),
     // False on a machine that cannot defeat the read cache (everything except
     // macOS). Not a reason to refuse on its own, or the feature would be dead
-    // outside macOS, but a script may be stricter than INGESTO is.
+    // outside macOS, but a script may be stricter than ingesto is.
     readBackCacheBypassed: (r0.coldVerify === null || r0.coldVerify === undefined) ? null : !!r0.coldVerify,
     files: { onCard, copied, skipped, filteredOut, failed },
     coversWholeCard,
@@ -7898,7 +8003,10 @@ function runPostHook(R, run){
   // automatic proxy encode, it never runs, and nothing says so. For weeks.
   (async()=>{
     let res=null;
-    try{ res = await window.ingesto.runHook(argv); }
+    // The command as typed goes along: the main process checks that argv is
+    // exactly that command with its variables filled in, and asks the
+    // operator once before running a command it has never run (2.9.1).
+    try{ res = await window.ingesto.runHook(argv, tokenizeCommand(cmd)); }
     catch(e){ res = { ok:false, error:String(e&&e.message||e) }; }
     if(res && res.ok) return;
     const why = (res && (res.error || (res.code!=null ? `exit code ${res.code}` : ''))) || 'it did not run';
@@ -7936,7 +8044,7 @@ async function testNtfy(){
   if(!topic){ res.textContent='Enter a topic first.'; res.style.color='var(--orange)'; return; }
   res.textContent='Sending…'; res.style.color='var(--text3)';
   try{
-    const r=await window.ingesto.ntfySend({server,topic,title:'INGESTO test',message:'Test notification from INGESTO',tags:'bell'});
+    const r=await window.ingesto.ntfySend({server,topic,title:tr('ingesto test'),message:tr('Test notification from ingesto'),tags:'bell'});
     if(r&&r.ok){ res.textContent='✓ Sent. Check your phone.'; res.style.color='var(--green)'; }
     else { res.textContent='✗ Failed'+(r&&r.error?': '+r.error:''); res.style.color='var(--red)'; }
   }catch(_){ res.textContent='✗ Failed'; res.style.color='var(--red)'; }
@@ -7949,6 +8057,11 @@ async function testNtfy(){
 function ntfyDur(ms){ return ms>0 ? fmtEta(ms/1000) : '-'; }
 
 // Everything known about one card, phrased for a phone lock screen.
+// Texts built in JavaScript (notifications, reports) go through the
+// dictionary too: tr() translates a whole text, trf() a text with {name}-style
+// values filled in after translation. In English both return the text as is.
+function tr(s){ return (typeof INGESTO_I18N!=='undefined' && INGESTO_I18N) ? INGESTO_I18N.t(s) : s; }
+function trf(s, v){ return tr(s).replace(/\{(\w+)\}/g, (m,k)=>Object.prototype.hasOwnProperty.call(v,k)?String(v[k]):m); }
 function ntfyCard(rs, num, runSources, runDests){
   const r0   = rs[0];
   const name = r0.sourceName || '-';
@@ -7972,40 +8085,42 @@ function ntfyCard(rs, num, runSources, runDests){
                      .map(driveNameOf);
   const nFiles   = r0.copiedFiles || 0;
   let result, tags, priority='default';
+  const files = n => trf(n===1?'{n} file':'{n} files', {n});
   if(refused){
-    result=`■ ${name}, not started · nothing was written`; tags='no_entry'; priority='high';
+    result=trf('■ {name}, not started · nothing was written', {name}); tags='no_entry'; priority='high';
   } else if(canceled){
-    result=`■ ${name}. Stopped · card is not complete anywhere`; tags='x'; priority='high';
+    result=trf('■ {name}. Stopped · card is not complete anywhere', {name}); tags='x'; priority='high';
   } else if(empty){
-    result=`■ ${name}. Nothing on this card`; tags='no_entry'; priority='default';
+    result=trf('■ {name}. Nothing on this card', {name}); tags='no_entry'; priority='default';
   } else if(unstable>0){
-    result=`⚠ ${name}. Suspect card, do not erase · ${unstable} file${unstable>1?'s':''} unstable`;
+    result=trf(unstable>1?'⚠ {name}. Suspect card, do not erase · {n} files unstable':'⚠ {name}. Suspect card, do not erase · {n} file unstable', {name, n:unstable});
     tags='warning'; priority='high';
   } else if(rs.some(r=>r.scanIncomplete)){
-    result=`⚠ ${name}. Part of the card could not be read, do not erase`;
+    result=trf('⚠ {name}. Part of the card could not be read, do not erase', {name});
     tags='warning'; priority='high';
   } else if(rs.some(r=>(r.errorList||[]).some(e=>e.origin==='source'))){
-    result=`⚠ ${name}. The card could not be read in full, do not erase`;
+    result=trf('⚠ {name}. The card could not be read in full, do not erase', {name});
     tags='warning'; priority='high';
   } else if(errors||failed){
     // One file that failed on two drives is ONE file, and both drives are worth
     // naming: badDests[0] silently dropped the second.
     const n=[...new Set(rs.flatMap(r=>r.failedFiles||[]))].length || errors;
     const bd=[...new Set(badDests)].filter(Boolean);
-    result=`⚠ ${name}. ${n} file${n>1?'s':''} failed on ${bd.length?bd.join(', '):'a drive'}`+
-           ([...new Set(okDests)].filter(Boolean).length?` · ${[...new Set(okDests)].filter(Boolean).join(', ')} ok`:'');
+    const okd=[...new Set(okDests)].filter(Boolean);
+    result=trf(n>1?'⚠ {name}. {n} files failed on {drives}':'⚠ {name}. {n} file failed on {drives}', {name, n, drives:bd.length?bd.join(', '):tr('a drive')})+
+           (okd.length?' · '+trf('{drives} ok', {drives:okd.join(', ')}):'');
     tags='warning'; priority='high';
   } else if(rs.some(r=>(r.sidecarFailed||[]).length)){
-    result=`⚠ ${name} copied & verified · no manifest written, keep the card`;
+    result=trf('⚠ {name} copied & verified · no manifest written, keep the card', {name});
     tags='warning'; priority='high';
   } else if(r0.mode==='fast'){
-    result=`✓ ${name} copied · not verified · ${nFiles} file${nFiles>1?'s':''}`; tags='white_check_mark';
+    result=trf('✓ {name} copied · not verified · {files}', {name, files:files(nFiles)}); tags='white_check_mark';
   } else if(r0.mode==='normal'){
-    result=`✓ ${name} copied · sizes checked, contents not verified`; tags='white_check_mark';
+    result=trf('✓ {name} copied · sizes checked, contents not verified', {name}); tags='white_check_mark';
   } else if(rs.some(r=>r.coldVerify===false || r.doubleReadCached)){
-    result=`✓ ${name} verified · read-back may have come from memory`; tags='white_check_mark';
+    result=trf('✓ {name} verified · read-back may have come from memory', {name}); tags='white_check_mark';
   } else {
-    result=`✓ ${name} verified · ${nFiles} file${nFiles>1?'s':''}`+
+    result=trf('✓ {name} verified · {files}', {name, files:files(nFiles)})+
            (dests.filter(Boolean).length?` · ${dests.filter(Boolean).join(', ')}`:'');
     tags='white_check_mark';
   }
@@ -8017,10 +8132,10 @@ function ntfyCard(rs, num, runSources, runDests){
   // Who shot it.
   { const l=[src.operator, src.camera, src.pp].filter(Boolean).join(' · '); if(l) L.push(l); }
   // What was moved, and how.
-  L.push(`${r0.totalFiles||0} file${(r0.totalFiles||0)===1?'':'s'} · ${fmtSize(r0.totalBytes||0)} · ${reportModeLabel(r0)}`+
-         ((r0.skippedFiles||0)>0 ? ` · ${r0.skippedFiles} already on drive, not copied` : ''));
+  L.push(`${files(r0.totalFiles||0)} · ${fmtSize(r0.totalBytes||0)} · ${tr(reportModeLabel(r0))}`+
+         ((r0.skippedFiles||0)>0 ? ' · '+trf('{n} already on drive, not copied', {n:r0.skippedFiles}) : ''));
   // Where it came from — the mount point, which is not always the card label.
-  if(r0.sourcePath) L.push(`From: ${r0.sourcePath}`);
+  if(r0.sourcePath) L.push(trf('From: {path}', {path:r0.sourcePath}));
   // Where it went. One line per destination, each with its own outcome, so a
   // run that succeeded on the local disk and failed on the NAS says exactly that.
   rs.forEach((r,j) => {
@@ -8039,12 +8154,12 @@ function ntfyCard(rs, num, runSources, runDests){
   });
   // How long it took, phase by phase — the figure that tells you whether the
   // next card will fit before the next setup.
-  const t = [`Copy ${ntfyDur(r0.copyMs)}`];
-  if(r0.verify1Ms>0) t.push(`Verify ${ntfyDur(r0.verify1Ms)}`);
-  if(r0.verify2Ms>0) t.push(`Source re-read ${ntfyDur(r0.verify2Ms)}`);
+  const t = [trf('Copy {t}', {t:ntfyDur(r0.copyMs)})];
+  if(r0.verify1Ms>0) t.push(trf('Verify {t}', {t:ntfyDur(r0.verify1Ms)}));
+  if(r0.verify2Ms>0) t.push(trf('Card re-read {t}', {t:ntfyDur(r0.verify2Ms)}));
   L.push(t.join(' · '));
-  L.push(`Total ${ntfyDur(r0.duration)}`);
-  if(src.note) L.push('Note: '+src.note);
+  L.push(trf('Total {t}', {t:ntfyDur(r0.duration)}));
+  if(src.note) L.push(tr('Note:')+' '+src.note);
 
   return { title:`#${num} - ${name}`, message:L.join('\n'), tags, priority };
 }
@@ -8082,7 +8197,7 @@ async function sendIngestNotification(R, base, run){
   const cards = [...byCard.values()];
 
   if(R.every(r=>r.canceled) && cards.length>1){
-    await ntfyPush({ title:'INGESTO - Ingest stopped',
+    await ntfyPush({ title:'ingesto - Ingest stopped',
       message:'■ Stopped · no card is complete anywhere', tags:'x', priority:'high' });
     return;
   }
@@ -8110,7 +8225,7 @@ async function sendIngestNotification(R, base, run){
     if(er||fl||uns||canc||notOk){
       const bits=[]; const ne=er||fl; if(ne) bits.push(`${ne} error${ne>1?'s':''}`); if(uns) bits.push('suspect card');
       if(canc) bits.push('stopped before the end'); else if(notOk && !ne) bits.push('incomplete');
-      await ntfyPush({ title:'INGESTO - Finished with issues', message:`${head}\n⚠ ${bits.join(', ')}`, tags:'warning', priority:'high' });
+      await ntfyPush({ title:'ingesto - Finished with issues', message:`${head}\n⚠ ${bits.join(', ')}`, tags:'warning', priority:'high' });
     } else {
       // The closing line is the one left on the lock screen: it must say what
       // was checked, exactly like each card's own line.
@@ -8118,7 +8233,7 @@ async function sendIngestNotification(R, base, run){
       const line = modes.has('fast') ? '✓ copied · not verified'
                  : modes.has('normal') ? '✓ copied · sizes checked, contents not verified'
                  : '✓ all verified';
-      await ntfyPush({ title:'INGESTO - Ingest complete', message:`${head}\n${line}`, tags:'white_check_mark' });
+      await ntfyPush({ title:'ingesto - Ingest complete', message:`${head}\n${line}`, tags:'white_check_mark' });
     }
   }
 }
@@ -8275,7 +8390,9 @@ async function updateReports(R, base, run){
   // the client-facing report entirely.
   const uniq=[...new Set(R.map(r=>r.sourcePath||r.sourceName))];
   const now=new Date(), p=x=>String(x).padStart(2,'0');
-  const dateStr=`${p(now.getDate())}.${p(now.getMonth()+1)} ${p(now.getHours())}:${p(now.getMinutes())}`;
+  // One date format everywhere since 2.9.1: DD.MM.YYYY HH:MM. The report
+  // lines used to drop the year, in the one document meant to be archived.
+  const dateStr=`${p(now.getDate())}.${p(now.getMonth()+1)}.${now.getFullYear()} ${p(now.getHours())}:${p(now.getMinutes())}`;
   const isoNow=now.toISOString();
   const newRecs=uniq.map((sp,i)=>{
     const rs=R.filter(r=>(r.sourcePath||r.sourceName)===sp), r0=rs[0], name=r0.sourceName;
@@ -8388,12 +8505,15 @@ function buildReportCsv(records){
   };
   // Timings are exported BOTH readable and raw (ms) — the readable one for a
   // human opening the sheet, the raw one so it can be summed or charted.
+  // Column titles and the mode and result follow the language; everything
+  // else is data. A spreadsheet that reads the CSV by column NUMBER is
+  // unaffected; one that reads it by title must use the English export.
   const head=['#','Date','Card','Folder','Operator','Cam','Profile','Mode','Files','Bytes','Size','Result',
-              'Copy','Verify 1','Verify 2','Copy ms','Verify1 ms','Verify2 ms','Note','Files list'];
+              'Copy','Verify','Card re-read','Copy ms','Verify ms','Card re-read ms','Note','Files list'].map(tr);
   const num=v=>(typeof v==='number'&&isFinite(v))?v:'';
   const rows=records.map(r=>{
     const fl=reportFilePairs(r).map(([p,sz])=>`${p} (${fmtSize(sz)})`).join(' | ');
-    return [r.n,r.date,r.card,r.folder||'',r.operator,r.cam,r.pp||'',r.mode,r.files,r.bytes,fmtSize(r.bytes),r.result,
+    return [r.n,r.date,r.card,r.folder||'',r.operator,r.cam,r.pp||'',tr(r.mode),r.files,r.bytes,fmtSize(r.bytes),tr(r.result),
             fmtReportDur(r.copyMs),fmtReportDur(r.v1Ms),fmtReportDur(r.v2Ms),
             num(r.copyMs),num(r.v1Ms),num(r.v2Ms),
             r.note,fl].map(q).join(',');
@@ -8401,7 +8521,13 @@ function buildReportCsv(records){
   return head.join(',')+'\n'+rows.join('\n')+'\n';
 }
 function buildReportJson(created, updated, destPath, records){
-  return JSON.stringify({ created, updated, destPath, cards:records.length, records }, null, 2);
+  // Field names, codes and VALUES stay in English, whatever the language:
+  // tools read them, and this file is read back by the next ingest when the
+  // HTML report is off. 2.9.0 wrote "2 erreurs" into `result`, kept it for
+  // ever, and a script testing result === "canceled" broke on a French
+  // station. The texts for a person are added next to them (2.9.1).
+  const out = records.map(r => Object.assign({}, r, { modeLabel:tr(r.mode), resultLabel:tr(r.result) }));
+  return JSON.stringify({ created, updated, destPath, cards:records.length, records:out }, null, 2);
 }
 // gzip + base64 in the renderer (CompressionStream is a browser API; the main
 // process reads it back with zlib). base64 is used rather than raw bytes because
@@ -8434,8 +8560,8 @@ async function buildReportHtml(created, updated, destPath, records){
     const hasFl = reportFilePairs(r).length>0;
     const chev = !anyFl ? ''
       : hasFl
-      ? `<td class="c-chev" onclick="tgl(${ri})" id="ch-${ri}" title="Show files">\u25b8</td>`
-      : `<td class="c-chev c-mut" title="Recorded as a light entry, no file list">\u00b7</td>`;
+      ? `<td class="c-chev" onclick="tgl(${ri})" id="ch-${ri}" title="${escH(tr('Show files'))}">\u25b8</td>`
+      : `<td class="c-chev c-mut" title="${escH(tr('Recorded as a light entry, no file list'))}">\u00b7</td>`;
     // modeClass / rclass go into a class attribute unescaped, and files into
     // markup as a number — but records are re-read from the report JSON that
     // lives on the (possibly shared) destination, so a tampered INGESTO_report
@@ -8454,9 +8580,9 @@ async function buildReportHtml(created, updated, destPath, records){
       // together anyway.
       `<td class="c-txt">${escH(r.operator)}</td>`+
       `<td>${escH(r.cam)}${r.pp?`<div class="c-path">${escH(r.pp)}</div>`:''}</td>`+
-      `<td class="${modeCls}">${escH(r.mode)}</td>`+
+      `<td class="${modeCls}">${escH(tr(r.mode))}</td>`+
       `<td class="c-r">${nFiles}</td><td class="c-r">${fmtSize(r.bytes)}</td>`+
-      `<td><span class="${rCls}">${escH(r.result)}</span></td>`+
+      `<td><span class="${rCls}">${escH(tr(r.result))}</span></td>`+
       // One compact column rather than three: the table already carries 11
       // columns and three more would crush it. All three values are shown.
       // Phase timings: fixed-width sub-columns so the "/" separators line up
@@ -8480,9 +8606,12 @@ async function buildReportHtml(created, updated, destPath, records){
   // (~30 chars of JSON scaffolding saved per file). mtime is dropped — it is
   // never displayed and the card sentinel already keeps it.
   const slim = records.map(r=>{
-    const o = { n:r.n, date:r.date, card:r.card, operator:r.operator, cam:r.cam, pp:r.pp||'',
+    // folder and skipped must travel too: report-read reads this block
+    // before INGESTO_report.json, so whatever is left out here is lost for
+    // every earlier card at the next ingest (2.8.0 lost folder).
+    const o = { n:r.n, date:r.date, card:r.card, folder:r.folder||'', operator:r.operator, cam:r.cam, pp:r.pp||'',
       mode:r.mode, modeClass:r.modeClass, files:r.files, bytes:r.bytes,
-      result:r.result, rclass:r.rclass, note:r.note,
+      result:r.result, rclass:r.rclass, note:r.note, skipped:r.skipped||0,
       copyMs:r.copyMs, v1Ms:r.v1Ms, v2Ms:r.v2Ms };
     const pairs = reportFilePairs(r);
     if (pairs.length) o.f = pairs;
@@ -8500,7 +8629,15 @@ async function buildReportHtml(created, updated, destPath, records){
   // which appear on click, go through decompression.
   const raw=JSON.stringify({created, v:2, records:slim});
   const data=await gzipB64(raw);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>INGESTO — Ingest Report</title>
+  // The report follows the language of the app at the time it is written.
+  // Its data block (slim, above) stays in English: it is read back by the
+  // next ingest, whatever the language then.
+  const lang = (typeof INGESTO_I18N!=='undefined' && INGESTO_I18N) ? INGESTO_I18N.getLanguage() : 'en';
+  const fl = { none: tr('File list unavailable in this browser'),
+    noneWhy: tr('The list is stored compressed. Open this report in a recent browser (Safari 16.4+, Chrome, Firefox, Edge) to read it.'),
+    bad: tr('File list could not be read'), badWhy: tr('The stored data is damaged. The table above is unaffected.'),
+    one: tr('{n} file ingested'), many: tr('{n} files ingested') };
+  return `<!doctype html><html lang="${escH(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escH(tr('ingesto - Ingest Report'))}</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}
 body{margin:0;background:#0a0b0e;color:#e8eaf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;}
 .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 34px;display:flex;flex-direction:column;gap:12px;}
@@ -8582,37 +8719,35 @@ tbody tr.rec:nth-child(even) td{background:#fafafa;}
 <div class="card">
 <div class="hd"><div style="flex-grow:1;min-width:0;">
 <div class="brand">ingesto<span>.</span></div>
-<div class="ttl">INGEST REPORT</div>
+<div class="ttl">${escH(tr('INGEST REPORT'))}</div>
 <div class="path">${escH(destPath)}</div>
-<div class="meta">Created ${fmtReportDate(created)} &middot; last update ${fmtReportDate(updated)}</div>
-</div><button class="pdf" onclick="_pdf()">&#11015; Export PDF</button></div>
+<div class="meta">${escH(trf('Created {date}', {date:fmtReportDate(created)}))} &middot; ${escH(trf('last update {date}', {date:fmtReportDate(updated)}))}</div>
+</div><button class="pdf" onclick="_pdf()">&#11015; ${escH(tr('Export PDF'))}</button></div>
 <div class="tiles">
-<div class="tile"><b>${records.length}</b><span>CARD${records.length>1?'S':''}</span></div>
-<div class="tile"><b>${totalFiles}</b><span>FILES</span></div>
-<div class="tile"><b>${fmtSize(totalBytes)}</b><span>TOTAL SIZE</span></div>
-<div class="tile"><b style="color:${badCount?'#f2555a':(suspectCount?'#f2a03d':'#35c98b')};">${badCount?badCount:(suspectCount?suspectCount:records.length)}</b><span>${badCount?'WITH ERRORS':(suspectCount?'SUSPECT':'CLEAN')}</span></div>
+<div class="tile"><b>${records.length}</b><span>${escH(tr(records.length>1?'CARDS':'CARD'))}</span></div>
+<div class="tile"><b>${totalFiles}</b><span>${escH(tr('FILES'))}</span></div>
+<div class="tile"><b>${fmtSize(totalBytes)}</b><span>${escH(tr('TOTAL SIZE'))}</span></div>
+<div class="tile"><b style="color:${badCount?'#f2555a':(suspectCount?'#f2a03d':'#35c98b')};">${badCount?badCount:(suspectCount?suspectCount:records.length)}</b><span>${escH(tr(badCount?'WITH ERRORS':(suspectCount?'SUSPECT':'CLEAN')))}</span></div>
 </div>
 </div>
 
 <div class="card" style="padding:16px 14px;">
 <div style="overflow-x:auto;">
-<table><thead><tr>${anyFl?'<th class="c-chev"></th>':''}<th>#</th><th>DATE</th><th>CARD</th><th>OPERATOR</th><th>CAM</th><th>MODE</th><th class="c-r">FILES</th><th class="c-r">SIZE</th><th>RESULT</th><th class="c-r" title="Copy / 1st verify (destination) / 2nd verify (source re-read)" style="white-space:nowrap"><span class="tv t-copy">COPY</span><span class="t-sep">/</span><span class="tv t-v1">V1</span><span class="t-sep">/</span><span class="tv t-v2">V2</span></th><th>NOTE</th></tr></thead>
+<table><thead><tr>${anyFl?'<th class="c-chev"></th>':''}<th>#</th>${['DATE','CARD','OPERATOR','CAM','MODE'].map(h=>`<th>${escH(tr(h))}</th>`).join('')}<th class="c-r">${escH(tr('FILES'))}</th><th class="c-r">${escH(tr('SIZE'))}</th><th>${escH(tr('RESULT'))}</th><th class="c-r" title="${escH(tr('Copy / Verify (destination) / Card re-read'))}" style="white-space:nowrap"><span class="tv t-copy">${escH(tr('COPY'))}</span><span class="t-sep">/</span><span class="tv t-v1">${escH(tr('VERIFY'))}</span><span class="t-sep">/</span><span class="tv t-v2">${escH(tr('RE-READ'))}</span></th><th>${escH(tr('NOTE'))}</th></tr></thead>
 <tbody>${rows}</tbody></table>
 </div>
 <div class="legend">
-<span><b style="color:#35c98b;">COPY</b> copy pass</span>
-<span><b style="color:#4d90f0;">V1</b> read back on the destination</span>
-<span><b style="color:#a880ff;">V2</b> second read on the source</span>
-${anyFl?'<span>Click ▸ on a line to list the files.</span>':''}
+<span><b style="color:#35c98b;">${escH(tr('COPY'))}</b> ${escH(tr('copy pass'))}</span>
+<span><b style="color:#4d90f0;">${escH(tr('VERIFY'))}</b> ${escH(tr('read back on the destination'))}</span>
+<span><b style="color:#a880ff;">${escH(tr('RE-READ'))}</b> ${escH(tr('card re-read'))}</span>
+${anyFl?`<span>${escH(tr('Click ▸ on a line to list the files.'))}</span>`:''}
 </div>
 </div>
 
-<div class="ft">Written by ingesto. This file lives in the destination and is updated after each ingest.
-Only <b>Secure</b> and <b>PRO</b> read the copies back: a line in <b>Fast</b> or <b>Size check</b> says what was
-copied, not that it was verified.</div>
+<div class="ft">${tr('Written by ingesto. This file lives in the destination and is updated after each ingest. Only <b>Secure</b> and <b>PRO</b> read the copies back: a line in <b>Fast</b> or <b>Size check</b> says what was copied, not that it was verified.')}</div>
 </div>
 <script id="ingesto-report-data" type="application/gzip+base64">${data}<\/script>
-<script>var _D=null,_B=[],_P=null;function _sz(b){if(!b)return'0 B';var u=['B','KB','MB','GB','TB'],i=0;while(b>=1024&&i<4){b/=1024;i++;}return(i?b.toFixed(1):Math.round(b))+' '+u[i];}
+<script>var _L=${JSON.stringify(fl).replace(/</g,'\\u003c')};var _D=null,_B=[],_P=null;function _sz(b){if(!b)return'0 B';var u=['B','KB','MB','GB','TB'],i=0;while(b>=1000&&i<4){b/=1000;i++;}return(i?b.toFixed(1):Math.round(b))+' '+u[i];}
 function _esc(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function _bin(s){var r=atob(s),a=new Uint8Array(r.length);for(var i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a;}
 // Decoding is kicked off AT LOAD and its result cached, so that everything the
@@ -8648,10 +8783,10 @@ function _fill(i){
   var r=(_D.records||[])[i]||{},f=r.f||[],h='';
   var row=document.getElementById('det-'+i); if(!row) return;
   var c=row.getElementsByTagName('td')[1];
-  if(_D._noDecomp){c.innerHTML='<div class="fl-hd">File list unavailable in this browser</div><div class="fl-list"><div class="fl-row">The list is stored compressed. Open this report in a recent browser (Safari 16.4+, Chrome, Firefox, Edge) to read it.</div></div>';_B[i]=1;return;}
-  if(_D._bad){c.innerHTML='<div class="fl-hd">File list could not be read</div><div class="fl-list"><div class="fl-row">The stored data is damaged. The table above is unaffected.</div></div>';_B[i]=1;return;}
+  if(_D._noDecomp){c.innerHTML='<div class="fl-hd">'+_esc(_L.none)+'</div><div class="fl-list"><div class="fl-row">'+_esc(_L.noneWhy)+'</div></div>';_B[i]=1;return;}
+  if(_D._bad){c.innerHTML='<div class="fl-hd">'+_esc(_L.bad)+'</div><div class="fl-list"><div class="fl-row">'+_esc(_L.badWhy)+'</div></div>';_B[i]=1;return;}
   for(var k=0;k<f.length;k++){h+='<div class="fl-row"><span class="fl-p">'+_esc(f[k][0])+'</span><span class="fl-s">'+_sz(f[k][1])+'</span></div>';}
-  c.innerHTML='<div class="fl-hd">'+f.length+' file'+(f.length>1?'s':'')+' ingested</div><div class="fl-list">'+h+'</div>';_B[i]=1;}
+  c.innerHTML='<div class="fl-hd">'+_esc((f.length>1?_L.many:_L.one).replace('{n}',f.length))+'</div><div class="fl-list">'+h+'</div>';_B[i]=1;}
 // The open/closed state is read AFTER the await, or two fast clicks during
 // the first decode both see "closed" and both open the row.
 async function tgl(i){
@@ -8689,6 +8824,10 @@ function applyKioskMode(){
     renderKioskCounter();
   } else {
     ov.classList.remove('on');
+    // Kiosk mode changes S.sources on its own (next card, remove card) without
+    // drawing the main window. Leaving it showed a card that was no longer
+    // loaded, and START enabled for an ingest of nothing (fixed in 2.9.1).
+    try{ renderZoneList('src'); renderZoneList('dst'); renderSourceInfoCards(); updateBtn(); }catch(e){ console.error('kiosk exit', e); }
   }
 }
 function renderKioskCounter(){
@@ -8738,7 +8877,7 @@ async function warnSpaceUnknown(dests){
   const answer = await showRefusal({ code:'PF-R13b', kind:'warn',
     lead:'Nothing has been written yet.', leadKind:'warn',
     title:['Free space could not be checked', dests.length===1 ? `on ${dests[0]}` : 'on the destinations'],
-    cause:'INGESTO asked the drive how much room is left and got no answer, so it cannot tell you '+
+    cause:'ingesto asked the drive how much room is left and got no answer, so it cannot tell you '+
           'whether this ingest fits. The copy may stop before the end.',
     action:'Check the drive yourself, or start anyway and re-copy what fails.',
     buttons:[{ label:'CONTINUE ANYWAY', value:'go', style:'go' },
@@ -8889,7 +9028,7 @@ function kioskProgress(d){
     if(three) f = d.phase==='verify' ? (1/3+d.progress*2/3) : d.progress/3;
     else      f = d.phase==='verify' ? (hasV?0.5+d.progress*0.5:1) : (hasV?d.progress*0.5:d.progress);
   }
-  const phase = d.phase==='verify' ? (d.pass==='source'?'Double source read…':'Verifying…') : 'Copying…';
+  const phase = d.phase==='verify' ? (d.pass==='source'?'Card re-read…':'Verifying…') : 'Copying…';
   const phaseCol = d.phase==='verify' ? (d.pass==='source'?'var(--pro)':'var(--blue)') : 'var(--green)';
   { const kp=document.getElementById('krun-phase'); kp.textContent=phase; kp.style.color=phaseCol; }
   const RING_C = 502.65; // 2 * PI * r(80)
@@ -8943,7 +9082,7 @@ function kioskAfterIngest(R){
     // kiosk cannot fix a template: the message must say WHO can.
     const why = ((R[0].errorList||[])[0]||{}).error || '';
     kioskShowResult('stop','Not started',
-      'INGESTO would not start: '+kioskShort(why),
+      'ingesto would not start: '+kioskShort(why),
       'Nothing was written. Ask the person in charge.');
     return;
   }
@@ -9022,12 +9161,15 @@ function kioskAfterIngest(R){
   // said "Verified. You can remove your card." exactly as for a real cold
   // check: the one place where the word was worth the most, and meant the least.
   const cached = R.some(r=>r.doubleReadCached || r.coldVerify===false);
+  // Same colour as the main window (2.9.1): a copy that went fine is green
+  // whatever the mode; the words say what was and was not checked, and the
+  // card is still to be kept.
   if(modes.has('fast')){
-    kioskShowResult('warn','Copied','Not verified. Sizes and contents were not checked.', K_KEEP);
+    kioskShowResult('ok','Copied','Not verified. Sizes and contents were not checked.', K_KEEP);
   } else if(modes.has('normal')){
-    kioskShowResult('warn','Copied','Sizes match. Contents were not checked.', K_KEEP);
+    kioskShowResult('ok','Copied','Sizes match. Contents were not checked.', K_KEEP);
   } else if(cached){
-    kioskShowResult('warn','Copied & checked',
+    kioskShowResult('ok','Copied & checked',
       'The check may have read from memory, not from the drive.', K_KEEP);
   } else if(skipped>0){
     // One card at a time in the kiosk, but be explicit anyway: taking min for
@@ -9235,7 +9377,7 @@ function showVerifyResult(res, folder){
   }
   // Always there, green window included: it answers the question the counters
   // raise on their own ("four files in the folder, why were only two checked?").
-  listsHtml += '<p class="vf-skip">Not checked, and not expected to be: INGESTO\'s own files. '+
+  listsHtml += '<p class="vf-skip">Not checked, and not expected to be: ingesto\'s own files. '+
     'Checksum list, shooting note, ASC MHL history.</p>';
   lists.innerHTML = listsHtml;
   document.getElementById('verify-result-ov').classList.add('open');
@@ -9265,20 +9407,26 @@ async function importPresets(){
 // ═══════════════════════════════════════════════════════
 // Utils
 // ═══════════════════════════════════════════════════════
-function fmtSize(b){if(!b)return'0 B';const u=['B','KB','MB','GB','TB'],i=Math.floor(Math.log(b)/Math.log(1024));return`${(b/Math.pow(1024,i)).toFixed(1)} ${u[i]}`;}
+// Sizes in decimal units (1 GB = 1,000,000,000 bytes), as the Finder, Windows
+// Explorer's drive labels and every card maker count them. Until 2.9.1 the
+// division was by 1024 under the same unit names, so a 128 GB card read
+// "119.2 GB" and no figure matched the one in the Finder.
+function fmtSize(b){if(!b||b<1)return'0 B';const u=['B','KB','MB','GB','TB','PB'],i=Math.min(u.length-1,Math.floor(Math.log10(b)/3));return i?`${(b/Math.pow(1000,i)).toFixed(1)} ${u[i]}`:`${Math.round(b)} B`;}
 function fmtSizePair(rem,tot){
   if(!tot||tot<=0)return'-';
   const u=['B','KB','MB','GB','TB'];
   // Use the unit appropriate for the TOTAL so both numbers share the same scale
-  const i=Math.min(u.length-1,Math.max(0,Math.floor(Math.log(tot)/Math.log(1024))));
-  const div=Math.pow(1024,i);
+  const i=Math.min(u.length-1,Math.max(0,Math.floor(Math.log10(tot)/3)));
+  const div=Math.pow(1000,i);
   const r=rem<0?0:rem;
   const fr=(r/div).toFixed(i>=3?1:0);
   const ft=(tot/div).toFixed(i>=3?1:0);
   return`${fr} ${u[i]} <span class="stot">(${ft} ${u[i]})</span>`;
 }
 function fmtSpd(b){return b>0?`${fmtSize(b)}/s`:'-';}
-function fmtEta(s){if(!s||!isFinite(s)||s<=0)return'-';const t=Math.round(s);if(t<60)return`${t}s`;if(t<3600)return`${Math.floor(t/60)}m${t%60}s`;return`${Math.floor(t/3600)}h${Math.floor((t%3600)/60)}m`;}
+// The same spelling as fmtReportDur() (2.9.1): "11m03s", "1h05m". The window
+// said "11m3s" while the history and the report said "11m03s".
+function fmtEta(s){if(!s||!isFinite(s)||s<=0)return'-';const t=Math.round(s);if(t<60)return`${t}s`;if(t<3600)return`${Math.floor(t/60)}m${String(t%60).padStart(2,'0')}s`;return`${Math.floor(t/3600)}h${String(Math.floor((t%3600)/60)).padStart(2,'0')}m`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 async function openJE(){await window.ingesto.openExternal('https://www.just-edit.fr');}
 </script>

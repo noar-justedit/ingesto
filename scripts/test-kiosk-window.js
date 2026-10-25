@@ -54,7 +54,7 @@ const ctx = vm.createContext({
 });
 vm.runInContext([
   extractFn(REND, 'esc'),
-  extractFn(REND, 'driveNameOf'),
+  extractFn(REND, 'tr'), extractFn(REND, 'driveNameOf'),
   extractConst(REND, 'K_SAFE'), extractConst(REND, 'K_KEEP'), extractConst(REND, 'K_BOSS'),
   extractFn(REND, 'kioskShort'),
   extractFn(REND, 'kioskShowResult'),

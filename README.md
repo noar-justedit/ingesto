@@ -52,6 +52,10 @@ macOS · Windows · Linux.
   operation instead of finding another way. The only thing that ever writes on
   a card is **Card Tracking**, off by default, and it writes nothing but its own
   journal, `.ingesto.json`.
+- **Speaks your language.** English and French since 2.9.0, chosen in
+  Settings (the system language at first launch). The interface, the reports
+  and the phone notifications follow it; card, drive and folder names never
+  change. More languages are welcome, see [Translating ingesto](#translating-ingesto).
 - **Never writes into a card folder that already exists.** Whatever the
   interface has checked, the engine refuses to write into a destination folder
   that holds anything but its own residue from an interrupted run. That is the
@@ -227,7 +231,7 @@ one to every destination.
 | **FAST** | Copy only, no checks |
 | **SIZE CHECK** | Detects incomplete copies (size only — a corrupted file of the same size passes; not verified) |
 | **SECURE** | Detects any data corruption — every file is read back from each destination and fingerprinted (xxHash64) |
-| **PRO** | Secure, plus checksum lists and manifests, a choice of algorithm (xxHash64 / xxHash128 / MD5), and an optional **double source read** that re-reads the card itself to catch a card that is failing |
+| **PRO** | Secure, plus checksum lists and manifests, a choice of algorithm (xxHash64 / xxHash128 / MD5), and an optional **card re-read** that reads the card itself a second time to catch a card that is failing |
 
 In SECURE and PRO the read-back genuinely goes to the disk — ingesto defeats the
 operating system's cache before verifying, so a network destination is really
@@ -238,7 +242,7 @@ read over the network rather than out of memory.
 While a copy runs, the centre column shows the queue:
 
 - a **ring for the whole queue**, weighted by bytes across every piece of work
-  — the copy, one verification per destination, plus the source re-read when
+  — the copy, one verification per destination, plus the card re-read when
   PRO has it on. A small card finishing no longer pushes the figure ahead of a
   large one still waiting.
 - **one block per card**, each with its own ring and, in multi-destination, one
@@ -246,7 +250,7 @@ While a copy runs, the centre column shows the queue:
   throughput. A drive falling behind the others is visible instead of being
   averaged away.
 - a **bar that says which phase** by its colour — green copying, blue verifying,
-  violet during the double source read, red on error.
+  violet during the card re-read, red on error.
 - live figures under the header: current file, files and data remaining, speed
   with its throughput graph, time remaining (estimated per phase), errors.
 
@@ -298,7 +302,7 @@ already computed during the ingest.
 With ntfy configured, ingesto sends **one complete message per card**: counter
 number and card name, operator, camera and picture profile, file count, volume and copy mode,
 the source path, one line per destination with its own result, the copy /
-verify / source re-read timings, the total duration, and the card note. A card
+verify / card re-read timings, the total duration, and the card note. A card
 that failed is raised to high priority and names the destination that failed.
 
 ### Kiosk mode
@@ -339,6 +343,15 @@ still load.
 
 **Example**: `001_A001_JohnDoe_SonyFX3_260429_1435`
 
+**What a folder name may hold.** In English and French, folder names are
+plain ASCII: accents become the plain letter (`Hélène` gives `Helene`), and
+spaces and special characters are removed (a card labelled `NO NAME` gives
+`NONAME`). Only `_` and `-` are kept as separators. A name with no Latin letter
+at all becomes `CARD`. The shooting note, written next to the footage, keeps
+everything you typed. In Chinese, only the characters a filesystem forbids
+(`/ \ : * ? " < > |`) are removed. The variables themselves (`{counter}`,
+`{cardname}`...) are the same in every language.
+
 `{pp}` is the picture profile the camera was set to. The Profile menu offers
 the usual ones (`SLOG3`, `CLOG3`, `VLOG`, `FLOG2`, `LOGC4`, `HLG`...) and
 accepts anything else you type. Spaces and punctuation are dropped and the value is
@@ -366,7 +379,7 @@ Rules, all enforced before anything is written:
 
 - `{counter}` must be in the card's own folder — the part after the last `/`.
   It numbers cards, not days or cameras, and the counter stays **global** to
-  the destination: before each ingest INGESTO walks the destination — through
+  the destination: before each ingest ingesto walks the destination — through
   the subfolder levels your template describes — so it keeps counting across
   days and cameras, and a gap in the numbering still means a card is missing.
 - A `/` typed into a card name, an operator, a camera or a picture profile
@@ -423,9 +436,12 @@ ingesto/
 │   │   ├── camera-detect.js   — Camera brand/model detection from card structure
 │   │   ├── sentinel.js        — Card tracking (.ingesto.json), off by default
 │   │   ├── nocache.js         — Uncached read-back verification (macOS/Windows/Linux)
+│   │   ├── lang.js            — Texts of the main process in the chosen language
 │   │   └── preload.js         — Secure bridge between main and renderer
 │   └── renderer/
-│       └── index.html         — Full user interface (HTML+CSS+JS)
+│       ├── index.html         — Full user interface (HTML+CSS+JS), in English
+│       ├── i18n.js            — Shows the interface in the chosen language
+│       └── lang/fr.js         — French dictionary (one file per language)
 ├── build-resources/
 │   ├── icon.icns / icon.ico   — Compiled app icons
 │   └── entitlements.mac.plist
@@ -485,6 +501,28 @@ tells you that nothing has been copied.
 Issues and pull requests are welcome on this repository. The maintainer remains
 the sole decision-maker on what gets merged, but any genuine contribution will
 be considered.
+
+### Translating ingesto
+
+The interface stays in English in `index.html`; `src/renderer/i18n.js` shows it
+in another language from a dictionary in `src/renderer/lang/`. A text missing
+from the dictionary simply stays in English, so a translation can be added a
+little at a time.
+
+To add a language:
+1. Copy `src/renderer/lang/fr.js` to `src/renderer/lang/<code>.js` (`de.js`,
+   `zh-CN.js`...), rename `INGESTO_LANG_FR`, and translate the values. Keys
+   are the English texts and stay as they are.
+2. Add one `<script src="lang/<code>.js"></script>` line next to the French
+   one in `src/renderer/index.html`, and one entry in `LANGS` in
+   `src/renderer/i18n.js`.
+3. Run `npm test`: `scripts/test-i18n.js` checks every dictionary (patterns,
+   `{variables}` kept, no text left untranslated in the reports and
+   notifications).
+
+Never translated: the template variables, the mode names (FAST, SIZE CHECK,
+SECURE, PRO), card, drive and file names, and the field names of the JSON
+report. Open a pull request with the file; you will be credited.
 
 ## License
 

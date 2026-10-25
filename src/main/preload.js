@@ -49,7 +49,7 @@ const ingestoAPI = {
   reportWrite:          (p,html,keep)   => ipcRenderer.invoke('report-write', p, html, keep===true),
   reportOpen:           (p)             => ipcRenderer.invoke('report-open', p),
   reportWriteNamed:     (p,name,c,app)  => ipcRenderer.invoke('report-write-named', p, name, c, app),
-  runHook:              (cmd)           => ipcRenderer.invoke('run-hook', cmd),
+  runHook:              (argv, tpl)     => ipcRenderer.invoke('run-hook', argv, tpl),
   getVersion:           ()              => ipcRenderer.invoke('get-version'),
   loadPrefs:            ()              => ipcRenderer.invoke('load-prefs'),
   savePrefs:            (p)             => ipcRenderer.invoke('save-prefs', p),

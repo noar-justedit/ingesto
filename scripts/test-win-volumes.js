@@ -21,8 +21,9 @@ const vm   = require('vm');
 
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
 function extractFn(name) {
-  const start = SRC.indexOf(`function ${name}(`);
+  let start = SRC.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`function ${name} not found in main.js`);
+  if (SRC.slice(start - 6, start) === 'async ') start -= 6;   // keep "async
   let i = SRC.indexOf('{', start), depth = 0;
   for (; i < SRC.length; i++) {
     if (SRC[i] === '{') depth++;
@@ -97,6 +98,7 @@ console.log('\nthe answer shapes PowerShell can produce');
      'a code point between Z and a is not a drive letter');
 }
 
+(async () => {
 console.log('\nthe REAL Windows scan, run against that machine');
 {
   // Not a mirror of the code — the code itself, with Windows stubbed out at the
@@ -107,22 +109,31 @@ console.log('\nthe REAL Windows scan, run against that machine');
   const winCtx = vm.createContext({
     console, JSON, String, Number, Array, Map, Boolean,
     process: { env: { SystemDrive: 'C:' }, platform: 'win32' },
-    execSync: (cmd) => {
-      asked.push(cmd);
-      if (cmd.includes('Get-PSDrive')) return PSDRIVE;
-      if (cmd.includes('Get-Volume'))  return GETVOLUME;
+    // Since 2.9.1 the scan is asynchronous: PowerShell through tryExecFile,
+    // the drive letters through fs.promises.stat.
+    Promise, setTimeout,
+    tryExecFile: async (cmd, args) => {
+      const c = args.join(' ');
+      asked.push(c);
+      if (c.includes('Get-PSDrive')) return PSDRIVE;
+      if (c.includes('Get-Volume'))  return GETVOLUME;
       return '';
     },
-    fs: { statSync: (p) => {
+    fs: { promises: { stat: async (p) => {
       if (['C:\\', 'D:\\', 'G:\\', 'Z:\\'].includes(p)) return { isDirectory: () => true };
       throw new Error('ENOENT');
-    } },
+    } } },
     detectCamera: () => null,
   });
   vm.runInContext(extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), winCtx);
-  const vols = winCtx.getMountedVolumesWin();
+  const vols = await winCtx.getMountedVolumesWin();
   const by = {}; vols.forEach(v => { by[v.path[0]] = v; });
 
+  // 2.9.1: never a synchronous call. execSync here froze the main process,
+  // and with it a running copy, every time a drive letter appeared.
+  const body = extractFn('getMountedVolumesWin');
+  ok(/^async function/.test(body) && !/execSync|execFileSync|statSync/.test(body),
+     'the scan never blocks the main process (no execSync, no statSync)');
   ok(asked.some(c => c.includes('Get-Volume')),
      'the scan really asks Get-Volume — the only source that names a removable card');
   ok(vols.length === 4, 'four drives found (' + vols.length + ')');
@@ -142,13 +153,14 @@ console.log('\nthe REAL Windows scan, run against that machine');
   const noLabel = vm.createContext({
     console, JSON, String, Number, Array, Map, Boolean,
     process: { env: { SystemDrive: 'C:' }, platform: 'win32' },
-    execSync: (cmd) => cmd.includes('Get-PSDrive')
+    Promise, setTimeout,
+    tryExecFile: async (cmd, args) => args.join(' ').includes('Get-PSDrive')
       ? JSON.stringify([{ Name:'E', Used:0, Free:1e9, Description:'', DisplayRoot:null }]) : '',
-    fs: { statSync: (p) => { if (p === 'E:\\') return { isDirectory: () => true }; throw new Error('ENOENT'); } },
+    fs: { promises: { stat: async (p) => { if (p === 'E:\\') return { isDirectory: () => true }; throw new Error('ENOENT'); } } },
     detectCamera: () => null,
   });
   vm.runInContext(extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), noLabel);
-  const e = noLabel.getMountedVolumesWin()[0];
+  const e = (await noLabel.getMountedVolumesWin())[0];
   ok(e && e.label === 'E' && e.name === 'E:',
      'a card with no label falls back to the bare letter — "E:" would have become the folder "E_"');
   ok(e && !/:/.test(e.label), 'no colon can reach the card name');
@@ -253,3 +265,4 @@ console.log('\nWindows device names, refused before the ingest starts');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(2); });

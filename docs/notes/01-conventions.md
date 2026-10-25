@@ -39,4 +39,6 @@
 - Le dépôt était alimenté par l'uploader web de GitHub (« Add files via
   upload ») : ça perd le bit exécutable des scripts et ne supprime rien.
   Depuis la 2.7.3 : Noar publie avec `scripts/push_github.command`.
+  Depuis la 2.8.1, ce script ne publie pas les fichiers de suivi (`CLAUDE.md`,
+  `AGENTS.md`, `ETAT_PROJET.md`, `docs/notes/`) : ils ne vivent que dans le ZIP.
 - Messages de commit courts, en anglais, au présent.

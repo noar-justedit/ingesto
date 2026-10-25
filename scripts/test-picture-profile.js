@@ -256,11 +256,13 @@ console.log('\nthe profile is in the shooting note');
   // Since 2.8.0 the note is markdown and its header a list of bold labels.
   // lastIndexOf: the first one is in isShootingNote(), which only reads it.
   const noteAt = MAIN.lastIndexOf("'# ' + NOTE_HEADER");
-  const note = MAIN.slice(noteAt, noteAt + 800);
+  const note = MAIN.slice(noteAt, noteAt + 1300);
   ok(noteAt > 0, 'the markdown note block was found');
-  ok(/'- \*\*Profile:\*\* '\s*\+\s*mdEscapeText\(source\.pp/.test(note), 'the note writes a Profile line from source.pp');
+  // Since 2.9.0 the labels go through the main process's dictionary
+  // (i18n.t), so the note is in the language of the interface.
+  ok(/'- \*\*' \+ i18n\.t\('Profile:'\) \+ '\*\* '\s*\+\s*mdEscapeText\(source\.pp/.test(note), 'the note writes a Profile line from source.pp');
   ok(note.includes("'Unknown'"), 'and says Unknown rather than leaving it blank');
-  const labels = [...note.matchAll(/'- \*\*([A-Za-z]+):\*\* '/g)].map(m => m[1]);
+  const labels = [...note.matchAll(/'- \*\*' \+ i18n\.t\('([A-Za-z]+):'\)/g)].map(m => m[1]);
   ok(['Date','Counter','Card','Operator','Camera','Profile'].every(l => labels.includes(l)),
      'every header line is there: ' + labels.join('|'));
 }

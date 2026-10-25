@@ -196,7 +196,7 @@ function ingestFolderUnder(ing, root) {
 }
 
 // Was this recorded ingest a VERIFIED one? Recorded as such from 2.6.1 on;
-// for a record written by an earlier version that did not say, INGESTO's own
+// for a record written by an earlier version that did not say, ingesto's own
 // checksum list or ASC MHL history in the folder is the proof (only SECURE
 // and PRO wrote them). Any other file — someone else's .md5 — is not.
 function ingestVerified(ing, folder) {

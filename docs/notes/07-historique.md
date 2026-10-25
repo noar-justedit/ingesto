@@ -1,8 +1,42 @@
 # 07 · Historique et points ouverts
 
-État au 13.10.2026 : dossier en **2.8.0**, dernière Release publiée : **2.7.2**
-(la 2.7.3 n'a pas été publiée seule, la 2.8.0 la contient). Le résumé à jour
+État au 24.10.2026 : dossier en **2.9.1**, dernière version publiée : **2.8.0** (2.8.1 et 2.9.0 livrées en ZIP, jamais publiées). Le résumé à jour
 est dans `ETAT_PROJET.md` et `CHANGELOG.md` à la racine.
+
+## Journal 24.10 (Cowork) : 2.9.1
+- Revue complète (trois agents : moteur, interface, cohérence ; chaque point
+  revérifié). Aucune faille critique, aucun chemin vers la carte source.
+- Corrigé : badge VERIFIED de l'historique, sortie du kiosk, fuite mémoire de
+  la traduction, relecture de carte depuis un sous-dossier, code de langue,
+  JSON, confirmations, dossiers système Windows, scan Windows bloquant, double
+  ingest, double lecture PRO lente, approbation des commandes.
+- Harmonisé : noms (Verify / Card re-read), formats (dates, durées, tailles
+  décimales), « ingesto », point violet, kiosk vert, libellés des boutons.
+- Nouveaux tests : test-double-read.js, sections 2.9.1 de test-safety,
+  test-handoff, test-ui-guards, test-i18n, test-report-data, test-win-volumes.
+
+## Journal 23.10 (Cowork) : 2.9.0
+- Traduction : moteur `i18n.js` (modèle wibi8bo), `lang/fr.js`, `main/lang.js`.
+  Premier jet relu par Noar sur une planche (Artifact) : 737 textes validés.
+- Lot 2 : notifications, rapports, dialogues système, note `.md`.
+- Noms de dossier selon la langue (ASCII en anglais et en français).
+- INSERT YOUR CARD et zones vides teintées. Piège trouvé : la classe `empty`
+  existait déjà (zones devenues hautes) ; renommée `dz-empty`.
+- Fork wibi8bo examiné : variables non traduites, champs ouverts aux
+  caractères chinois, sa « 2.8.1 », son UPDATE_URL vers notre dépôt.
+
+## Journal 14.10 au 23.10 (Cowork) : 2.8.1
+- Retour de l'agent Resolve (Hellfest) : `folder` absent des anciennes cartes
+  dans `INGESTO_report.json`. Cause : bloc `slim` du rapport HTML incomplet,
+  relu avant le JSON. Corrigé, `test-report-data.js` (26 vérifications),
+  mutations : `folder` retiré, `skipped` retiré, champ ajouté seulement dans
+  `updateReports()`, toutes détectées.
+- `push_github.sh` n'envoie plus `CLAUDE.md`, `AGENTS.md`, `ETAT_PROJET.md`,
+  `docs/notes/` (et les retire de GitHub).
+- Titre du rapport HTML sans tiret long ; `test-no-emdash.js` lit les gabarits
+  sur plusieurs lignes (il échouait bien sur l'ancien titre).
+- Décidé pour la 2.9.0 : traduction en français seulement d'abord, clés JSON
+  fixes. Point ouvert : accents dans les noms de dossier.
 
 ## Journal 10.10 au 13.10 (Cowork) : 2.8.0
 - Electron 44.7.1 (macOS 13 minimum, accepté par Noar). Essai réel sous

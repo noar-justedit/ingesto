@@ -9,15 +9,22 @@ caméra vers plusieurs destinations à la fois et vérifie chaque fichier (DIT,
 tournage). Mac, Windows et Linux. Dépôt : github.com/noar-justedit/ingesto.
 Auteur : Noar (Arnaud Augst, Just Edit).
 
-- Version du dossier : **2.8.0** (13.10.2026) : Electron 44, notes en
-  markdown, menu des picture profiles, liste des opérateurs de la session,
-  Operator / Camera / Profile sur une ligne (Copy Info, cartes, kiosk).
-- La 2.7.3 (suivi du projet, `push_github.command`) a été préparée mais n'était
-  pas sur GitHub au 13.10 : la 2.8.0 la contient.
-- Dernière version publiée avec binaires : 2.7.2 (tags GitHub `vX.Y.Z`).
+- Version du dossier : **2.9.1** (24.10.2026) : corrections et harmonisation
+  après la revue complète du code (voir « Fait en 2.9.1 »).
+- 2.9.0 (23.10.2026, ZIP livré, non publié) : interface en français (et
+  ouverte aux autres langues), règle des noms de dossier selon la langue,
+  bouton INSERT YOUR CARD, zones de dépôt vides teintées.
+- 2.8.1 (23.10.2026, ZIP livré) : correctif du champ `folder` des rapports,
+  fichiers de suivi gardés hors de GitHub, tiret du titre du rapport HTML.
+- 2.8.0 (13.10.2026, publiée) : Electron 44, notes en markdown, menu des
+  picture profiles, liste des opérateurs de la session, Operator / Camera /
+  Profile sur une ligne (Copy Info, cartes, kiosk).
+- Dernière version publiée sur GitHub : 2.8.0 (commit db36b69, tags `vX.Y.Z`,
+  vérifié le 24.10.2026). 2.8.1, 2.9.0 et 2.9.1 arrivent ensemble : la note de
+  release 2.9.1 les couvre.
 - Electron **44.7.1** : **macOS 13 Ventura minimum** (les 2.7 tournent encore
   sur macOS 12), Windows 10/11 64 bits, Linux x64.
-- Tests : `npm test`, 31 suites, 1890 vérifications, toutes vertes au 13.10.2026.
+- Tests : `npm test`, 35 suites, 2044 vérifications, toutes vertes au 24.10.2026.
 
 ## Emplacements de la version
 À mettre à jour ensemble à chaque bump, puis vérifier avec
@@ -49,14 +56,28 @@ régénère (`docs/manual/tools/README.md`), pas à chaque bump.
 3. **`npm test` vert avant chaque livraison.** Chaque nouveau test est vérifié
    par mutation : casser le code, voir le rouge, remettre en état.
 4. **Ne jamais affaiblir** `test-source-lock.js` ni `test-executables.js`.
-5. Interface, messages, rapport, README, notes de version : **en anglais**.
-   Commentaires du code en anglais, qui expliquent le pourquoi.
+5. Interface, messages, rapport, README, notes de version : **en anglais**
+   dans le code. Les autres langues passent par les dictionnaires de
+   `src/renderer/lang/` (voir `docs/notes/i18n/README.md`). Commentaires du
+   code en anglais, qui expliquent le pourquoi.
 6. Diagnostiquer et proposer avant de coder quand Noar pose une question ou
    signale un problème.
 7. Ne jamais affirmer l'état du dépôt GitHub : le mesurer (`git ls-remote`,
    clone) ou demander.
 8. Maquettes visuelles : **en HTML**, pas en image.
 9. Jamais Google Drive, sous aucune forme.
+10. **Modification d'interface** (décision de Noar, 23.10.2026) : ne lui
+    montrer que l'anglais. Un nouveau texte : montrer l'anglais et écrire dans
+    la réponse sa traduction française.
+11. **Tout nouveau texte visible** entre dans `lang/fr.js` dans la même
+    livraison. Un texte construit en JavaScript (notification, rapport) passe
+    par `tr()` / `trf()` (interface) ou `i18n.t()` (processus principal) ;
+    `test-i18n.js` refuse un texte passé par ces fonctions et absent d'un
+    dictionnaire.
+12. **Noms de dossier** : en anglais et en français, ASCII seulement (voir
+    `nameRule()` dans index.html, miroir dans `resolveTemplateVars()` de
+    main.js) ; en chinois, seuls les caractères interdits par Windows sont
+    retirés. Gardé par `test-folder-names.js`.
 
 ## Architecture en bref
 ```
@@ -65,8 +86,12 @@ src/main/sentinel.js      Card Tracking : journal .ingesto.json sur la carte (of
 src/main/nocache.js       relecture sans cache (F_NOCACHE / purge) via koffi
 src/main/camera-detect.js détection marque/modèle depuis l'arborescence de la carte
 src/main/preload.js       pont window.ingesto (contextIsolation)
-src/renderer/index.html   TOUTE l'interface (~8 700 lignes : HTML + CSS + JS) et le rapport HTML
-scripts/test-*.js         30 suites lancées par npm test, sans Electron
+src/main/lang.js          textes du processus principal dans la langue choisie (lit lang/*.js)
+src/renderer/index.html   TOUTE l'interface (~9 400 lignes : HTML + CSS + JS) et le rapport HTML, en anglais
+src/renderer/i18n.js      moteur de traduction de l'interface (2.9.0)
+src/renderer/lang/fr.js   dictionnaire français (un fichier par langue)
+scripts/test-*.js         34 suites lancées par npm test, sans Electron
+docs/notes/i18n/          outils de traduction (captures, planche de relecture)
 scripts/build_*.command   builds depuis le Mac (lanceurs de build-mac.sh, build-win-from-mac.sh)
 scripts/push_github.*     publication sur GitHub (règle 7 de AGENTS.md)
 docs/manual/              manuel utilisateur EN/FR (HTML + PDF)
@@ -133,9 +158,11 @@ CHECK tailles, SECURE relecture sans cache + xxHash64, PRO SECURE + manifestes
   (`S.sessionOps`), jamais dans les préférences, remplie au START, 30 noms
   maximum, aussi en kiosk. Le dernier opérateur reste pré-rempli au lancement,
   comme depuis la 2.7.1.
-- **Suivi du projet public** (03.10.2026) : `docs/notes/` et les fichiers de
-  suivi sont dans le dépôt pour qu'une autre IA reprenne avec le ZIP seul.
-  Aucun secret dedans (vérifié : seulement des noms de profil de trousseau).
+- **Suivi du projet dans le ZIP** (03.10.2026) : `docs/notes/` et les fichiers
+  de suivi sont dans le ZIP pour qu'une autre IA reprenne avec le ZIP seul.
+  Publiés sur GitHub en 2.8.0, retirés à partir de la 2.8.1 (voir « Décidé
+  pour la 2.8.1 »). Aucun secret dedans (vérifié : seulement des noms de
+  profil de trousseau).
 - Refusé ou abandonné, ne pas reproposer sans élément nouveau : presets Copy
   Info ; métadonnées médias dans le rapport ; signature Windows/Linux ; file de
   jobs pendant un ingest ; poignée déplaçable entre zones.
@@ -178,6 +205,123 @@ CHECK tailles, SECURE relecture sans cache + xxHash64, PRO SECURE + manifestes
   toucher au bouton ni à la vue directement.
 - Un fichier qui change seulement de droits d'exécution est presque toujours un
   accident de décompression : `push_github.command` le signale avant l'envoi.
+- Ne pas nommer une classe CSS `empty` : une règle générique `.empty` existe
+  (centrage, grande hauteur). Les zones de dépôt vides utilisent `dz-empty`.
+- Traduction : le dictionnaire est cherché avec les espaces nettoyés ; une clé
+  qui commence par une espace ne sera jamais trouvée (test-i18n le refuse).
+  Un même texte anglais a une seule traduction partout : vérifier les mots
+  courts (« Add », « Copy ») avant de les traduire.
+- Toute donnée de l'utilisateur affichée dans l'interface doit être exclue de
+  la traduction (liste `USER_DATA` de i18n.js ou `data-i18n-skip`), sinon une
+  carte nommée « Done » s'afficherait « Terminé ». Vérifier avec
+  `docs/notes/i18n/userdata.js` après une modification d'interface.
+- Le bloc de données du rapport HTML (`slim`) et les valeurs du JSON restent
+  en anglais ; le HTML affiché, le CSV et les champs `modeLabel` /
+  `resultLabel` du JSON suivent la langue.
+- Les tests qui extraient une fonction appelant `tr()` / `trf()` doivent
+  extraire `tr` aussi (`extractFn(REND, 'tr')`).
+- Tailles : unités décimales partout (`fmtSize`, `fmtSizePair`, `_sz` du
+  rapport, `fmtBytes` du moteur) : 1 GB = 10^9 octets, comme le Finder.
+- Commandes (après ingest, remise de la carte) : le processus principal
+  demande une fois par commande exacte (`approveCommand`), réponses gardées
+  dans `ingesto-trusted-commands.json` (dossier userData). Le hook reçoit la
+  commande telle que tapée (`tpl`) en plus de `argv` et vérifie que l'un est
+  l'autre avec ses variables remplies (`argvMatchesTemplate`).
+
+## Fait en 2.8.1 (23.10.2026)
+- **`folder` perdu dans les rapports** (constaté le 14.10.2026). Le bloc de
+  données caché du rapport HTML (`slim` dans `buildReportHtml`) ne recopiait
+  ni `folder` ni `skipped`, et `report-read` relit ce bloc avant le JSON : à
+  chaque ingest, les cartes précédentes perdaient `folder`, dans le HTML comme
+  dans le JSON (le JSON est réécrit depuis les mêmes enregistrements). Corrigé.
+  Nouveau `scripts/test-report-data.js` : lit la liste des champs dans
+  `updateReports()` et vérifie que chacun revient du bloc, puis deux ingests à
+  la suite. Un champ ajouté plus tard à `updateReports()` sans être recopié
+  fait échouer ce test. Les rapports déjà écrits ne sont pas réparables.
+- **Fichiers de suivi hors de GitHub** (22.10.2026, décision de Noar) :
+  `CLAUDE.md`, `AGENTS.md`, `ETAT_PROJET.md` et `docs/notes/` restent dans le
+  ZIP mais ne sont plus publiés. `push_github.sh` les écarte (liste `PRIVATE`)
+  et les retire de GitHub, où la 2.8.0 les avait mis. `CHANGELOG.md` reste
+  public. Essayé contre un faux GitHub en 2.8.0 : 15 fichiers retirés, le
+  dossier local intact, rien d'autre de touché.
+- **Tiret long dans le titre du rapport HTML** (`INGESTO — Ingest Report`,
+  devenu `INGESTO - Ingest Report`). `test-no-emdash.js` lisait les chaînes
+  ligne par ligne et ne voyait pas les gabarits sur plusieurs lignes ; il lit
+  maintenant aussi ces gabarits en entier.
+
+## Fait en 2.9.1 (24.10.2026)
+Revue complète du code (moteur, interface, cohérence), puis choix de Noar :
+- Historique : COPIED pour FAST et SIZE CHECK, VERIFIED pour SECURE et PRO.
+- Sortie du kiosk : fenêtre principale redessinée, START sans carte ou sans
+  destination ne fait rien.
+- Mémoire de la traduction : les traces des nœuds retirés de la page sont
+  effacées (`sweep()` dans i18n.js ; `docs/notes/i18n/leak.js` le mesure :
+  ~800 traces après 3000 événements, contre 15 000+ en 2.9.0). Le problème
+  n'existait qu'en français : en anglais le moteur ne garde rien.
+- Relecture de la carte (macOS) depuis un dossier dans la carte : chemin
+  recalculé sous le nouveau point de montage. Non testable ici (diskutil).
+- `lang.js` garde le code de langue nettoyé ; date au format fixe.
+- JSON : valeurs en anglais + `modeLabel` / `resultLabel`.
+- Deux confirmations traduites ; aucun `confirm()` avec un texte brut (test).
+- Windows : dossiers système ignorés à la lecture de la source ; scan des
+  volumes et `is-removable` asynchrones (le PowerShell bloquait la copie).
+- Moteur : refus d'un second ingest simultané (`refuseIfCopying`).
+- Double lecture PRO : index des écritures réussies construit une fois.
+- Sécurité : approbation des commandes par le processus principal (voir les
+  pièges).
+- Harmonisation : kiosk vert comme ailleurs ; point du logo violet partout ;
+  « Verify » et « Card re-read » (abrégé RE-READ, tuile « Re-read »), CSV
+  renommé ; dates JJ.MM.AAAA HH:MM, durées 11m03s, tailles décimales ;
+  « ingesto » en minuscules partout (sauf noms de fichiers INGESTO_report et
+  outil des manifestes MHL) ; libellés des boutons − / + / ×.
+- Gardé tel quel, à la demande de Noar : la règle stricte du texte fixe des
+  modèles (point 4 de la revue : les points et espaces des modèles enregistrés
+  sont retirés), le violet d'accent sur certains états, le bouton orange
+  inactif INSERT YOUR CARD.
+- Tuiles de la fenêtre de fin : un libellé trop long passe sur deux lignes au
+  lieu d'être coupé (français).
+
+## Fait en 2.9.0 (23.10.2026)
+Décidé avec Noar le 23.10 :
+- Traduction : français seulement pour commencer (Noar l'a relu en entier sur
+  la planche : 737 textes, aucune correction). Les autres langues viendront
+  par des contributeurs. Langue du système au premier lancement, choix dans
+  les réglages. Vocabulaire gardé : GB, « ingest », « checksum », noms des
+  modes en anglais (pas de réponse aux questions de la planche).
+- Rapports HTML et CSV traduits. JSON et Card Handoff : noms de champs et
+  codes fixes en anglais, seuls `mode` et `result` suivent la langue.
+- Noms de dossier selon la langue (règle 12 ci-dessus). Les variables restent
+  en anglais. Autres langues : on verra le moment venu (aujourd'hui, toute
+  langue autre que le chinois suit la règle ASCII).
+- Moteur sur le modèle de celui de wibi8bo, pour que son `zh-CN.js` se branche.
+
+Fait :
+- `src/renderer/i18n.js`, `src/renderer/lang/fr.js`, `src/main/lang.js`,
+  menu Langue en tête des réglages. En anglais, rien ne change.
+- Lot 2 : notifications ntfy, rapport HTML (textes, liste des fichiers),
+  colonnes du CSV, `mode`/`result` du JSON, dialogues système pour quitter,
+  titres des fenêtres d'export/import, libellés et date de la note `.md` (sa
+  première ligne reste en anglais : Vérifier la reconnaît par elle).
+- Règle des noms de dossier : `nameRule()`, `asciiFold()`, `tplText()`
+  (index.html), miroir dans `resolveTemplateVars()` (main.js), règle transmise
+  avec chaque carte (`nameRule`), modèles enregistrés repassés par la règle.
+  Changement aussi pour l'anglais : un modèle enregistré avec « Journée » crée
+  désormais « Journee ».
+- Interface : INSERT YOUR CARD (orange, respire) sans carte ; zones de dépôt
+  vides teintées (rouge sources, vert destinations).
+- Tests : `test-i18n.js`, `test-folder-names.js`, mutations détectées.
+- Planche de relecture : https://claude.ai/artifact/5ynQ27d15BXmiofB1LV3gA
+
+Non fait, volontairement :
+- Manuel utilisateur : toujours en 2.8.0, sans la section Langue ni la règle
+  des noms de dossier (`capture.js` décale déjà les réglages d'un cran).
+- Captures du README : non refaites (le bouton et les zones vides ont changé).
+- Menus système de macOS (Édition, Fenêtre) : gérés par Electron, en anglais.
+
+Fork wibi8bo (relevé le 23.10) : il a publié sa propre « 2.8.1 » et son
+`UPDATE_URL` (main.js) pointe toujours vers notre `version.json` avec le même
+`appId`. Noar lui écrit après la publication de la 2.9.0 (brouillon du mail
+dans la conversation du 23.10) : intégrer son chinois, renommer son fork.
 
 ## Prochaines étapes proposées (aucune décidée)
 1. Mesurer le tampon d'écriture 16 Mo (2.7.0) sur vraie carte et disque navette.
@@ -189,7 +333,11 @@ CHECK tailles, SECURE relecture sans cache + xxHash64, PRO SECURE + manifestes
 5. Optimisations écartées en 2.7.0, seulement mesures en main.
 6. Page de téléchargement qui ne propose pas Linux alors que la Release
    contient `.AppImage` et `.deb` : savoir de quelle page il s'agit.
+7. Manuel 2.9.0 (section Langue, noms de dossier) et captures du README.
+8. Chinois de wibi8bo, s'il envoie une pull request : vérifier ses clés
+   contre la 2.9.0 (`board.js zh-CN`, `test-i18n.js`).
 
 ## Pour aller plus loin
 `docs/notes/` : 01 conventions, 02 architecture, 03 carte source, 04 charte UI,
-05 tests sans build (harnais Playwright), 06 signature Mac, 07 historique.
+05 tests sans build (harnais Playwright), 06 signature Mac, 07 historique,
+`i18n/` traduction.
