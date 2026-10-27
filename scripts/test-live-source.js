@@ -243,9 +243,13 @@ console.log('\nthe progress bar never goes past 100%');
   // little in general, so this one is deliberately narrow: the two expressions
   // that feed the bar must be clamped.
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
-  ok(/progress:\s*totalBytes>0\?Math\.min\(1,\s*copiedBytes\/totalBytes\)/.test(src),
+  // 2.9.2: an HDE card counts files instead of bytes (its sizes are only
+  // known once read). Both branches are held to the same clamp.
+  ok(/progress:[^\n]*totalBytes>0\?Math\.min\(1,\s*copiedBytes\/totalBytes\)/.test(src),
      'the copy progress is clamped to 1');
-  ok(/eta:\s*sp>0\?Math\.max\(0,\s*\(totalBytes-copiedBytes\)\/sp\)/.test(src),
+  ok(/progress: hdeSource \? \(totalFiles>0 \? Math\.min\(1, i\/totalFiles\) : 0\)/.test(src),
+     'on an HDE card too, where it counts files');
+  ok(/eta:[^\n]*sp>0\?Math\.max\(0,\s*\(totalBytes-copiedBytes\)\/sp\)/.test(src),
      'and the remaining time never goes below zero');
 }
 

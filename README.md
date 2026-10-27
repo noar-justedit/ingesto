@@ -237,6 +237,16 @@ In SECURE and PRO the read-back genuinely goes to the disk — ingesto defeats t
 operating system's cache before verifying, so a network destination is really
 read over the network rather than out of memory.
 
+**Virtual volumes and HDE (ARRIRAW, CODEX Platform).** CODEX Platform (formerly
+Device Manager) can present ARRIRAW as HDE: on a CFast card as an extra volume
+whose name ends in `_hde`, on ALEXA LF / SXT / XT media as the card's own
+volume, under its usual name. Either way the files are produced while they are
+read. ingesto recognises such a volume by its name or because the system
+reports it as produced by a program (FUSE), and says so when the card is
+loaded. It then verifies the copies against what the volume delivers, not
+against the card, and the card re-read is off for that card. With HDE on a
+CFast card, clips in other formats (ProRes) stay on the card's other volume.
+
 ### During the copy — the ingest queue
 
 While a copy runs, the centre column shows the queue:
@@ -488,6 +498,17 @@ either works — you only need to do this once:
 → Expected — every file is read back from every destination and fingerprinted,
 and the read deliberately bypasses the operating system's cache so that the
 check is real. That's the trade-off between speed and integrity guarantees.
+
+**The card stopped answering**
+→ ingesto gives every read of a card 60 seconds. A reader that hangs, or a
+virtual volume whose service stalls, is reported as silent instead of freezing
+the app: the files left are listed as not copied, and the report says which.
+Check the reader and the cable, then copy the card again.
+
+**What went wrong on a card, after the fact**
+→ Open `INGESTO_report.html` on the drive and click the result of the card
+(`2 errors ▸`): each file is listed with the step and the message. The CSV has
+an `Errors` column, the JSON an `errs` list.
 
 **An ingest refuses to start**
 → Read the message: it names what is wrong (a drive that is no longer there,

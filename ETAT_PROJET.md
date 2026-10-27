@@ -9,8 +9,11 @@ caméra vers plusieurs destinations à la fois et vérifie chaque fichier (DIT,
 tournage). Mac, Windows et Linux. Dépôt : github.com/noar-justedit/ingesto.
 Auteur : Noar (Arnaud Augst, Just Edit).
 
-- Version du dossier : **2.9.1** (24.10.2026) : corrections et harmonisation
-  après la revue complète du code (voir « Fait en 2.9.1 »).
+- Version du dossier : **2.9.2** (26.10.2026) : retour terrain de Manuel López
+  (ALEXA Mini, ARRIRAW avec et sans HDE) : détail des erreurs dans les rapports,
+  carte qui ne répond plus, volumes HDE (voir « Fait en 2.9.2 »).
+- 2.9.1 (24.10.2026, publiée le 25.10) : corrections et harmonisation après la
+  revue complète du code (voir « Fait en 2.9.1 »).
 - 2.9.0 (23.10.2026, ZIP livré, non publié) : interface en français (et
   ouverte aux autres langues), règle des noms de dossier selon la langue,
   bouton INSERT YOUR CARD, zones de dépôt vides teintées.
@@ -19,12 +22,15 @@ Auteur : Noar (Arnaud Augst, Just Edit).
 - 2.8.0 (13.10.2026, publiée) : Electron 44, notes en markdown, menu des
   picture profiles, liste des opérateurs de la session, Operator / Camera /
   Profile sur une ligne (Copy Info, cartes, kiosk).
-- Dernière version publiée sur GitHub : 2.8.0 (commit db36b69, tags `vX.Y.Z`,
-  vérifié le 24.10.2026). 2.8.1, 2.9.0 et 2.9.1 arrivent ensemble : la note de
-  release 2.9.1 les couvre.
+- Dernière version publiée sur GitHub : 2.9.1 (commit 7597d88, tag `v2.9.1`,
+  Release avec dmg, exe, AppImage et deb, vérifié le 26.10.2026). Elle couvre
+  2.8.1, 2.9.0 et 2.9.1. Envoyée SANS `push_github.command` : les fichiers de
+  suivi privés (`AGENTS.md`, `CLAUDE.md`, `ETAT_PROJET.md`, `docs/notes/`) sont
+  donc partis sur GitHub. Le script les retire au prochain envoi (2.9.2) ; ils
+  restent dans l'historique Git (aucun secret dedans).
 - Electron **44.7.1** : **macOS 13 Ventura minimum** (les 2.7 tournent encore
   sur macOS 12), Windows 10/11 64 bits, Linux x64.
-- Tests : `npm test`, 35 suites, 2044 vérifications, toutes vertes au 24.10.2026.
+- Tests : `npm test`, 36 suites, 2117 vérifications, toutes vertes au 27.10.2026.
 
 ## Emplacements de la version
 À mettre à jour ensemble à chaque bump, puis vérifier avec
@@ -182,6 +188,20 @@ CHECK tailles, SECURE relecture sans cache + xxHash64, PRO SECURE + manifestes
   extension semblent mordre sur leur libellé (vu sur le harnais seulement).
 - `test-ascmhl.js` saute 4 cas sans `pip install ascmhl` : normal.
 
+- **Carte muette, cas restant** (2.9.2) : en SECURE et PRO, la purge du cache
+  ouvre le fichier de façon synchrone. Elle n'est lancée qu'après une mesure
+  du fichier qui a répondu dans les 60 s, mais une carte qui répond à la mesure
+  puis bloque à l'ouverture gèlerait encore l'appli. `detectCamera` (au
+  chargement) et `inspectCard` restent synchrones aussi, protégés de la même
+  façon (mesure préalable) sur macOS et Windows seulement.
+- **Volumes virtuels** (2.9.2) : sur macOS, tout volume macFUSE est traité
+  comme virtuel. Un disque NTFS lu par un outil à base de macFUSE (ntfs-3g,
+  Mounty) le serait aussi : avertissement à tort et pas de relecture de carte,
+  mais aucune erreur. Non testé sur un vrai volume CODEX Platform.
+- Boutons de fenêtres de refus encore en anglais dans l'interface en français
+  (constaté le 27.10, non corrigés, hors demande) : « CONTINUE », « RENAME A
+  CARD », « REMOVE THE CARD », « REMOVE IT ». « GOT IT » est corrigé en 2.9.2
+  (« COMPRIS », test dans `test-i18n.js`).
 - **Notes markdown lues ailleurs** : deux lignes qui se suivent forment un seul
   paragraphe dans certains lecteurs markdown (GitHub, par exemple) ; ingesto et
   Obsidian les affichent sur deux lignes.
@@ -248,6 +268,75 @@ CHECK tailles, SECURE relecture sans cache + xxHash64, PRO SECURE + manifestes
   devenu `INGESTO - Ingest Report`). `test-no-emdash.js` lisait les chaînes
   ligne par ligne et ne voyait pas les gabarits sur plusieurs lignes ; il lit
   maintenant aussi ces gabarits en entier.
+
+## Fait en 2.9.2 (26.10.2026)
+Origine : mail de Manuel López (DigitalFrozen), tournage ALEXA Mini en ARRIRAW,
+avec son rapport. Ingest HDE erratique puis gelé ; une carte ARRIRAW normale
+(A003R2GR) terminée avec 2 erreurs sans cause lisible (A003C007 et le
+`_BIN.bin` manquants). Sa version : 2.8.0 ou plus ancienne. Décisions de Noar
+le 26.10 : A oui, B oui, HDE niveaux 1 et 2 oui, Card re-read désactivé sur
+HDE, refuser le HDE non. Noar envoie une version de test à Manuel avant
+publication.
+- **A. Détail des erreurs dans les rapports.** Chaque carte porte `errs`
+  (fichier, étape, message, disque s'il y en a plusieurs) et `errsMore`.
+  50 lignes au plus, message coupé à 400 caractères (`REPORT_ERR_MAX`,
+  `reportErrEntry`, `reportErrs`). HTML : la liste s'ouvre **au clic sur le
+  résultat** (`2 errors ▸`, fonction `tge`), demande de Noar ; l'export PDF
+  ouvre toutes les listes. CSV : colonne `Errors` ajoutée EN DERNIER. JSON :
+  automatique. Limite : le message vient du moteur et reste en anglais, même
+  dans un rapport en français.
+- **B. Carte qui ne répond plus.** Délai de 60 s (`SOURCE_STALL_MS`) sur
+  chaque lecture de la carte : scan désormais asynchrone (`settleWithin`,
+  `statWithin`), copie surveillée (`stallWatch` dans `copyFanOut`), mesure
+  avant et après chaque fichier, SIZE CHECK, Card re-read (`hashPro` avec
+  `stallMs`). Délai dépassé : `sourceStalled`, la carte n'est plus interrogée,
+  les fichiers restants sont listés « not copied » (la reprise a sa liste).
+  Une carte muette pendant le Card re-read n'est pas déclarée « unstable ».
+  Un seul appel en vol par chemin (`_ioInFlight`) : un appel bloqué occupe un
+  fil du système, on n'en bloque pas un deuxième. Liste des volumes macOS :
+  délai de 3 s (`VOLUME_PROBE_MS`), un volume muet est listé `unresponsive`,
+  jamais retiré (sinon il passerait pour une carte arrachée). Windows : le
+  sondage des lettres toutes les 2 s n'est plus synchrone.
+- **HDE.** `isHdeSource()` (main.js et index.html, identiques, testé) : un
+  segment du chemin finit par `_hde`. Au chargement : fenêtre d'information
+  (type `info`, nouvelle icône). Moteur : pas de purge du cache, pas de
+  comparaison avec la taille annoncée (ce qui est lu devient la taille du
+  fichier, pour la vérification, les manifestes et le rapport), SIZE CHECK
+  compare avec ce qui a été lu, Card re-read désactivé, barre de progression
+  au nombre de fichiers et pas de temps restant, remarque `HDE` dans la
+  fenêtre de fin et ligne d'avertissement dans le rapport. Jamais de journal
+  de carte, de détection caméra ni de sonde d'écriture sur un volume HDE.
+  Volumes virtuels (FUSE) repérés dans `mount` : pas de détection caméra.
+- Vérifié ici : tests (dont `test-source-stall.js`, 42 vérifications, toutes
+  passées par mutation) ; essai complet dans la vraie appli Electron avec un
+  faux volume `A003_hde` (fichiers annoncés à 0 octet qui en livrent 8 Mo :
+  ingest PRO vert, copies identiques, MHL à la bonne taille) et une carte
+  dont un fichier ne répond jamais (arrêt au bout de 60 s, fichier suivant
+  « not copied », appli restée réactive).
+- **Volumes virtuels** (27.10, après la réponse de Manuel : MacBook Pro M1
+  Max, macOS Tahoe, CODEX Platform 8.0.1, lecteur CFast StarTech ordinaire ;
+  plus de cartes, pas de test possible). Doc Codex : « Device Manager »
+  s'appelle **CODEX Platform** depuis la 8.0.0 ; sur les médias CodexFS (ALEXA
+  LF, SXT, XT) la version 8 ne crée PAS de volume `_hde`, c'est le volume de la
+  carte, sous son nom, qui passe en HDE. Décision de Noar : compatible, prévenir
+  l'utilisateur, ne rien casser sur les cartes classiques. Fait :
+  `isVirtualSource()` lit la table des montages (`mount` sur macOS,
+  `/proc/mounts` sur Linux, jamais sur Windows) ; virtuel = type FUSE sauf
+  `fuseblk` (ntfs-3g, exfat-fuse : vrais disques). Même traitement que le HDE
+  par le nom. `check-paths` renvoie `virtual`, la fenêtre prévient (une fois
+  par carte). Textes : « virtual volume », CODEX Platform. FAST et SIZE CHECK
+  ne se voient pas attribuer une vérification qu'ils ne font pas. Le contrôle
+  « démonter et relire » (PRO, macOS) refuse un volume virtuel.
+- Vérifié ici avec un vrai volume FUSE (Linux, `/dev/fuse`, outil
+  `mfusepy` installé dans le bac à sable seulement, pas dans le projet) : nom
+  ordinaire `A001_virtual`, fichiers annoncés à 0 octet. Avant : 3 fichiers sur
+  3 en erreur. Après : vert dans les 4 modes, copies identiques. Fichier qui ne
+  répond jamais : arrêt à 60 s, le suivant « not copied ». **Non-régression** :
+  carte classique dans les 5 réglages (FAST, SIZE CHECK, SECURE, PRO, PRO +
+  re-read), 2.9.2 contre 2.9.1 : mêmes résultats, mêmes fichiers, mêmes
+  empreintes (seul le nom de version change dans le MHL).
+- **Non vérifiable ici** : un vrai volume CODEX Platform (type exact dans la
+  table des montages, comportement sous charge). La note de release le dit.
 
 ## Fait en 2.9.1 (24.10.2026)
 Revue complète du code (moteur, interface, cohérence), puis choix de Noar :
@@ -336,6 +425,10 @@ dans la conversation du 23.10) : intégrer son chinois, renommer son fork.
 7. Manuel 2.9.0 (section Langue, noms de dossier) et captures du README.
 8. Chinois de wibi8bo, s'il envoie une pull request : vérifier ses clés
    contre la 2.9.0 (`board.js zh-CN`, `test-i18n.js`).
+9. Avertissement de responsabilité au premier lancement (proposé le 26.10 :
+   texte EN et FR, acceptation enregistrée avec la version du texte, boutons
+   Quitter / J'accepte). En attente, décision de Noar.
+10. Test sur un vrai volume CODEX Platform (HDE) dès qu'un utilisateur en a l'occasion (Manuel s'est proposé pour plus tard).
 
 ## Pour aller plus loin
 `docs/notes/` : 01 conventions, 02 architecture, 03 carte source, 04 charte UI,

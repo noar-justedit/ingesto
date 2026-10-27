@@ -161,6 +161,22 @@ for (const f of fs.readdirSync(LANG_DIR).filter(f => f.endsWith('.js'))) {
   ok(missing.length === 0, `lang/${f} translates all of them` + (missing.length ? ': ' + missing.slice(0, 4).map(x => JSON.stringify(x)).join(' | ') : ''));
 }
 
+// The button of the information and refusal windows (2.9.2). It is written
+// in capitals in the code, and the dictionary only had "Got it": every such
+// window kept "GOT IT" in English in the French interface.
+{
+  const gotIt = (REND.match(/label:'GOT IT'/g) || []).length;
+  ok(gotIt >= 2, `"GOT IT" is the button of ${gotIt} windows, the default one included`);
+  for (const f of fs.readdirSync(LANG_DIR).filter(f => f.endsWith('.js'))) {
+    const ctx = { window: {} };
+    vm.runInNewContext(fs.readFileSync(path.join(LANG_DIR, f), 'utf8'), ctx);
+    const d = Object.values(ctx.window)[0] || {};
+    const v = d.texts && d.texts['GOT IT'];
+    ok(typeof v === 'string' && v.length > 0 && v !== 'GOT IT' && v === v.toUpperCase(),
+       `lang/${f} translates "GOT IT", in capitals like the other buttons (${JSON.stringify(v)})`);
+  }
+}
+
 // ── The name of the app ────────────────────────────────────────────────────
 // "ingesto", in lowercase, like the logo (decided 2.9.1). Only file names
 // (INGESTO_report.html) and the tool name inside the MHL manifests keep the

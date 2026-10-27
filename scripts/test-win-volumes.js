@@ -31,6 +31,14 @@ function extractFn(name) {
   }
   throw new Error(`unbalanced braces in ${name}`);
 }
+// The deadline helpers the scan goes through (2.9.2), and the HDE rule.
+function extractConst(name) {
+  const m = SRC.match(new RegExp(`^const ${name} = .*;$`, 'm'));
+  if (!m) throw new Error(`const ${name} not found in main.js`);
+  return m[0];
+}
+const HELPERS = [extractConst('SOURCE_STALL_MS'), extractConst('VOLUME_PROBE_MS'), extractConst('_ioInFlight'),
+  extractFn('settleWithin'), extractFn('statWithin'), extractFn('isHdeSource')].join('\n') + '\n';
 const ctx = vm.createContext({ console, JSON, String, Number, Array, Map });
 vm.runInContext(extractFn('mergeWinDrives'), ctx);
 
@@ -111,7 +119,7 @@ console.log('\nthe REAL Windows scan, run against that machine');
     process: { env: { SystemDrive: 'C:' }, platform: 'win32' },
     // Since 2.9.1 the scan is asynchronous: PowerShell through tryExecFile,
     // the drive letters through fs.promises.stat.
-    Promise, setTimeout,
+    Promise, setTimeout, clearTimeout,
     tryExecFile: async (cmd, args) => {
       const c = args.join(' ');
       asked.push(c);
@@ -125,7 +133,7 @@ console.log('\nthe REAL Windows scan, run against that machine');
     } } },
     detectCamera: () => null,
   });
-  vm.runInContext(extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), winCtx);
+  vm.runInContext(HELPERS + extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), winCtx);
   const vols = await winCtx.getMountedVolumesWin();
   const by = {}; vols.forEach(v => { by[v.path[0]] = v; });
 
@@ -153,13 +161,13 @@ console.log('\nthe REAL Windows scan, run against that machine');
   const noLabel = vm.createContext({
     console, JSON, String, Number, Array, Map, Boolean,
     process: { env: { SystemDrive: 'C:' }, platform: 'win32' },
-    Promise, setTimeout,
+    Promise, setTimeout, clearTimeout,
     tryExecFile: async (cmd, args) => args.join(' ').includes('Get-PSDrive')
       ? JSON.stringify([{ Name:'E', Used:0, Free:1e9, Description:'', DisplayRoot:null }]) : '',
     fs: { promises: { stat: async (p) => { if (p === 'E:\\') return { isDirectory: () => true }; throw new Error('ENOENT'); } } },
     detectCamera: () => null,
   });
-  vm.runInContext(extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), noLabel);
+  vm.runInContext(HELPERS + extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), noLabel);
   const e = (await noLabel.getMountedVolumesWin())[0];
   ok(e && e.label === 'E' && e.name === 'E:',
      'a card with no label falls back to the bare letter — "E:" would have become the folder "E_"');

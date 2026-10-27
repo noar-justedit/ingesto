@@ -2,6 +2,31 @@
 
 All notable changes to ingesto. Versions before 2.5.5 are not listed here.
 
+## 2.9.2 (2026-10-26)
+Field report from an ALEXA Mini shoot (ARRIRAW, with and without HDE).
+- Reports: each card now carries what went wrong, file by file, with the
+  step and the message. HTML: click the result to open the list (the PDF
+  export prints every list). CSV: new `Errors` column, last, so the column
+  numbers do not move. JSON: `errs` and `errsMore`. Up to 50 lines per card.
+- A card that stops answering no longer freezes ingesto. Every read of the
+  card has a 60 s deadline (scan, copy, SIZE CHECK, card re-read); once it is
+  missed, the card is reported as silent and the files left are listed as not
+  copied. The volume list (macOS, Windows) no longer waits on a volume that
+  does not answer; it lists it as such.
+- Virtual volumes, HDE among them (CODEX Platform, formerly Device Manager):
+  recognised by name (`A003_hde`, the extra volume of a CFast card) or because
+  the system reports them as served by a program (FUSE), which covers ALEXA
+  LF / SXT / XT media whose volume keeps the card's name. A notice says so
+  when the card is loaded. The copies are compared with what the volume
+  delivers (the announced sizes are not trusted), the card re-read (PRO) is
+  off, the card log is never written there, and the window and report say
+  what such a copy proves. An ordinary card is unaffected (same results and
+  same files as 2.9.1, checked in every mode).
+- French interface: the button of the information and refusal windows read
+  "GOT IT" in English; it now reads "COMPRIS".
+- The project's private tracking files leave GitHub with this version (they
+  stay in the ZIP).
+
 ## 2.9.1 (2026-10-24)
 Fixes and harmonisation after a full review of the code.
 - History: a FAST or SIZE CHECK line that went fine now reads COPIED, not

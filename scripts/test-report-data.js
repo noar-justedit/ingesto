@@ -34,10 +34,13 @@ let pass = 0, fail = 0;
 const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fail++; console.log('  FAIL ' + l); } };
 
 const NAMES = ['tr', 'trf', 'buildReportHtml', 'gzipB64', 'reportFilePairs', 'fmtReportDur', 'fmtSize',
-               'mdEscape', 'mdInline', 'mdToHtml', 'fmtReportDate'];
+               'mdEscape', 'mdInline', 'mdToHtml', 'fmtReportDate',
+               'reportErrEntry', 'reportErrs', 'reportPhaseLabel', 'reportErrsText', 'buildReportCsv'];
+// The cap on the error list is a constant of the page, read from it.
+const ERR_MAX_LINE = (REND.match(/^const REPORT_ERR_MAX = \d+;$/m) || [''])[0];
 const ctx = vm.createContext({ console, String, Number, Array, Object, Math, JSON, Date, isFinite,
   Blob, Response, CompressionStream, TextEncoder, btoa, Uint8Array, S: { appVersion: 'test' } });
-vm.runInContext(NAMES.map(extractFn).join('\n'), ctx);
+vm.runInContext(ERR_MAX_LINE + '\n' + NAMES.map(extractFn).join('\n') + '\nthis.REPORT_ERR_MAX = REPORT_ERR_MAX;', ctx);
 
 // Same expression as report-read in main.js.
 const decode = (html) => {
@@ -54,6 +57,9 @@ const REC = {
   result: 'OK · 3 already on drive, not copied', rclass: 'r-ok', skipped: 3,
   copyMs: 1500, v1Ms: 900, v2Ms: 0,
   fileList: [{ path: 'CLIP/A001.MXF', size: 100, mtime: 1 }],
+  errs: [{ file: 'CLIP/A007.MXF', phase: 'copy', error: 'EIO: i/o error, read' },
+         { file: '(card read)', phase: 'warning', error: 'part of this card came from memory', drive: 'RAID B' }],
+  errsMore: 4,
 };
 
 // The fields the record really has, read from updateReports() itself, so a
@@ -115,6 +121,47 @@ const WRITTEN = [...new Set([
     const out = JSON.parse(j.buildReportJson('c', 'u', '/D', [Object.assign({}, REC, { result: '2 errors', mode: 'Secure' })])).records[0];
     ok(out.result === '2 errors' && out.mode === 'Secure', 'result and mode stay in English, for scripts and for the next read-back');
     ok(out.resultLabel === 'FR:2 errors' && out.modeLabel === 'FR:Secure', 'resultLabel and modeLabel follow the language');
+  }
+
+  console.log('\nwhat went wrong is written into the report (2.9.2)');
+  {
+    ok(ERR_MAX_LINE !== '' && ctx.REPORT_ERR_MAX > 0, `the cap on the error list is read from the page (${ctx.REPORT_ERR_MAX})`);
+    ok(/allErrs\.push\(reportErrEntry\(e/.test(ur) && /errorList/.test(ur),
+       'updateReports() builds the list from the errorList of every destination');
+    ok(/allErrs\.slice\(0, REPORT_ERR_MAX\)/.test(ur) && /errsMore=allErrs\.length-errs\.length/.test(ur),
+       'updateReports() caps the list and counts what it left out');
+    const visible = html.replace(/<script[\s\S]*?<\/script>/g, '');
+    ok(visible.includes('CLIP/A007.MXF') && visible.includes('EIO: i/o error, read'),
+       'the HTML carries the file and the message');
+    ok(/<tr class="er" id="er-0" style="display:none;">/.test(visible) && /class="r-ok r-click" onclick="tge\(0\)"/.test(visible),
+       'the list is closed, and the result badge opens it');
+    const script = (html.match(/<script>([\s\S]*?)<\/script>/g) || []).join('\n');
+    ok(/function tge\(i\)/.test(script) && /querySelectorAll\('tr\.er'\)/.test(script),
+       'the badge has its function, and the PDF export opens every list');
+    ok(/class="er-row er-warn"/.test(visible) && visible.includes('RAID B / (card read)'),
+       'a warning is marked as such, and the drive is named when there are several');
+    ok(visible.includes('4 more not listed'), 'what was left out is counted');
+    const bad = Object.assign({}, REC, { errs: [{ file: '<img src=x onerror=alert(1)>', phase: '"><b>PH', error: '<script>x</script>' }] });
+    const hb = (await ctx.buildReportHtml('c', 'u', '/D', [bad])).replace(/<script id="ingesto-report-data"[\s\S]*?<\/script>/, '');
+    ok(!hb.includes('<img src=x') && !hb.includes('<script>x') && !hb.includes('"><b>PH'), 'a tampered list is escaped');
+    const many = Object.assign({}, REC, { errs: Array.from({ length: 500 }, (_, i) => ({ file: 'F' + i, phase: 'copy', error: 'x'.repeat(5000) })) });
+    const bm = decode(await ctx.buildReportHtml('c', 'u', '/D', [many]));
+    const em = (bm && bm.records[0].errs) || [];
+    ok(em.length === ctx.REPORT_ERR_MAX && em.every(x => x.error.length <= 400),
+       'a list read back from a report is capped and its messages shortened');
+    const light = Object.assign({}, REC); delete light.fileList;
+    const hl = (await ctx.buildReportHtml('c', 'u', '/D', [light])).replace(/<script[\s\S]*?<\/script>/g, '');
+    ok(hl.includes('CLIP/A007.MXF') && /<tr class="er" id="er-0" style="display:none;"><td colspan="11">/.test(hl),
+       'a light card (no file list) shows its list too, on the full width');
+    const plain = Object.assign({}, REC); delete plain.errs; delete plain.errsMore;
+    const bp = decode(await ctx.buildReportHtml('c', 'u', '/D', [plain]));
+    ok(bp && !('errs' in bp.records[0]) && !(await ctx.buildReportHtml('c', 'u', '/D', [plain])).includes('class="er"'),
+       'a card without errors carries no list, and no empty row');
+    const csv = ctx.buildReportCsv([REC]).split('\n');
+    const head = csv[0].split(','), row = csv[1];
+    ok(head[head.length - 1] === 'Errors', 'the CSV gets an Errors column, at the end so the column numbers do not move');
+    ok(row.includes('CLIP/A007.MXF (Copy): EIO: i/o error, read') && row.includes('RAID B / (card read) (Warning)'),
+       'the CSV line carries the list');
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);

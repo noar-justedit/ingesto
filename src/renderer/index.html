@@ -596,12 +596,14 @@ flex-shrink:0;border:1px solid transparent;}
 .pf-block .pf-ico{background:var(--red-d);border-color:var(--red-g);color:var(--red);}
 .pf-warn  .pf-ico{background:var(--orange-d);border-color:var(--orange-g);color:var(--orange);}
 .pf-busy  .pf-ico{background:var(--blue-d);border-color:rgba(77,144,240,.3);color:var(--blue);}
+.pf-info  .pf-ico{background:var(--blue-d);border-color:rgba(77,144,240,.3);color:var(--blue);}
 /* Two lines, broken by hand in the text so the second is never longer than the
    first. balance is the safety net, not the plan. */
 .pf-title{font-size:19px;font-weight:700;line-height:1.25;letter-spacing:.01em;text-wrap:balance;}
 .pf-block .pf-title{color:var(--red);}
 .pf-warn  .pf-title{color:var(--orange);}
 .pf-busy  .pf-title{color:var(--blue);}
+.pf-info  .pf-title{color:var(--blue);}
 /* The constant line. It is the first thing read after the title and it is never
    negotiated: on a refusal nothing was touched, and saying so is the whole
    difference between "refused" and "failed". */
@@ -3104,6 +3106,25 @@ function pathToName(p){
   return seg || clean || p;
 }
 
+// A CODEX Platform (ex Device Manager) HDE volume: its name ends in "_hde" (A003_hde), and
+// a folder dropped from inside it carries that segment in its path. The same
+// rule as isHdeSource() in main.js (test-source-stall.js keeps them identical).
+function isHdeSource(p) {
+  return String(p || '').split(/[\\/]/).some(seg => /_hde$/i.test(seg));
+}
+// Said once, when the card is loaded: what a copy from a volume produced on
+// read (HDE, by name or by the mount table, see check-paths) can and cannot
+// prove.
+function warnHdeSource(entry){
+  if (entry) { if (entry._virtualWarned) return; entry._virtualWarned = true; }
+  showRefusal({ code:'HDE', kind:'info',
+    title:['This card is a','virtual volume'],
+    lead:'A program produces its files while they are read, as CODEX Platform does for HDE.', leadKind:'info',
+    cause:'ingesto can only compare the copies with what this volume delivers, not with the card itself. '+
+          'Sizes are only known once each file is copied, and the card re-read (PRO) is off for this card.',
+    action:'With HDE, clips in other formats (ProRes) can stay on another volume of the same card: load it too if it holds any.',
+    buttons:[{ label:'GOT IT', value:'ok' }] });
+}
 function addToZone(z,entry){
   // An ingest works from the list frozen when it started: anything added now
   // would sit in the column looking loaded, never be copied, and throw the
@@ -3156,7 +3177,12 @@ A card cannot be copied into itself.`, 'error');
   // an unplug-and-replug of the SAME drive would look like a different one.
   try{
     window.ingesto.checkPaths([{ path: entry.path }])
-      .then(r => { if(r && r[0] && r[0].ok){ entry._isMount = r[0].isMount; entry._total = r[0].total; } })
+      .then(r => {
+        if(r && r[0] && r[0].ok){ entry._isMount = r[0].isMount; entry._total = r[0].total; }
+        // A volume produced on read whatever its name (CODEX Platform on
+        // ALEXA LF media keeps the card's name). Only a card, only once.
+        if(z==='src' && r && r[0] && r[0].virtual === true){ entry._virtual = true; warnHdeSource(entry); }
+      })
       .catch(()=>{});
   }catch(_){}
   renderZoneList(z);
@@ -3171,12 +3197,16 @@ A card cannot be copied into itself.`, 'error');
   // ── New in 0.9.8: camera auto-detection + sentinel inspection ────────
   if (z === 'src') {
     onSourceAdded(entry).catch(err => console.error('onSourceAdded error:', err));
+    if (isHdeSource(entry.path)) warnHdeSource(entry);
   }
 }
 
 // Runs camera detection + sentinel check on a newly added source.
 // Updates the source entry in place when the user is still editing it.
 async function onSourceAdded(entry) {
+  // An HDE volume is a view produced by CODEX Platform (ex Device Manager): it is not
+  // browsed for a camera, and the card log is never read or written there.
+  if (isHdeSource(entry.path)) return;
   // 1. Camera auto-detection (fast — local fs scan, no I/O on file contents
   //    for most cameras except a small header read).
   try {
@@ -5210,6 +5240,8 @@ const PF_ICO = {
   block:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>',
   warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
   busy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+  // Something to know, nothing wrong and nothing running (the HDE card).
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
 };
 let _pfPending = null;   // resolver of the window currently on screen
 function showRefusal(spec){
@@ -8420,6 +8452,13 @@ async function updateReports(R, base, run){
     else if(unstable>0){ result='⚠ suspect card'; rclass='r-suspect'; }
     else if(errors>0||failed>0){ const n=errors||failed; result=`${n} error${n>1?'s':''}`; rclass='r-err'; }
     else if(notOk){ result='incomplete'; rclass='r-err'; }
+    // What went wrong, file by file (2.9.2). The report used to say "2 errors"
+    // and nothing else: the reason was only in the end-of-ingest window, gone
+    // once it was closed. Capped, so a card that fails everywhere does not
+    // turn the report into a log; errsMore says how many were left out.
+    const allErrs=[];
+    for(const r of rs) for(const e of (r.errorList||[])) allErrs.push(reportErrEntry(e, rs.length>1 ? driveNameOf(r) : ''));
+    const errs=allErrs.slice(0, REPORT_ERR_MAX), errsMore=allErrs.length-errs.length;
     return { n:padCounter(base+i, run && run.counterWidth), date:dateStr, card:name,
       // Where the card actually landed under the destination. With subfolders
       // the card name alone no longer says where the footage is, and a report
@@ -8433,7 +8472,8 @@ async function updateReports(R, base, run){
       copyMs:r0.copyMs, v1Ms:r0.verify1Ms, v2Ms:r0.verify2Ms,
       // Light report: this card is recorded without its file names. Cards
       // already in the report are carried over untouched.
-      fileList:RP.full?(r0.fileList||[]).map(f=>({path:f.path,size:f.size,mtime:f.mtime})):[] };
+      fileList:RP.full?(r0.fileList||[]).map(f=>({path:f.path,size:f.size,mtime:f.mtime})):[],
+      errs, errsMore };
   });
   for(const d of runDests){
     let created=isoNow, records=[], unreadable=false;
@@ -8489,6 +8529,29 @@ function fmtReportDur(ms){
   if(t < 3600) return `${Math.floor(t/60)}m${String(t%60).padStart(2,'0')}s`;
   return `${Math.floor(t/3600)}h${String(Math.floor((t%3600)/60)).padStart(2,'0')}m`;
 }
+// One line of the "what went wrong" list of a report. The message comes from
+// the engine, in English, like the error itself; it is flattened to one line
+// and shortened so that one runaway message cannot swell the report.
+const REPORT_ERR_MAX = 50;
+function reportErrEntry(e, drive){
+  const o = { file:String((e&&e.file)||''), phase:String((e&&e.phase)||''),
+              error:String((e&&e.error)||'').replace(/\s+/g,' ').trim().slice(0,400) };
+  if (drive) o.drive = String(drive);
+  return o;
+}
+// The list of a record, whatever its origin: a record written before 2.9.2
+// has none, a record read back from a tampered report may hold anything.
+function reportErrs(r){
+  return (Array.isArray(r && r.errs) ? r.errs : [])
+    .filter(x => x && typeof x === 'object').slice(0, REPORT_ERR_MAX)
+    .map(x => reportErrEntry(x, x.drive));
+}
+// The phase, for a person. The engine's codes stay in the data.
+function reportPhaseLabel(ph){
+  const L = { copy:'Copy', verify:'Verify', source:'Card re-read', scan:'Card scan', setup:'Before the start',
+              sidecar:'Manifest', warning:'Warning', retry:'Re-copy' };
+  return tr(L[ph] || ph || 'Error');
+}
 function reportFilePairs(r){
   if (Array.isArray(r.fileList) && r.fileList.length) return r.fileList.map(x=>[x.path, x.size]);
   if (Array.isArray(r.f) && r.f.length) return r.f.map(x=>Array.isArray(x)?[x[0],x[1]]:[x.path,x.size]);
@@ -8509,16 +8572,23 @@ function buildReportCsv(records){
   // else is data. A spreadsheet that reads the CSV by column NUMBER is
   // unaffected; one that reads it by title must use the English export.
   const head=['#','Date','Card','Folder','Operator','Cam','Profile','Mode','Files','Bytes','Size','Result',
-              'Copy','Verify','Card re-read','Copy ms','Verify ms','Card re-read ms','Note','Files list'].map(tr);
+              'Copy','Verify','Card re-read','Copy ms','Verify ms','Card re-read ms','Note','Files list','Errors'].map(tr);
   const num=v=>(typeof v==='number'&&isFinite(v))?v:'';
   const rows=records.map(r=>{
     const fl=reportFilePairs(r).map(([p,sz])=>`${p} (${fmtSize(sz)})`).join(' | ');
     return [r.n,r.date,r.card,r.folder||'',r.operator,r.cam,r.pp||'',tr(r.mode),r.files,r.bytes,fmtSize(r.bytes),tr(r.result),
             fmtReportDur(r.copyMs),fmtReportDur(r.v1Ms),fmtReportDur(r.v2Ms),
             num(r.copyMs),num(r.v1Ms),num(r.v2Ms),
-            r.note,fl].map(q).join(',');
+            r.note,fl,reportErrsText(r)].map(q).join(',');
   });
   return head.join(',')+'\n'+rows.join('\n')+'\n';
+}
+// The error list on one line, for the CSV: "file (phase): message | ...".
+function reportErrsText(r){
+  const list = reportErrs(r).map(x => `${x.drive?x.drive+' / ':''}${x.file} (${reportPhaseLabel(x.phase)}): ${x.error}`);
+  const more = Number.isFinite(+r.errsMore) ? (+r.errsMore|0) : 0;
+  if (more > 0) list.push(trf('{n} more not listed', {n:more}));
+  return list.join(' | ');
 }
 function buildReportJson(created, updated, destPath, records){
   // Field names, codes and VALUES stay in English, whatever the language:
@@ -8572,6 +8642,7 @@ async function buildReportHtml(created, updated, destPath, records){
     const modeCls = MODE_CLASSES.has(r.modeClass) ? r.modeClass : '';
     const rCls    = R_CLASSES.has(r.rclass) ? r.rclass : '';
     const nFiles  = Number.isFinite(+r.files) ? (+r.files|0) : 0;
+    const errs = reportErrs(r), more = Number.isFinite(+r.errsMore) ? (+r.errsMore|0) : 0;
     const main = `<tr class="rec">`+chev+
       `<td class="c-num">${escH(r.n)}</td><td class="c-mut">${escH(r.date)}</td>`+
       `<td>${escH(r.card)}${(r.folder&&r.folder.includes('/'))?`<div class="c-path">${escH(r.folder)}</div>`:''}</td>`+
@@ -8582,7 +8653,10 @@ async function buildReportHtml(created, updated, destPath, records){
       `<td>${escH(r.cam)}${r.pp?`<div class="c-path">${escH(r.pp)}</div>`:''}</td>`+
       `<td class="${modeCls}">${escH(tr(r.mode))}</td>`+
       `<td class="c-r">${nFiles}</td><td class="c-r">${fmtSize(r.bytes)}</td>`+
-      `<td><span class="${rCls}">${escH(tr(r.result))}</span></td>`+
+      // A card with an error list: the result badge opens it (2.9.2).
+      (errs.length
+        ? `<td><span class="${rCls} r-click" onclick="tge(${ri})" title="${escH(tr('Show what went wrong'))}">${escH(tr(r.result))} <span id="eb-${ri}">\u25b8</span></span></td>`
+        : `<td><span class="${rCls}">${escH(tr(r.result))}</span></td>`)+
       // One compact column rather than three: the table already carries 11
       // columns and three more would crush it. All three values are shown.
       // Phase timings: fixed-width sub-columns so the "/" separators line up
@@ -8599,8 +8673,18 @@ async function buildReportHtml(created, updated, destPath, records){
       // The note is markdown since 2.8.0: shown formatted, built by
       // mdToHtml(), which escapes everything first.
       `<td class="c-txt c-mut">${r.note ? `<div class="md-note">${mdToHtml(r.note)}</div>` : ''}</td></tr>`;
-    if(!hasFl) return main;
-    return main+`<tr class="det" id="det-${ri}" style="display:none;"><td></td><td colspan="11"></td></tr>`;
+    // What went wrong: opened from the result badge, and printed with the
+    // PDF export, which opens every list.
+    const errRow = !errs.length ? '' :
+      `<tr class="er" id="er-${ri}" style="display:none;">${anyFl?'<td></td>':''}<td colspan="11"><div class="er-list">`+
+      errs.map(x=>`<div class="er-row ${x.phase==='warning'?'er-warn':''}">`+
+        `<span class="er-p">${escH(reportPhaseLabel(x.phase))}</span>`+
+        `<span class="er-f">${escH((x.drive?x.drive+' / ':'')+x.file)}</span>`+
+        `<span class="er-m">${escH(x.error)}</span></div>`).join('')+
+      (more>0?`<div class="er-row er-more">${escH(trf('{n} more not listed', {n:more}))}</div>`:'')+
+      `</div></td></tr>`;
+    if(!hasFl) return main+errRow;
+    return main+errRow+`<tr class="det" id="det-${ri}" style="display:none;"><td></td><td colspan="11"></td></tr>`;
   }).join('');
   // Compact encoding: [path, size] pairs instead of {path,size,mtime} objects
   // (~30 chars of JSON scaffolding saved per file). mtime is dropped — it is
@@ -8613,6 +8697,8 @@ async function buildReportHtml(created, updated, destPath, records){
       mode:r.mode, modeClass:r.modeClass, files:r.files, bytes:r.bytes,
       result:r.result, rclass:r.rclass, note:r.note, skipped:r.skipped||0,
       copyMs:r.copyMs, v1Ms:r.v1Ms, v2Ms:r.v2Ms };
+    const errs = reportErrs(r);
+    if (errs.length) { o.errs = errs; if (+r.errsMore > 0) o.errsMore = +r.errsMore|0; }
     const pairs = reportFilePairs(r);
     if (pairs.length) o.f = pairs;
     return o;
@@ -8689,6 +8775,16 @@ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;}
 .fl-row{display:flex;justify-content:space-between;gap:16px;padding:2px 0;font-size:12px;}
 .fl-p{color:#aeb3bd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fl-s{color:#6f757f;flex-shrink:0;}
+.er td{background:transparent !important;padding-top:0;white-space:normal;}
+.er-list{border-radius:9px;padding:7px 11px;background:rgba(242,85,90,.07);font-size:11.5px;}
+.er-row{display:flex;gap:12px;padding:2px 0;align-items:baseline;}
+.er-p{flex-shrink:0;min-width:92px;color:#f2555a;font-weight:700;font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;}
+.er-warn .er-p{color:#f2a03d;}
+.er-f{flex-shrink:0;color:#e8eaf0;max-width:42%;overflow-wrap:anywhere;}
+.er-m{color:#aeb3bd;overflow-wrap:anywhere;}
+.er-more{color:#6f757f;}
+.r-click{cursor:pointer;user-select:none;}.r-click:hover{filter:brightness(1.25);}
 .legend{display:flex;flex-wrap:wrap;gap:16px;font-size:11px;color:#808693;padding:12px 2px 0;}
 .legend b{font-weight:600;}
 .ft{font-size:11px;color:#6f757f;padding:0 2px;line-height:1.6;}
@@ -8708,6 +8804,9 @@ tbody tr.rec:nth-child(even) td{background:#fafafa;}
 .det td:first-child{display:none;}
 .fl-list{max-height:none;overflow:visible;background:#fff;border:1px solid #ddd;}
 .fl-hd{color:#555;}.fl-p{color:#333;}.fl-s{color:#666;}
+.er-list{background:#fdf3f3;border:1px solid #f3d0d0;}.er-p{color:#c62828;}.er-warn .er-p{color:#a85c00;}
+.er-f{color:#16181d;}.er-m{color:#444;}
+.det td:first-child,.er td:first-child:not([colspan]){display:none;}
 .m-fast{color:#5a6069;}.m-sizecheck,.m-verified{color:#1a73c7;}
 .m-secure{color:#b45309;}.m-pro{color:#7c3aed;}
 .r-ok{color:#0f7a45;background:#e6f5ec;}.r-err{color:#c62828;background:#fdecec;}
@@ -8741,6 +8840,7 @@ tbody tr.rec:nth-child(even) td{background:#fafafa;}
 <span><b style="color:#4d90f0;">${escH(tr('VERIFY'))}</b> ${escH(tr('read back on the destination'))}</span>
 <span><b style="color:#a880ff;">${escH(tr('RE-READ'))}</b> ${escH(tr('card re-read'))}</span>
 ${anyFl?`<span>${escH(tr('Click ▸ on a line to list the files.'))}</span>`:''}
+${records.some(r=>reportErrs(r).length)?`<span>${escH(tr('Click a result marked ▸ to see what went wrong.'))}</span>`:''}
 </div>
 </div>
 
@@ -8795,7 +8895,11 @@ async function tgl(i){
   var open=d.style.display!=='none';
   if(!open)_fill(i);
   d.style.display=open?'none':'table-row';if(c)c.textContent=open?'\u25b8':'\u25be';}
-function _all(){var t=document.querySelectorAll('tr.det');
+function tge(i){var e=document.getElementById('er-'+i),b=document.getElementById('eb-'+i);if(!e)return;
+var open=e.style.display!=='none';e.style.display=open?'none':'table-row';if(b)b.textContent=open?'\u25b8':'\u25be';}
+function _all(){var x=document.querySelectorAll('tr.er');
+for(var j=0;j<x.length;j++){x[j].style.display='table-row';var eb=document.getElementById('eb-'+x[j].id.slice(3));if(eb)eb.textContent='\u25be';}
+var t=document.querySelectorAll('tr.det');
 for(var i=0;i<t.length;i++){var n=+t[i].id.slice(4);_fill(n);t[i].style.display='table-row';
 var c=document.getElementById('ch-'+n);if(c)c.textContent='\u25be';}}
 // Safari implements neither beforeprint nor afterprint, so the button does the
@@ -8956,7 +9060,7 @@ async function kioskBrowse(){
   S.sources=[];                       // single card at a time in kiosk
   addToZone('src',{path:fp,name:cardNameForPath(fp)});
   try{
-    const cam=await window.ingesto.detectCamera(fp);
+    const cam=isHdeSource(fp) ? null : await window.ingesto.detectCamera(fp);
     const camModel=(cam && cam.model) ? cam.model.replace(/[^A-Za-z0-9]/g,'') : '';
     if(camModel){ if(S.sources[0]) S.sources[0].camera=camModel; document.getElementById('k-cam').value=camModel; kioskCamMark('A'); }
     else   { kioskCamMark(''); }

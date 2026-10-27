@@ -101,7 +101,107 @@ async function newProHasher(algo) {
 // Fingerprint a file with the chosen algo (used by SECURE, PRO and Verify).
 //  Every file is streamed with a bounded buffer, so RAM stays flat and the read
 //  can go through the uncached path.
-async function hashPro(fp, hasher) {
+// ─── A source that stops answering ─────────────────────────────────────────
+// A card reader that hangs, or a virtual volume whose service stalls (the
+// "_hde" volume of CODEX Platform (ex Device Manager) encodes on the fly while it is read),
+// does not fail: it simply never answers. A synchronous call on it froze the
+// whole engine, and an asynchronous one waited for ever. Every read of the
+// source now has a deadline. Past it, the card is declared silent for the rest
+// of the run, so a stuck volume costs one wait, not one per file.
+const SOURCE_STALL_MS = 60000;
+// The volume list is not an ingest: a volume that has not answered in a few
+// seconds is shown as such, and asked again at the next refresh.
+const VOLUME_PROBE_MS = 3000;
+// A CODEX Platform (ex Device Manager) HDE volume: its name ends in "_hde" (A003_hde), and a
+// folder dropped from inside it carries that segment in its path. The same
+// rule as isHdeSource() in index.html (test-hde.js keeps them identical).
+function isHdeSource(p) {
+  return String(p || '').split(/[\\/]/).some(seg => /_hde$/i.test(seg));
+}
+// A volume served by a PROGRAM rather than read from a disk (2.9.2). CODEX
+// Platform does this for HDE: the "_hde" volume of a CFast card, but also,
+// since version 8, the card's own volume on ALEXA LF / SXT / XT media, which
+// keeps its usual name. Both go through FUSE (macFUSE on macOS). The mount
+// table says so, whatever the name.
+// Not virtual, on purpose: "fuseblk" (Linux) is FUSE over a real block device
+// (ntfs-3g, exfat-fuse: ordinary NTFS or exFAT drives and cards).
+// Windows: CODEX Platform does not exist there.
+async function readMountTable() {
+  if (process.platform === 'darwin') {
+    const out = await tryExecFile('mount', [], 2000);
+    return out.split('\n').map(line => {
+      const m = line.match(/^(.*?) on (\/.*) \(([^,)]*)/);
+      return m ? { source: m[1], point: m[2].trim(), type: m[3].trim() } : null;
+    }).filter(Boolean);
+  }
+  if (process.platform === 'linux') {
+    let txt = '';
+    try { txt = await fs.promises.readFile('/proc/mounts', 'utf8'); } catch (_) { return []; }
+    const unesc = (x) => x.replace(/\\([0-7]{3})/g, (m, o) => String.fromCharCode(parseInt(o, 8)));
+    return txt.split('\n').map(line => {
+      const f = line.split(' ');
+      return f.length >= 3 ? { source: unesc(f[0]), point: unesc(f[1]), type: f[2] } : null;
+    }).filter(Boolean);
+  }
+  return [];
+}
+function isVirtualMountType(type) {
+  const t = String(type || '').toLowerCase();
+  return /fuse/.test(t) && t !== 'fuseblk';
+}
+// The mount a path lives on: the longest mount point that contains it.
+function mountOfPath(p, table) {
+  const abs = String(p || '');
+  let best = null;
+  for (const m of table) {
+    const pt = m.point === '/' ? '/' : m.point.replace(/\/+$/, '');
+    const inside = pt === '/' ? abs.startsWith('/') : (abs === pt || abs.startsWith(pt + '/'));
+    if (inside && (!best || pt.length > best.point.length)) best = { ...m, point: pt };
+  }
+  return best;
+}
+async function isVirtualSource(p) {
+  if (process.platform === 'win32' || !p) return false;
+  try { const m = mountOfPath(path.resolve(String(p)), await readMountTable()); return !!(m && isVirtualMountType(m.type)); }
+  catch (_) { return false; }
+}
+// One call in flight per path: a call that never comes back keeps a worker
+// thread busy, and starting a second one on the same path would take another.
+const _ioInFlight = new Map();
+function settleWithin(key, start, ms) {
+  if (key && _ioInFlight.has(key)) return Promise.resolve({ timeout: true });
+  const pr = Promise.resolve().then(start).then(v => ({ v }), err => ({ err }));
+  if (key) {
+    _ioInFlight.set(key, pr);
+    pr.then(() => { if (_ioInFlight.get(key) === pr) _ioInFlight.delete(key); });
+  }
+  let timer = null;
+  const late = new Promise(res => { timer = setTimeout(() => res({ timeout: true }), ms); if (timer.unref) timer.unref(); });
+  return Promise.race([pr, late]).then(x => { clearTimeout(timer); return x; });
+}
+function statWithin(p, ms) { return settleWithin('stat:' + p, () => fs.promises.stat(p), ms); }
+function stallError(what) {
+  return Object.assign(new Error(`the card stopped answering (${what}, no reply for ${Math.round(SOURCE_STALL_MS / 1000)} s)`), { stalled: true });
+}
+// Watches a read stream: no data for `ms` while it is flowing, and onStall()
+// is called once. A stream paused on purpose (a destination still writing the
+// previous chunk) is waiting for the DRIVE, not the card, and is not counted.
+function stallWatch(stream, ms, onStall) {
+  let last = Date.now(), stopped = false;
+  const touch = () => { last = Date.now(); };
+  stream.on('data', touch); stream.on('resume', touch);
+  const t = setInterval(() => {
+    if (stopped) return;
+    if (stream.destroyed) { stop(); return; }
+    if (stream.isPaused()) { touch(); return; }
+    if (Date.now() - last > ms) { stop(); onStall(); }
+  }, Math.max(20, Math.min(1000, Math.floor(ms / 4))));
+  if (t.unref) t.unref();
+  function stop() { stopped = true; clearInterval(t); }
+  stream.once('end', stop); stream.once('close', stop); stream.once('error', stop);
+  return stop;
+}
+async function hashPro(fp, hasher, opts) {
   hasher.init();
   // NOTE: no readFile() shortcut for small files any more. It bypassed the
   // uncached path entirely, so every file under the threshold was verified
@@ -125,6 +225,8 @@ async function hashPro(fp, hasher) {
     // progress. Turn it into a rejection the verify loop can report.
     s.on('end', () => { try { res(hasher.digest()); } catch (e) { rej(e instanceof Error ? e : new Error('hash digest failed')); } });
     s.on('error', rej);
+    // Reads of the CARD only (the card re-read): a destination is not watched.
+    if (opts && opts.stallMs) stallWatch(s, opts.stallMs, () => { try { s.destroy(); } catch(_) {} rej(stallError('a file could not be read')); });
   });
 }
 // Write a file the way the copy engine writes media: to a temp name in the same
@@ -958,14 +1060,25 @@ function startVolumeWatch() {
     attachAll();
   } else if (process.platform === 'win32') {
     let lastLetters = null;
-    _volWatchTimer = setInterval(() => {
-      let cur = '';
-      for (let c = 65; c <= 90; c++) {
-        const l = String.fromCharCode(c);
-        try { if (fs.statSync(l + ':\\').isDirectory()) cur += l; } catch (_) {}
-      }
-      if (lastLetters !== null && cur !== lastLetters) notify();
-      lastLetters = cur;
+    // Asynchronous, with a deadline (2.9.2). The letters were tested with a
+    // synchronous call every 2 s: one drive that stopped answering (a reader,
+    // a network letter) froze the application every 2 s. A letter that does
+    // not answer keeps the state it had.
+    let polling = false;
+    _volWatchTimer = setInterval(async () => {
+      if (polling) return;
+      polling = true;
+      try {
+        const prev = lastLetters || '';
+        const res = await Promise.all(Array.from({ length: 26 }, (_, k) => {
+          const l = String.fromCharCode(65 + k);
+          return statWithin(l + ':\\', VOLUME_PROBE_MS).then(r =>
+            r.timeout ? (prev.includes(l) ? l : '') : (r.v && r.v.isDirectory() ? l : ''));
+        }));
+        const cur = res.join('');
+        if (lastLetters !== null && cur !== lastLetters) notify();
+        lastLetters = cur;
+      } finally { polling = false; }
     }, 2000);
   }
 }
@@ -983,12 +1096,16 @@ async function getMountedVolumes() {
   // absolute — anchoring to " on /" stops a share NAMED "…on" (Canon, Nikon)
   // from being mis-parsed, which used to send network shares through diskutil.
   const networkPaths = new Set();
+  // Volumes served by a program rather than a disk (macFUSE, X2XFUSE: Codex
+  // Platform's "_hde" volume among them). Their files are produced while
+  // they are read, so the volume is never browsed beyond its root here.
+  const virtualPaths = new Set();
   try {
     for (const line of (await tryExecFile('mount', [], 2000)).split('\n')) {
-      if (/smbfs|afpfs|nfs|webdav|ftpfs/.test(line)) {
-        const m = line.match(/ on (\/.*) \(/);
-        if (m) networkPaths.add(m[1].trim());
-      }
+      const m = line.match(/ on (\/.*) \(([^,)]*)/);
+      if (!m) continue;
+      if (/smbfs|afpfs|nfs|webdav|ftpfs/.test(line)) networkPaths.add(m[1].trim());
+      if (isVirtualMountType(m[2])) virtualPaths.add(m[1].trim());
     }
   } catch (_) {}
 
@@ -1003,11 +1120,19 @@ async function getMountedVolumes() {
   // instead of the sum of all of them.
   const results = await Promise.all(entries.map(async (name) => {
     const fullPath = '/Volumes/' + name;
-    try { if (!fs.statSync(fullPath).isDirectory()) return null; } catch (_) { return null; }
+    // With a deadline (2.9.2): a volume whose reader or service hangs froze
+    // the application at the next mount event. It is listed as not
+    // answering, never dropped: a card that vanished from the list in the
+    // middle of an ingest would read as a card pulled out.
+    const vs = await statWithin(fullPath, VOLUME_PROBE_MS);
+    const isVirtual = virtualPaths.has(fullPath);
+    if (vs.timeout) return { name, label: name, path: fullPath, isSystem: false, isNetwork: networkPaths.has(fullPath),
+      fsType: 'external', totalSize: 0, freeSize: 0, usedSize: 0, camera: null, unresponsive: true, isVirtual, hde: isHdeSource(fullPath) };
+    if (vs.err || !vs.v.isDirectory()) return null;
 
     let isSystem = false, isNetwork = networkPaths.has(fullPath);
     let fsType = 'external';
-    try { if (rootDev && fs.statSync(fullPath).dev === rootDev) isSystem = true; } catch (_) {}
+    if (rootDev && vs.v.dev === rootDev) isSystem = true;
 
     if (!isNetwork && !isSystem) {
       const info = await tryExecFile('diskutil', ['info', fullPath], 3000);
@@ -1036,12 +1161,13 @@ async function getMountedVolumes() {
     }
 
     let camera = null;
-    if (!isSystem && !isNetwork) { try { camera = detectCamera(fullPath) || null; } catch (_) {} }
+    // detectCamera reads the volume synchronously: not on a virtual one.
+    if (!isSystem && !isNetwork && !isVirtual) { try { camera = detectCamera(fullPath) || null; } catch (_) {} }
     // On macOS the /Volumes entry name IS the volume label, so display name and
     // card name are the same string — but the field must exist on every
     // platform, or the renderer would fall back per-platform.
     return { name, label: name, path: fullPath, isSystem, isNetwork, fsType,
-      totalSize, freeSize, usedSize: totalSize-freeSize, camera };
+      totalSize, freeSize, usedSize: totalSize-freeSize, camera, isVirtual, hde: isHdeSource(fullPath) };
   }));
 
   return results.filter(Boolean);
@@ -1280,14 +1406,23 @@ async function getMountedVolumesWin() {
     }
 
     let camera = null;
-    if (!isSystem && !isNetwork) { try { camera = detectCamera(drivePath) || null; } catch (_) {} }
+    // detectCamera reads the drive synchronously: only once it has answered
+    // within the deadline (a hung reader froze the application here).
+    let unresponsive = false;
+    if (!isSystem && !isNetwork) {
+      const probe = await statWithin(drivePath, VOLUME_PROBE_MS);
+      if (probe.timeout) unresponsive = true;
+      else { try { camera = detectCamera(drivePath) || null; } catch (_) {} }
+    }
+    const hde = isHdeSource(label || '');
     volumes.push({
       // A card formatted in-camera often has no label at all. The fallback is
       // the bare letter, never "D:" — the colon is exactly the character the
       // folder-name cleaner turns into "_", which is the symptom this whole
       // fix is named after ("001_D__noar").
       name, label: label || letter, path: drivePath, isSystem, isNetwork, fsType,
-      totalSize, freeSize, usedSize: totalSize - freeSize, camera
+      totalSize, freeSize, usedSize: totalSize - freeSize, camera,
+      ...(unresponsive ? { unresponsive: true } : {}), hde
     });
   }
   return volumes;
@@ -1420,7 +1555,9 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
         const have = new Set(perDest[i].map(keyOf));
         common = common.filter(f => have.has(keyOf(f)));
       }
-      if (options.writeSentinel === true && common.length) {
+      // Never on an HDE volume: it is a view produced by Codex Device
+      // Manager, not the card, and its files are not the card's files.
+      if (options.writeSentinel === true && common.length && !isHdeSource(source.path) && !(await isVirtualSource(source.path))) {
         const allDests = sourceResults.map(r => r.destPath);
         try {
           // appendIngest reports a refusal by RETURNING {ok:false} (a
@@ -1815,7 +1952,7 @@ function probeCacheEviction(file) {
 // { digest, failed } where failed[i] is the Error for destination i (or null),
 // and digest is the source fingerprint when a hasher is provided.
 // Rejects only when the SOURCE read itself fails (which affects every dest).
-function copyFanOut(src, destFiles, onBytes, hasher) {
+function copyFanOut(src, destFiles, onBytes, hasher, stallMs) {
   return new Promise((resolve, reject) => {
     if (hasher) hasher.init();
     // In SECURE/PRO (hasher present) the destination is read back for
@@ -1981,14 +2118,18 @@ function copyFanOut(src, destFiles, onBytes, hasher) {
       for (let i = 0; i < N; i++) { if (state[i] === 'open') wss[i].end(); }
       maybeSettle();
     });
-    rs.on('error', err => {
+    const onReadError = err => {
       for (let i = 0; i < N; i++) {
         if (state[i] === 'open') { state[i]='failed'; failed[i]=err; pendingFinish--; try { wss[i].destroy(); } catch (_) {} }
       }
       if (settled) return;
       settled = true;
       reject(err);
-    });
+    };
+    rs.on('error', onReadError);
+    // The card stops answering in the middle of a file: the read would wait
+    // for ever. Same way out as a read error, with its own message.
+    if (stallMs) stallWatch(rs, stallMs, () => { try { rs.destroy(); } catch (_) {} onReadError(stallError('a file could not be read')); });
   });
 }
 
@@ -2082,6 +2223,9 @@ async function performCopyMulti(source, destinations, options, onProgress) {
   // How the scan ended, so that "nothing to copy" can be told apart from
   // "nothing worth copying" — see emptyRunReason.
   let seenFiles=0, skippedAlready=0;
+  // Set once the card has stopped answering (see SOURCE_STALL_MS): from then
+  // on nothing more is asked of it during this run.
+  let sourceStalled = null;
   // A mode this engine does not know matched none of the branches below, so
   // the copy ran with no verification at all while the operator believed they
   // were in SECURE. The safe reading of an unknown mode is the careful one:
@@ -2092,7 +2236,16 @@ async function performCopyMulti(source, destinations, options, onProgress) {
   const proAlgo  = options.proAlgo || 'xxh128';
   const cksumAlgo = isPro ? proAlgo : 'xxh64';        // SECURE fingerprints are xxHash64
   const hasher   = (isPro || isSecure) ? await newProHasher(isPro ? proAlgo : 'xxh64') : null;
-  const proDouble = isPro && options.proDoubleRead === true;
+  // An HDE volume (CODEX Platform (ex Device Manager), "A003_hde"): its files are encoded
+  // while they are read and exist nowhere else. Its announced sizes are not
+  // the sizes that arrive, the cache cannot be purged, and a second read only
+  // runs the encoder again: the card re-read is off there (2.9.2).
+  // HDE by name, or any volume produced on read (see isVirtualSource): the
+  // same care for both. On an ordinary card both are false and nothing below
+  // changes.
+  const hdeSource = isHdeSource(source.path) || await isVirtualSource(source.path);
+  const proDouble = isPro && options.proDoubleRead === true && !hdeSource;
+  const hdeSkippedReread = isPro && options.proDoubleRead === true && hdeSource;
   // The card's destination, level by level. Without a "/" in the template this
   // is a single segment and everything behaves exactly as before.
   const tplNow     = new Date();   // ONE clock reading for this card
@@ -2240,6 +2393,24 @@ async function performCopyMulti(source, destinations, options, onProgress) {
     copiedForSentinel: [], cksumEntries: [],
     _tmps: new Set(),         // every *.ingesto-part THIS run opened — the only ones it may clean up
   }));
+  // Said on the window (a remark) and in the report (a warning line): what an
+  // HDE copy can and cannot prove.
+  if (hdeSource) for (const r of R) {
+    // What is claimed follows the mode: FAST and SIZE CHECK verify nothing,
+    // and must not be credited with a check they did not make.
+    const verified = isPro || isSecure;
+    (r.notes || (r.notes = [])).push({ code: 'HDE',
+      text: verified ? 'Virtual volume: the copies were checked against what it delivered, not against the card.'
+                     : 'Virtual volume: its files are produced while they are read.',
+      detail: !verified ? 'HDE with CODEX Platform, for example. ingesto copied what it delivered; nothing was compared with the card itself.'
+        : hdeSkippedReread
+        ? 'Its files are produced while they are read (HDE with CODEX Platform, for example). The card re-read (PRO) was not run: it would only have produced them again.'
+        : 'Its files are produced while they are read (HDE with CODEX Platform, for example).' });
+    r.errorList.push({ file: '(card)', phase: 'warning',
+      error: (verified ? 'Virtual volume (HDE, for example): checked against what it delivered, not against the card.'
+                       : 'Virtual volume (HDE, for example): its files are produced while they are read.')
+             + (hdeSkippedReread ? ' Card re-read not run.' : '') });
+  }
 
   // ── Scan the source ONCE ────────────────────────────────────────────────
   const onlyRel = options.onlyRel ? new Set(options.onlyRel.map(p => p.replace(/\\/g,'/'))) : null;
@@ -2268,12 +2439,22 @@ async function performCopyMulti(source, destinations, options, onProgress) {
     error: `${what} could not be read on the source: ${e && e.message ? e.message : e}`,
     phase: 'scan', origin: 'source',
   });
-  (function scan(dir) {
-    let entries;
-    try { entries=fs.readdirSync(dir,{withFileTypes:true}); }
-    catch(e){ scanFail(dir, e, 'folder'); return; }
+  // Asynchronous, with a deadline on every call (2.9.2): the synchronous scan
+  // froze the whole application on a card that stopped answering.
+  const scanStalled = (p, what) => {
+    sourceStalled = stallError(what);
+    scanErrors.push({ file: (path.relative(source.path, p) || '.').replace(/\\/g,'/'),
+      error: `${sourceStalled.message}. The rest of the card was not read.`, phase: 'scan', origin: 'source', stalled: true });
+  };
+  await (async function scan(dir) {
+    if (sourceStalled) return;
+    const rd = await settleWithin('readdir:' + dir, () => fs.promises.readdir(dir, { withFileTypes: true }), SOURCE_STALL_MS);
+    if (rd.timeout) { scanStalled(dir, 'a folder could not be listed'); return; }
+    if (rd.err) { scanFail(dir, rd.err, 'folder'); return; }
+    const entries = rd.v;
     if (!entries.length) { allDirs.push(dir); return; }
     for (const e of entries) {
+      if (sourceStalled) return;
       if (SKIP.has(e.name) || isAppleDouble(e)) continue;
       // Same rule as sentinel.listAllFiles: skip the tracking log AND its
       // siblings (.unreadable / .tmp), so card bookkeeping is never ingested.
@@ -2284,9 +2465,12 @@ async function performCopyMulti(source, destinations, options, onProgress) {
       if (e.name.startsWith('.ingesto_wtest_') && dir === source.path) continue;
       const full = path.join(dir, e.name);
       try {
-        if (e.isDirectory()) { allDirs.push(full); scan(full); }
+        if (e.isDirectory()) { allDirs.push(full); await scan(full); }
         else {
-          const s=fs.statSync(full);
+          const sr = await statWithin(full, SOURCE_STALL_MS);
+          if (sr.timeout) { scanStalled(full, 'a file could not be measured'); return; }
+          if (sr.err) throw sr.err;
+          const s = sr.v;
           const rel = path.relative(source.path, full).replace(/\\/g, '/');
           seenFiles++;
           if (onlyRel && !onlyRel.has(rel)) continue;
@@ -2450,7 +2634,10 @@ async function performCopyMulti(source, destinations, options, onProgress) {
   if (!onlyRel && !ffReorg && (!FF || FF.copyEmpty)) {
     for (const d of allDirs) {
       const rel = path.relative(source.path, d);
-      let st=null; try { st=fs.statSync(d); } catch(_){}
+      // The folder dates are a nicety: a card that does not answer is not
+      // asked (and the copy below reports it).
+      let st=null;
+      if (!sourceStalled) { const sr = await statWithin(d, SOURCE_STALL_MS); if (sr.timeout) sourceStalled = stallError('a folder could not be measured'); else st = sr.v || null; }
       for (const r of R) {
         if (!r.active) continue;
         try {
@@ -2468,12 +2655,23 @@ async function performCopyMulti(source, destinations, options, onProgress) {
   // ── PHASE 1 — read once, write to every destination (green bar) ─────────
   tCopyStart = Date.now(); pausedAtCopyStart = pausedMs;
   { let lastB=0, lastT=Date.now(), lastEmit=0;
+    // Every file not yet copied, once the card has gone silent: each one is
+    // reported (the retry needs the list), none of them is asked for.
+    const failRemaining = (from, act) => {
+      for (let j = from; j < allFiles.length; j++) for (const r of act) {
+        r.errors++;
+        r.errorList.push({ file: allFiles[j].rel, phase: 'copy', origin: 'source', stalled: true,
+          error: `not copied: ${sourceStalled.message}` });
+        r.failedFiles.push(allFiles[j].rel); r.failedMap[allFiles[j].rel] = allFiles[j].destRel;
+      }
+    };
     for (let i=0; i<allFiles.length; i++) {
       if (cancelCopy) break;
       await pauseGate(mainWindow);
       if (cancelCopy) break;
       const act = R.filter(r=>r.active);
       if (!act.length) break;
+      if (sourceStalled) { failRemaining(i, act); break; }
       const file=allFiles[i], rel=file.rel;
       const destFilesAbs = act.map(r => path.join(r.destPath, file.destRel));
       // Write under a temporary name; promote to the final name only once the
@@ -2499,8 +2697,11 @@ async function performCopyMulti(source, destinations, options, onProgress) {
           copiedFiles:R[0].copiedFiles, totalFiles, remainingFiles:totalFiles-i-1,
           // Clamped: a file that GREW since the scan pushes copiedBytes past the
           // total, and the bar then reported 103% and an ETA in the past.
-          copiedBytes, totalBytes, progress:totalBytes>0?Math.min(1,copiedBytes/totalBytes):0,
-          speed:sp, eta:sp>0?Math.max(0,(totalBytes-copiedBytes)/sp):0,
+          // HDE: the sizes are only known once read, so the bar counts files
+          // and no time left is promised.
+          copiedBytes, totalBytes,
+          progress: hdeSource ? (totalFiles>0 ? Math.min(1, i/totalFiles) : 0) : (totalBytes>0?Math.min(1,copiedBytes/totalBytes):0),
+          speed:sp, eta: hdeSource ? 0 : (sp>0?Math.max(0,(totalBytes-copiedBytes)/sp):0),
           errors:R.reduce((a,r)=>a+r.errors,0) });
       };
       try {
@@ -2515,15 +2716,23 @@ async function performCopyMulti(source, destinations, options, onProgress) {
         // from cache). The bytes were originally read from the card either
         // way, but SECURE's promise is about the card as it is at THIS ingest.
         // FAST/VERIFIED make no such claim and keep the free speed-up.
-        if (isPro || isSecure) {
+        // The card is asked first, with a deadline: the cache purge below
+        // opens the file synchronously, and a card that does not answer
+        // would hold the whole application there.
+        { const pre = await statWithin(file.src, SOURCE_STALL_MS);
+          if (pre.timeout) { sourceStalled = stallError('a file could not be opened'); failRemaining(i, act); break; } }
+        if ((isPro || isSecure) && !hdeSource) {
           let purged = false;
           try { purged = nocache.purgeFileCache(file.src); } catch(_) {}
           if (!purged) copyPurgeFails++;
         }
-        const { digest, failed } = await copyFanOut(file.src, destTmpAbs, onB, hasher);
+        const { digest, failed } = await copyFanOut(file.src, destTmpAbs, onB, hasher, SOURCE_STALL_MS);
         onB(0, true);   // the end of a file always shows, whatever the throttle
         const srcHash = digest == null ? null : String(digest);
-        let st=null; try { st=fs.statSync(file.src); } catch(_){}
+        let st=null;
+        { const post = await statWithin(file.src, SOURCE_STALL_MS);
+          if (post.timeout) sourceStalled = stallError('a file could not be measured');
+          else st = post.v || null; }
 
         // ── The file changed on the card WHILE it was being copied ───────────
         //
@@ -2550,10 +2759,20 @@ async function performCopyMulti(source, destinations, options, onProgress) {
         // what was just read: a short read plus a card that vanished used to
         // fall through this whole check and deliver the truncated file under
         // its real name, with the manifest vouching for it.
+        // HDE: the size announced by the volume is not the size of what it
+        // delivers, so the comparisons below would condemn every file. What
+        // was read IS the file: it becomes its size for the rest of the run
+        // (verify, manifests, report). A file the volume can no longer
+        // measure is still refused.
+        if (hdeSource && !cancelCopy && !readWasCutShort && st) {
+          totalBytes += fileBytes - (Number(file.size) || 0);
+          file.size = fileBytes;
+        }
         if (!cancelCopy && !readWasCutShort) {
           const scanSize = Number(file.size) || 0;
           let why = null;
-          if (fileBytes !== scanSize)
+          if (hdeSource) { if (!st) why = 'the card stopped answering as soon as it had been read'; }
+          else if (fileBytes !== scanSize)
             why = `${fmtBytes(fileBytes)} of it could be read, not the ${fmtBytes(scanSize)} the card announced`;
           else if (!st)
             why = 'the card stopped answering as soon as it had been read';
@@ -2616,7 +2835,10 @@ async function performCopyMulti(source, destinations, options, onProgress) {
       } catch(e){
         // Source read failure — the file failed for every active destination.
         for (const tmp of destTmpAbs) { try { safeUnlink(tmp); } catch(_) {} }
-        for (const r of act) { r.errors++; r.errorList.push({file:rel,error:e.message,phase:'copy',origin:'source'}); r.failedFiles.push(rel); r.failedMap[rel]=file.destRel; }
+        for (const r of act) { r.errors++; r.errorList.push({file:rel,error:e.message,phase:'copy',origin:'source',...(e.stalled?{stalled:true}:{})}); r.failedFiles.push(rel); r.failedMap[rel]=file.destRel; }
+        // The card went silent in the middle of this file: the next ones are
+        // not asked for (see failRemaining at the top of the loop).
+        if (e && e.stalled) sourceStalled = e;
       }
     }
   }
@@ -2827,8 +3049,16 @@ async function performCopyMulti(source, destinations, options, onProgress) {
               // Two reads, and they are not the same side. A source file that
               // vanished mid-run must not be blamed on the drive.
               let srcSize;
-              try { srcSize = fs.statSync(c.src).size; }
-              catch (e) { const err = new Error(e.message); err._origin = 'source'; throw err; }
+              // HDE: the volume cannot give the size back (see the copy);
+              // the size compared is the number of bytes it delivered.
+              if (hdeSource) srcSize = c.size;
+              else {
+                if (sourceStalled) { const err = new Error(`not checked: ${sourceStalled.message}`); err._origin = 'source'; throw err; }
+                const sr = await statWithin(c.src, SOURCE_STALL_MS);
+                if (sr.timeout) sourceStalled = stallError('a file could not be measured');
+                if (sr.timeout || sr.err) { const err = new Error(sr.timeout ? sourceStalled.message : sr.err.message); err._origin = 'source'; throw err; }
+                srcSize = sr.v.size;
+              }
               if (srcSize !== fs.statSync(c.dest).size) throw new Error('Size mismatch');
             }
             okv=true;
@@ -2912,13 +3142,25 @@ async function performCopyMulti(source, destinations, options, onProgress) {
           // Evict this file's cached pages first, so the re-read is forced to
           // hit the card. Without it the OS answers from RAM and this whole
           // pass compares memory with itself (see purgeFileCache).
-          let purged = false;
-          try { purged = nocache.purgeFileCache(c.src); } catch(_) {}
-          if (!purged) dblPurgeFails++;
-          try { stable = (await hashPro(c.src, hasher) === c.srcHash); }
-          catch(e){ stable=false; }
+          // A card that stopped answering is not "unstable": it gave no
+          // second answer at all. Said as such, and not asked again.
+          let silent = sourceStalled;
+          if (!silent) { const pre = await statWithin(c.src, SOURCE_STALL_MS); if (pre.timeout) silent = sourceStalled = stallError('a file could not be opened'); }
+          if (!silent) {
+            let purged = false;
+            try { purged = nocache.purgeFileCache(c.src); } catch(_) {}
+            if (!purged) dblPurgeFails++;
+            try { stable = (await hashPro(c.src, hasher, { stallMs: SOURCE_STALL_MS }) === c.srcHash); }
+            catch(e){ stable=false; if (e && e.stalled) silent = sourceStalled = e; }
+          }
           for (const r of holders) {
-            if (stable) {
+            if (silent) {
+              r.errors++;
+              // The copy itself was verified: it is not a failed file, and a
+              // re-copy would not help. Like an unstable file, it is left out
+              // of the manifest and the card log.
+              r.errorList.push({ file:c.rel, error:`not re-read: ${silent.message}`, phase:'source', origin:'source', stalled:true });
+            } else if (stable) {
               r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000), ...(c.destRel&&c.destRel!==c.rel?{d:c.destRel}:{}) });
               r.cksumEntries.push({ rel:c.destRel||c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
             } else {
@@ -4045,16 +4287,23 @@ function checkOnePath(e) {
 }
 ipcMain.handle('check-paths', async (_, entries) => {
   const list = Array.isArray(entries) ? entries : [];
+  // Read once for the whole list: which of these paths are produced on read
+  // (2.9.2). The window warns about those when they are loaded.
+  let table = [];
+  if (process.platform !== 'win32') { try { table = await readMountTable(); } catch (_) {} }
+  const virtualOf = (p) => { try { const m = p ? mountOfPath(path.resolve(p), table) : null; return !!(m && isVirtualMountType(m.type)); } catch (_) { return false; } };
   // A throw here rejects the promise, the renderer swallows it, and the volume
   // check is skipped WITHOUT SAYING SO — a safety guard that fails open. Coerce
   // the incoming values and never let one bad entry take the others down.
   return list.map(e => {
     try {
-      return checkOnePath({
-        path:    (e && typeof e.path === 'string') ? e.path : null,
+      const p = (e && typeof e.path === 'string') ? e.path : null;
+      const res = checkOnePath({
+        path:    p,
         isMount: (e && typeof e.isMount === 'boolean') ? e.isMount : null,
         total:   (e && Number.isFinite(Number(e.total))) ? Number(e.total) : null,
       });
+      return Object.assign({}, res, { virtual: virtualOf(p) });
     } catch (err) {
       return { path: e && e.path, ok: false, reason: 'unreachable', dev: null, isMount: null, total: null };
     }
@@ -4079,6 +4328,8 @@ ipcMain.handle('redo-double-read', async (event, { sourcePath, algo, files }) =>
   // Never while an ingest runs: unmounting a card that is being read would
   // break that ingest.
   if (activeCopyCount > 0) return { ok:false, error:'an ingest is running' };
+  // A volume produced on read (HDE) has no card behind it to re-read.
+  if (isHdeSource(sourcePath) || await isVirtualSource(sourcePath)) return { ok:false, error:'virtual volume: there is no card to re-read' };
 
   // Resolve the device behind the mount point BEFORE unmounting it, and where
   // the source sits on that volume. The source can be a folder INSIDE the card
@@ -4189,12 +4440,18 @@ ipcMain.handle('get-version',   async ()    => app.getVersion());
 
 // ─── Camera auto-detection ───────────────────────────────────────────────
 ipcMain.handle('detect-camera', async (_, rootPath) => {
+  // Not on an HDE volume: detectCamera reads synchronously, and that volume
+  // produces its files while they are read.
+  if (isHdeSource(rootPath) || await isVirtualSource(rootPath)) return null;
   try { return detectCamera(rootPath) || null; }
   catch (_) { return null; }
 });
 
 // ─── Sentinel inspection (unformatted-card detection) ────────────────────
 ipcMain.handle('inspect-card', async (_, rootPath, probeWrite = false, destRoots = null) => {
+  // Never on an HDE volume: no write probe, no card log on a view that is
+  // not the card.
+  if (isHdeSource(rootPath) || await isVirtualSource(rootPath)) return null;
   try {
     const info = inspectCard(rootPath, probeWrite, Array.isArray(destRoots) ? destRoots : null,
                              makeManifestHas());

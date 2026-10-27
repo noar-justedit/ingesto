@@ -1,7 +1,25 @@
 # 07 · Historique et points ouverts
 
-État au 24.10.2026 : dossier en **2.9.1**, dernière version publiée : **2.8.0** (2.8.1 et 2.9.0 livrées en ZIP, jamais publiées). Le résumé à jour
+État au 26.10.2026 : dossier en **2.9.2**, dernière version publiée : **2.9.1** (25.10, qui couvre 2.8.1 et 2.9.0). Le résumé à jour
 est dans `ETAT_PROJET.md` et `CHANGELOG.md` à la racine.
+
+## Journal 26.10 (Cowork) : 2.9.2
+- Mail de Manuel López (DigitalFrozen) avec son rapport : HDE gelé, une carte
+  ARRIRAW avec 2 erreurs. Rapport décodé (bloc gzip) : version 2.8.0 ou
+  avant, fichiers manquants A003C007 et `_BIN.bin` déduits des tailles.
+- Recherche HDE (ARRI, Pomfort, Filmdrives) : volume virtuel `_hde` de Codex
+  Device Manager (FUSE), fichiers encodés à la lecture, tailles inconnues
+  avant copie, processeur très sollicité.
+- Fait : détail des erreurs dans les rapports (ouvert au clic, demande de
+  Noar), délai de 60 s sur toute lecture de carte, liste des volumes sans
+  appel bloquant, prise en charge HDE. Nouveau test : test-source-stall.js.
+- Vérifié la 2.9.1 publiée : contenu identique au ZIP, Release complète, mais
+  envoyée sans le script (fichiers privés publiés).
+- Proposé, en attente : avertissement de responsabilité au premier lancement.
+- 27.10 : réponse de Manuel (pas de test possible). CODEX Platform = nouveau
+  nom de Device Manager ; volumes CodexFS sans suffixe `_hde`. Ajouté : détection
+  des volumes virtuels par la table des montages, testée sur un vrai volume
+  FUSE ; non-régression carte classique contre la 2.9.1.
 
 ## Journal 24.10 (Cowork) : 2.9.1
 - Revue complète (trois agents : moteur, interface, cohérence ; chaque point
