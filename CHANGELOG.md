@@ -2,6 +2,16 @@
 
 All notable changes to ingesto. Versions before 2.5.5 are not listed here.
 
+## 2.9.3 (2026-10-27)
+Publishing script fix. The application itself is unchanged from 2.9.2.
+- `push_github.command`, double-clicked from Finder, worked from the
+  `scripts/` folder, where git looked for the private tracking files and for
+  `version.json` in the wrong place: the private files stayed on GitHub and
+  `version.json` was sent before the Release existed. The script now works
+  from the project folder wherever it is started. New test
+  `test-push-github.js`, which runs it the way it is double-clicked.
+- The private tracking files leave GitHub with this version.
+
 ## 2.9.2 (2026-10-26)
 Field report from an ALEXA Mini shoot (ARRIRAW, with and without HDE).
 - Reports: each card now carries what went wrong, file by file, with the

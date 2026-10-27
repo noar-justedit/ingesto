@@ -28,6 +28,13 @@ trap cleanup EXIT
 
 fail() { echo; echo "ARRET : $1"; echo "Rien n'a ete envoye sur GitHub."; exit 1; }
 
+# Every git command below names files relative to the CURRENT folder, not to
+# the work tree. push_github.command starts in scripts/: there, "CLAUDE.md"
+# meant scripts/CLAUDE.md, the private files were never set aside and
+# version.json was never held back (2.9.2 went out like that). Work from the
+# project folder, whatever folder this script was started from.
+cd "$ROOT" || fail "impossible d'ouvrir le dossier $ROOT."
+
 # First "version" key of a JSON file. Enough for version.json and package.json,
 # where the app's own version comes before any other "version" key.
 read_version() {
