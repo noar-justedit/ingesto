@@ -26,9 +26,9 @@ function load(code) {
 }
 
 // The code that is kept is the CLEANED one: it is also handed to
-// toLocaleString(), which throws on a code like "fr " (2.9.0 kept the raw
-// value, and a hand-edited preference stopped an ingest after the copy, while
-// the shooting note was being written).
+// toLocaleString(), which throws on a code like "fr " (keeping the raw value
+// would let a hand-edited preference stop an ingest after the copy, while the
+// shooting note is being written).
 function setLanguage(code) {
   const c = clean(code);
   if (!c || c === lang) return;
@@ -46,7 +46,7 @@ function t(s) {
 }
 
 // A locale for dates written for a person ("23/10/2026 14:05" in French).
-// English keeps the system's own format, as before 2.9.0.
+// English keeps the system's own format.
 function locale() {
   if (lang === 'en') return undefined;
   try { return Intl.DateTimeFormat.supportedLocalesOf([lang]).length ? lang : undefined; }

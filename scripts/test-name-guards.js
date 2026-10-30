@@ -11,7 +11,7 @@
 const fs   = require('fs');
 const path = require('path');
 const os   = require('os');
-const Module = require('module');
+const H    = require('./lib/harness');
 
 let pass = 0, fail = 0;
 const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fail++; console.log('  FAIL ' + l); } };
@@ -32,24 +32,7 @@ const listAll = (root) => {
 };
 
 // ── Electron stub, then the REAL main.js and its REAL ipc handlers ──────────
-const handlers = {};
-const fakeWin = { webContents: { send: () => {} }, isDestroyed: () => false };
-const userData = fresh('userData');
-const electron = {
-  app: { whenReady: () => new Promise(() => {}), on: () => {}, requestSingleInstanceLock: () => true,
-         quit: () => {}, getVersion: () => '2.6.4', getPath: () => userData, getName: () => 'ingesto',
-         isPackaged: false, setAboutPanelOptions: () => {} },
-  BrowserWindow: class { static getAllWindows() { return []; } },
-  Menu: { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) },
-  ipcMain: { handle: (ch, fn) => { handlers[ch] = fn; }, on: (ch, fn) => { handlers[ch] = fn; } },
-  dialog: {}, screen: {},
-  shell: { openPath: async () => {}, showItemInFolder: () => {}, openExternal: async () => {} },
-  powerSaveBlocker: { start: () => 1, stop: () => {}, isStarted: () => false },
-};
-const realLoad = Module._load;
-Module._load = function (req, ...rest) { if (req === 'electron') return electron; return realLoad.call(this, req, ...rest); };
-require(path.join(__dirname, '..', 'src', 'main', 'main.js'));
-const call = (ch, ...args) => handlers[ch]({ sender: fakeWin.webContents }, ...args);
+const { call } = H.loadMain({ version: '2.6.4' });
 
 const opts = (extra) => ({ mode: 'fast', folderTemplate: '{counter}_{cardname}',
                            writeSentinel: true, writeChecksum: true,

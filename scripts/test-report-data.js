@@ -16,7 +16,7 @@ const path = require('path');
 const vm   = require('vm');
 const zlib = require('zlib');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(name) {
   let s = REND.indexOf(`async function ${name}(`);
@@ -40,6 +40,9 @@ const NAMES = ['tr', 'trf', 'buildReportHtml', 'gzipB64', 'reportFilePairs', 'fm
 const ERR_MAX_LINE = (REND.match(/^const REPORT_ERR_MAX = \d+;$/m) || [''])[0];
 const ctx = vm.createContext({ console, String, Number, Array, Object, Math, JSON, Date, isFinite,
   Blob, Response, CompressionStream, TextEncoder, btoa, Uint8Array, S: { appVersion: 'test' } });
+// The report's fixed stylesheet and viewer script (report-template.js).
+vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'scripts', 'report-template.js'), 'utf8')
+  .replace(/^const /gm, 'var '), ctx);
 vm.runInContext(ERR_MAX_LINE + '\n' + NAMES.map(extractFn).join('\n') + '\nthis.REPORT_ERR_MAX = REPORT_ERR_MAX;', ctx);
 
 // Same expression as report-read in main.js.

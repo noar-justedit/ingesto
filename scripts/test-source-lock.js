@@ -24,7 +24,8 @@ const vm   = require('vm');
 const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
-const MAIN = fs.readFileSync(path.join(ROOT, 'src', 'main', 'main.js'), 'utf8');
+const SOURCES = require('./lib/source');
+const MAIN = SOURCES.ENGINE;
 const SENT = fs.readFileSync(path.join(ROOT, 'src', 'main', 'sentinel.js'), 'utf8');
 
 let pass = 0, fail = 0;
@@ -53,11 +54,30 @@ const DESTRUCTIVE = /\bfs\s*\.\s*(unlinkSync|renameSync|rmSync|rmdirSync|unlink|
 console.log('\nevery destructive call of the engine goes through the lock');
 {
   const GATES = ['safeUnlink', 'safeRename', 'safeRmTree'];
-  let code = stripComments(MAIN);
+  // Every file of the engine (src/main and src/shared) is scanned, except
+  // sentinel.js: the card journal renames its own files and has its own,
+  // stricter check below.
+  const ENGINE_FILES = [...SOURCES.files('shared'), ...SOURCES.files('main')]
+    .filter(f => f.rel !== 'main/sentinel.js');
+  ok(ENGINE_FILES.length >= 10 && ENGINE_FILES.some(f => f.rel === 'main/engine.js') &&
+     ENGINE_FILES.some(f => f.rel === 'main/main.js'), `the scan covers every engine file (${ENGINE_FILES.length})`);
+  let code = ENGINE_FILES.map(f => stripComments(f.text)).join('\n');
   for (const g of GATES) code = code.replace(extractFn(code, g), '');   // the gates themselves may call fs
   const raw = [...code.matchAll(DESTRUCTIVE)].map(m => m[0]);
-  ok(raw.length === 0, 'no raw delete, rename or truncate in main.js outside the lock' +
+  ok(raw.length === 0, 'no raw delete, rename or truncate in the engine outside the lock' +
      (raw.length ? ' : ' + raw.join(', ') : ''));
+  // The scan above recognises the fs module by its name. A file that named
+  // it otherwise (const f = require('fs'), const { unlink } = fs,
+  // const p = fs.promises) would hide its calls from it.
+  const aliased = ENGINE_FILES.filter(f => {
+    const c = stripComments(f.text);
+    return /(?:const|let|var)\s+(?!fs\b)[\w$]+\s*=\s*require\(\s*['"](?:node:)?fs(?:\/promises)?['"]\s*\)/.test(c) ||
+           /(?:const|let|var)\s*\{[^}]*\}\s*=\s*(?:fs|require\(\s*['"](?:node:)?fs(?:\/promises)?['"]\s*\))(?:\.promises)?\s*[;\n]/.test(c) ||
+           /(?:const|let|var)\s+(?!fsp\b)[\w$]+\s*=\s*fs\.promises\s*[;\n]/.test(c) ||
+           /require\(\s*['"](?:node:)?fs(?:\/promises)?['"]\s*\)\s*\.\s*(?!promises\b)\w/.test(c);
+  }).map(f => f.rel);
+  ok(aliased.length === 0, 'and every engine file names the fs module fs, so no call escapes the scan' +
+     (aliased.length ? ' : ' + aliased.join(', ') : ''));
 
   const lock = extractFn(MAIN, 'refuseOnSource');
   ok(/throw e;/.test(lock) && /INGESTO_SOURCE_LOCK/.test(lock), 'a refusal throws: the lock fails closed');

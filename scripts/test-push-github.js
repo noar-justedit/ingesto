@@ -75,7 +75,8 @@ function run(work, bare, release, answer) {
     input: answer + '\n\n', encoding: 'utf8', timeout: 60000,
   });
 }
-const PRIVATE = ['CLAUDE.md', 'AGENTS.md', 'ETAT_PROJET.md', 'docs/notes/07-historique.md'];
+const PRIVATE = ['CLAUDE.md', 'AGENTS.md', 'ETAT_PROJET.md', 'docs/notes/07-historique.md',
+                 'scripts/push_github.command', 'scripts/push_github.sh'];
 
 console.log('\nthe Release is not out yet');
 {
@@ -87,8 +88,7 @@ console.log('\nthe Release is not out yet');
   ok(show(bare, 'src/main.js').includes('2.9.2'), 'GitHub has the new code');
   ok(PRIVATE.every(f => !t.includes(f)), 'the private files are taken OFF GitHub, double-clicked from Finder' +
      (PRIVATE.some(f => t.includes(f)) ? ' (still there: ' + PRIVATE.filter(f => t.includes(f)).join(', ') + ')' : ''));
-  ok(fs.existsSync(path.join(work, 'CLAUDE.md')) && fs.existsSync(path.join(work, 'docs/notes/07-historique.md')),
-     'and stay in the folder (the ZIP keeps them)');
+  ok(PRIVATE.every(f => fs.existsSync(path.join(work, f))), 'and stay in the folder (the ZIP keeps them)');
   ok(show(bare, 'version.json').includes('"2.9.1"'), 'version.json is held back: installed apps are not told about an empty Release');
 
   console.log('\nthe Release is out: run it again');

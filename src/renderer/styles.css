@@ -1,0 +1,1540 @@
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+/* ── Direction A · Sleek — tokens ── */
+--bg:#0e0f13; --bg2:#121318; --bg3:#16181d; --bg4:#1b1d24;
+--border:rgba(255,255,255,.07); --border2:rgba(255,255,255,.13);
+--text:#e8eaf0; --text1:#e8eaf0; --text2:#aeb3bd; --text3:#8b909b;
+--accent:#8b6ff0;
+--accent-d:rgba(139,111,240,.18); --accent-g:rgba(139,111,240,.45);
+--green:#35c98b;  --green-d:rgba(53,201,139,.14);  --green-g:rgba(53,201,139,.28);
+--red:#f2555a;    --red-d:rgba(242,85,90,.15);     --red-g:rgba(242,85,90,.3);
+--blue:#4d90f0;   --blue-d:rgba(77,144,240,.14);
+--orange:#f2a03d; --orange-d:rgba(242,160,61,.14);
+--pro:#a880ff;    --pro-d:rgba(168,128,255,.14);
+--grey:#aeb3bd;   --grey-d:rgba(174,179,189,.13); --grey-g:rgba(174,179,189,.3);
+/* radii (--rs = small radius legacy) */
+--r:12px; --r-sm:8px; --r-lg:16px; --rs:8px;
+/* typographie */
+--font:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;
+--mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,monospace;
+--font-logo:'Poppins',-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
+--font-display:'Poppins',-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;
+}
+@font-face{
+font-family:'Poppins';
+src:url('fonts/Poppins-Bold.ttf') format('truetype');
+font-weight:700;
+font-style:normal;
+font-display:swap;
+}
+/* Section titles use the display font (Poppins Bold, SIL OFL) */
+.panel-hd h2, .sec-title, #vols-hd h2, .tpl-preview-label{
+font-family:var(--font-display); font-weight:700;
+}
+html,body{height:100%;width:100%;background:var(--bg);color:var(--text);
+font-family:var(--font);font-size:18px;overflow:hidden;
+user-select:none;-webkit-user-select:none;}
+#app{display:flex;flex-direction:column;height:100vh;}
+/* ── Titlebar ─────────────────────────────────── */
+#titlebar{
+height:52px;-webkit-app-region:drag;flex-shrink:0;
+display:flex;align-items:center;padding:0 18px 0 80px;
+border-bottom:1px solid var(--border);z-index:100;gap:10px;
+}
+.t-logo{font-family:var(--font-logo);font-size:24px;font-weight:700;letter-spacing:.02em;text-transform:lowercase;-webkit-app-region:no-drag;display:flex;align-items:center;gap:0;}
+.t-logo .t-name{display:inline-block;color:var(--text);}
+.t-logo > span{color:var(--accent);}   /* the logo dot: violet everywhere */
+.t-spacer{flex:1;}
+.t-filters{display:flex;gap:7px;-webkit-app-region:no-drag;}
+[data-tip]{position:relative;}
+.tooltip-float{
+  position:fixed;z-index:9999;
+  background:var(--bg4);color:var(--text);font-family:var(--font);
+  font-size:11px;font-weight:600;white-space:nowrap;
+  padding:5px 9px;border-radius:6px;border:1px solid var(--border2);
+  box-shadow:0 6px 18px rgba(0,0,0,.4);pointer-events:none;
+  animation:tipIn .12s ease;
+}
+@keyframes tipIn{from{opacity:0;transform:translateY(-3px);}to{opacity:1;transform:translateY(0);}}
+.pillbtn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:3px 8px;
+border-radius:5px;border:1px solid var(--border);background:var(--bg3);
+color:var(--text3);font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:.03em;
+cursor:pointer;line-height:1.4;white-space:nowrap;transition:all .15s;}
+.pillbtn:hover{border-color:var(--text3);color:var(--text2);}
+.pillbtn.on{background:var(--red-d);border-color:rgba(242,85,90,.5);color:var(--red);}
+/* ── 3-column ─────────────────────────────────── */
+#main{flex:1;display:grid;grid-template-columns:312px 1fr 348px;overflow:hidden;min-height:0;}
+.panel{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+.panel-left{border-right:1px solid var(--border);}
+.panel-right{border-left:1px solid var(--border);}
+.panel-hd{padding:14px 14px 10px;border-bottom:1px solid var(--border);
+display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.panel-hd h2{font-size:14px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;}
+.panel-hd h2.src-h{color:var(--red);}
+.panel-hd h2.dst-h{color:var(--green);}
+.hd-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.hd-dot.src{background:var(--red);box-shadow:0 0 7px var(--red);}
+.hd-dot.dst{background:var(--green);box-shadow:0 0 7px var(--green);}
+.panel-scroll{flex:1;overflow-y:auto;padding:10px 12px;}
+.panel-scroll::-webkit-scrollbar{width:3px;}
+.panel-scroll::-webkit-scrollbar-thumb{background:var(--bg4);}
+/* ── Drop zones ───────────────────────────────── */
+.drop-zone{border:1.5px dashed var(--border2);border-radius:var(--r);
+display:flex;flex-direction:row;align-items:center;justify-content:space-between;
+gap:8px;padding:11px 14px;transition:all .2s;min-height:54px;}
+.drop-zone.src-z{border-color:rgba(242,85,90,.22);background:rgba(242,85,90,.02);}
+.drop-zone.dst-z{border-color:rgba(53,201,139,.18);background:rgba(53,201,139,.02);}
+.drop-zone.over.src-z{border-color:var(--red);background:var(--red-d);box-shadow:0 0 14px var(--red-g);}
+.drop-zone.over.dst-z{border-color:var(--green);background:var(--green-d);box-shadow:0 0 14px var(--green-g);}
+.dz-hint{font-size:14px;color:var(--text3);flex:1;}
+.dz-browse{font-size:14px;color:var(--text3);border:1px solid var(--border);border-radius:4px;
+padding:3px 9px;cursor:pointer;background:transparent;font-family:var(--font);
+transition:all .15s;white-space:nowrap;flex-shrink:0;}
+.dz-browse:hover{color:var(--text);border-color:var(--border2);}
+/* Zone items list — below the drop zone */
+.zone-list{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+.zi{background:var(--bg3);border-radius:var(--rs);padding:6px 8px;
+display:flex;align-items:center;gap:7px;animation:slideIn .18s ease;}
+.zi-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.zi-icon svg{width:20px;height:20px;}
+.zi-badge{font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 7px;border-radius:4px;flex-shrink:0;border:1px solid transparent;}
+.zi-src .zi-badge{background:var(--red-d);color:var(--red);border-color:var(--red-g);}
+.zi-dst .zi-badge{background:var(--green-d);color:var(--green);border-color:var(--green-g);}
+/* A card ingesto could not inspect. Without this the "already ingested" window
+   simply never opens, and the silence reads as "this card is new". */
+.zi-dot{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;
+margin-left:6px;border-radius:50%;background:var(--orange-d);color:var(--orange);
+font-size:10px;font-weight:800;vertical-align:middle;cursor:help;}
+.zi-info{flex:1;min-width:0;}
+.zi-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.zi-path{font-size:11px;color:var(--text3);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.zi-rm{width:16px;height:16px;border-radius:50%;background:transparent;border:none;
+color:var(--text3);cursor:pointer;font-size:18px;display:flex;align-items:center;
+justify-content:center;transition:all .15s;padding:0;flex-shrink:0;}
+.zi-rm:hover{background:rgba(242,85,90,.25);color:var(--red);}
+/* ── Sec titles ───────────────────────────────── */
+.sec-title{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+color:var(--text3);padding:10px 14px 6px;flex-shrink:0;}
+.sec-title.sec-strong{font-size:12px;font-weight:700;letter-spacing:.1em;}
+.sec-title.sec-red{color:var(--red);}
+.sec-title.sec-green{color:var(--green);}
+.sec-title.sec-violet{color:var(--pro);}
+/* Info button + modes explanation modal */
+.info-btn{width:16px;height:16px;border:0;background:transparent;color:var(--text3);
+cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;
+flex-shrink:0;transition:color .15s;}
+.info-btn svg{width:16px;height:16px;}
+.info-btn:hover{color:var(--text);}
+#modes-info-ov,#pro-warn-ov,#update-ov,#settings-ov,#verify-progress-ov,#verify-result-ov,#counter-info-ov,#dr-info-ov{display:none;position:fixed;inset:0;z-index:1200;background:rgba(5,6,8,.55);
+backdrop-filter:blur(16px) saturate(120%);-webkit-backdrop-filter:blur(16px) saturate(120%);align-items:center;justify-content:center;}
+#modes-info-ov.open,#pro-warn-ov.open,#update-ov.open,#settings-ov.open,#verify-progress-ov.open,#verify-result-ov.open,#counter-info-ov.open,#dr-info-ov.open{display:flex;}
+/* File filter modal internals */
+.ff-cat{display:flex;align-items:center;gap:9px;padding:6px 0 2px;}
+.ff-cat .switch{width:32px;height:19px;}
+.ff-cat .slider::before{width:13px;height:13px;}
+.ff-cat input:checked + .slider::before{transform:translateX(13px);}
+.ff-cat-name{font-size:11px;font-weight:700;letter-spacing:.05em;}
+.ff-fmts{display:flex;flex-direction:column;margin:0 0 4px 42px;}
+.ff-fmt{display:flex;align-items:center;gap:9px;padding:2px 0;}
+.ff-fmt .switch{width:28px;height:16px;}
+.ff-fmt .slider::before{width:10px;height:10px;}
+.ff-fmt input:checked + .slider::before{transform:translateX(12px);}
+.ff-fmt-name{font-size:12px;color:var(--text);letter-spacing:.03em;}
+.ff-opts{border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;flex-direction:column;gap:8px;}
+.ff-opt{display:flex;align-items:center;gap:9px;}
+.ff-opt .switch{width:32px;height:19px;}
+.ff-opt .slider::before{width:13px;height:13px;}
+.ff-opt input:checked + .slider::before{transform:translateX(13px);}
+.ff-opt-name{font-size:12px;color:var(--text);}
+.switch .slider.ff-mixed{background:var(--bg3);border-color:var(--border2);}
+.switch .slider.ff-mixed::before{background:var(--text3);transform:translateX(7px);}
+.ff-list{max-height:52vh;overflow-y:auto;padding-right:6px;}
+/* PRO options (visible only when PRO active) — all four switches on ONE line,
+   Settings-style (switch first, label to its right, same label size for all).
+   Double source read sits at the left, under the FAST card; the three violet
+   checksum switches are grouped at the right, under the PRO card. */
+.pro-algo{margin-top:11px;}
+.pa-line{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.pa-item{display:flex;align-items:center;gap:9px;flex:0 0 auto;}
+.pa-ck{display:flex;align-items:center;gap:20px;flex:0 0 auto;}
+.pa-cap{font-size:13px;color:var(--text3);letter-spacing:.01em;line-height:1.2;
+white-space:nowrap;transition:color .12s;}
+.pa-item.on .pa-cap{color:var(--pro);font-weight:700;}
+.pa-item-dr.on .pa-cap{color:var(--green);font-weight:700;}
+/* Violet variant — the PRO accent — instead of the app's usual green */
+.switch.sw-pro input:checked + .slider{background:var(--pro-d);border-color:rgba(168,128,255,.55);}
+.switch.sw-pro input:checked + .slider::before{background:var(--pro);}
+.pa-item .info-btn{width:14px;height:14px;margin-left:-3px;}
+.pa-item .info-btn svg{width:14px;height:14px;}
+/* PRO warning modal */
+.pw-chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin:4px 0 2px;cursor:pointer;user-select:none;}
+.pw-chk input{width:15px;height:15px;cursor:pointer;}
+.pw-actions{display:flex;gap:10px;margin-top:8px;}
+.pw-back{flex:1;padding:11px;border-radius:var(--rs);border:1px solid var(--border2);background:transparent;
+color:var(--text2);font-family:var(--font);font-size:14px;cursor:pointer;}
+.pw-back:hover{color:var(--text);border-color:var(--orange);}
+.pw-use{flex:1;padding:11px;border-radius:var(--rs);border:none;background:var(--pro);color:var(--bg);
+font-family:var(--font);font-weight:700;font-size:14px;cursor:pointer;}
+.pw-use:hover{filter:brightness(1.08);}
+.mi-card{background:rgba(22,24,30,.78);backdrop-filter:blur(44px) saturate(160%);-webkit-backdrop-filter:blur(44px) saturate(160%);
+border:1px solid rgba(255,255,255,.12);border-radius:var(--r-lg);
+width:560px;max-width:92vw;max-height:84vh;overflow-y:auto;padding:24px;
+box-shadow:0 24px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);}
+.mi-h{font-size:18px;font-weight:700;margin-bottom:4px;}
+.mi-sub{font-size:13px;color:var(--text3);margin-bottom:18px;}
+.mi-row{display:flex;flex-direction:column;gap:8px;padding:14px 0;border-top:1px solid var(--border);}
+.mi-badge{font-size:14px;font-weight:700;padding:4px 11px;border-radius:5px;height:fit-content;
+white-space:nowrap;letter-spacing:.03em;width:fit-content;}
+.mi-body{font-size:14px;color:var(--text2);line-height:1.5;}
+.mi-body b{color:var(--text);font-weight:600;}
+.mi-close{width:100%;margin-top:18px;padding:12px;border-radius:var(--rs);border:1px solid var(--border2);
+background:var(--bg3);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;}
+.mi-close:hover{background:var(--bg4);}
+/* Card tracking toggle */
+.switch{position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.switch .slider{position:absolute;inset:0;cursor:pointer;background:var(--red-d);
+border:1px solid rgba(242,85,90,.45);border-radius:22px;transition:.2s;}
+.switch .slider::before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;
+background:var(--red);border-radius:50%;transition:.2s;}
+.switch input:checked + .slider{background:var(--green-d);border-color:rgba(53,201,139,.5);}
+.switch input:checked + .slider::before{transform:translateX(16px);background:var(--green);}
+/* Export/import preset buttons */
+.tpl-io-btn{font-size:11px;font-weight:600;padding:4px 9px;border-radius:5px;
+border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;
+transition:all .15s;}
+.tpl-io-btn:hover{border-color:var(--border2);color:var(--text);}
+/* Unified source cards (batch list) */
+#src-list{display:none;}
+.sic-num{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--red);
+background:var(--red-d);border:1px solid var(--red-g);border-radius:4px;
+padding:2px 6px;flex-shrink:0;}
+.sic-rm{margin-left:auto;width:22px;height:22px;border-radius:50%;border:none;background:transparent;
+color:var(--text3);font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;
+display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.sic-rm:hover{background:rgba(242,85,90,.2);color:var(--red);}
+/* Per-card folder-name reminder + progress bar */
+.sic-sub{padding:0 10px 9px 10px;}
+.sic-preview{font-size:11px;color:var(--text3);font-family:var(--mono);
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:1px 0 6px;}
+/* ── Modes ────────────────────────────────────── */
+.modes{display:flex;flex-direction:column;gap:5px;padding:0 12px 8px;flex-shrink:0;}
+/* Center control strip — verification modes (row) + card tracking, above the global bar */
+#center-controls{flex-shrink:0;border-top:1px solid var(--border);padding:14px 18px;
+display:flex;flex-direction:column;gap:15px;}
+.cc-group{display:flex;flex-direction:column;}
+.cc-label{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--red);
+text-transform:uppercase;margin-bottom:9px;display:flex;align-items:center;gap:7px;}
+.modes-row{display:flex;gap:10px;}
+.modes-row .mbtn{flex:1;margin-bottom:0;min-width:0;}
+.modes-row .minfo{overflow:hidden;}
+.cc-label.cc-label-neutral{color:var(--text3);font-size:14px;font-weight:600;letter-spacing:.12em;}
+.view-report-btn{padding:3px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;}
+.view-report-btn:hover{border-color:var(--blue);color:var(--blue);}
+.mbtn{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;background:var(--bg2);
+border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;font-family:var(--font);
+color:var(--text);transition:all .15s;}
+.mbtn:hover{border-color:var(--border2);background:var(--bg3);}
+/* Selected: coloured border + light tint + soft glow, per mode */
+/* Mode palette. Green and red belong to the RESULT of a transfer (it worked /
+   it failed); the modes take the rest, and the scale means something:
+   FAST grey = no check, SIZE CHECK blue = partial check, SECURE orange =
+   contents verified, PRO violet = verified and the card read back.
+   SIZE CHECK is not green: the mode that does NOT check contents must not
+   wear the colour meaning "verified". */
+#mode-fast.on  {border-color:var(--grey);  background:var(--grey-d);  box-shadow:0 0 0 1px var(--grey) inset;}
+#mode-normal.on{border-color:var(--blue);  background:var(--blue-d);  box-shadow:0 0 0 1px var(--blue) inset;}
+#mode-slow.on  {border-color:var(--orange);background:var(--orange-d);box-shadow:0 0 0 1px var(--orange) inset, 0 6px 20px -10px rgba(242,160,61,.5);}
+#mode-pro.on   {border-color:var(--pro);   background:var(--pro-d);   box-shadow:0 0 0 1px var(--pro) inset, 0 6px 20px -10px rgba(168,128,255,.4);}
+.mbadge-row{display:flex;align-items:center;gap:8px;white-space:nowrap;}
+/* "Selected" reserves its space on every button (visibility, not display) so the
+   three buttons keep strictly identical size whether selected or not */
+.msel{visibility:hidden;font-size:10px;font-weight:800;letter-spacing:.08em;
+text-transform:uppercase;color:var(--text3);}
+.mbtn.on .msel{visibility:visible;}
+#mode-fast.on .msel{color:var(--grey);}
+#mode-normal.on .msel{color:var(--blue);}
+#mode-slow.on .msel{color:var(--orange);}
+#mode-pro.on .msel{color:var(--pro);}
+.minfo{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;}
+.mdesc{font-size:14px;color:var(--text3);text-align:left;}
+.mbadge{font-size:15px;padding:3px 11px;border-radius:4px;font-weight:600;letter-spacing:.04em;}
+.bf{background:var(--grey-d);color:var(--grey);}     /* FAST = grey */
+.bn{background:var(--blue-d);color:var(--blue);}     /* SIZE CHECK = blue */
+.bs{background:var(--orange-d);color:var(--orange);} /* SECURE = orange */
+.bp{background:var(--pro-d);color:var(--pro);}        /* PRO = violet */
+/* ── Meta inputs ──────────────────────────────── */
+.meta-sec{padding:0 12px 8px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
+.mf-label{font-size:14px;color:var(--text3);font-family:var(--font);font-weight:400;margin-bottom:3px;}
+.mf input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:4px;
+padding:8px 11px;color:var(--text);font-size:15px;font-family:var(--font);
+outline:none;transition:border-color .15s;-webkit-user-select:text;user-select:text;}
+.mf input:focus{border-color:rgba(255,255,255,.18);}
+.mf input::placeholder{color:var(--text3);}
+/* ── Folder structure: blue = subfolder levels, green = the card's folder ──
+   The colour follows the POSITION of a token (before or after the last "/"),
+   the TYPE is carried by the typography: a variable is bold, a fixed text is
+   italic and light. Two readings that never fight for the same channel. */
+.tok-lvl{background:var(--blue-d);color:var(--blue);border:1px solid rgba(77,144,240,.32);}
+.tok-lvl .tok-rm:hover{background:rgba(77,144,240,.18);color:var(--blue);}
+.tok.tok-txt{font-weight:400;font-style:italic;}
+.tok.tok-slash{background:rgba(77,144,240,.20);color:var(--blue);border:1px solid rgba(77,144,240,.5);
+font-size:15px;font-weight:700;padding:3px 10px;}
+.tpl-note{font-size:12px;color:var(--text3);margin:9px 2px 0;line-height:1.5;}
+.tpl-note .k-blue{color:var(--blue);font-weight:700;}
+.tpl-note .k-green{color:var(--green);font-weight:700;}
+.tpl-note .k-var{font-weight:700;color:var(--text2);}
+.tpl-note .k-txt{font-style:italic;color:var(--text2);}
+.pv-dest{color:var(--text3);}
+.pv-sep{color:var(--text3);padding:0 3px;}
+.pv-tree{color:var(--blue);}
+.pv-leaf{color:var(--green);}
+/* ── Template builder ─────────────────────────── */
+.tpl-section{padding:0 12px 8px;flex-shrink:0;}
+/* Drag-and-drop token area */
+.tpl-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);
+padding:7px;min-height:36px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;
+position:relative;}
+.tok{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:4px;
+font-size:14px;font-family:var(--mono);font-weight:600;cursor:grab;
+position:relative;transition:opacity .15s;}
+.tok:active{cursor:grabbing;opacity:.5;}
+.tok.drag-over-left::before{
+content:'';position:absolute;left:-3px;top:0;bottom:0;width:2px;
+background:var(--green);border-radius:1px;box-shadow:0 0 6px var(--green);
+}
+.tok.drag-over-right::after{
+content:'';position:absolute;right:-3px;top:0;bottom:0;width:2px;
+background:var(--green);border-radius:1px;box-shadow:0 0 6px var(--green);
+}
+.tok-var{background:rgba(53,201,139,.11);color:var(--green);border:1px solid rgba(53,201,139,.2);}
+.tok-sep{background:var(--bg4);color:var(--text2);border:1px solid var(--border);}
+.tok-rm{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.08);
+border:none;color:var(--text3);font-size:14px;cursor:pointer;
+display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;}
+.tok-rm:hover{background:var(--red-g);color:var(--red);}
+/* Raw text input for template */
+.tpl-raw{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:4px;
+padding:5px 8px;color:var(--text);font-size:14px;font-family:var(--mono);
+outline:none;margin-top:5px;transition:border-color .15s;
+-webkit-user-select:text;user-select:text;}
+.tpl-raw:focus{border-color:rgba(53,201,139,.35);}
+.tpl-raw::placeholder{color:var(--text3);}
+/* Folder name preview — enlarged, at the top of the right column */
+.tpl-preview-wrap{padding:0;margin:10px 0 4px;}
+.tpl-preview-label{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--green);
+text-transform:uppercase;margin-bottom:7px;}
+.tpl-preview{font-size:16px;color:var(--text);font-family:var(--mono);font-weight:600;
+padding:14px 15px;background:var(--bg3);border:1px solid rgba(53,201,139,.25);border-radius:var(--rs);
+word-break:break-all;line-height:1.4;}
+/* Sub-section labels for the two template boxes */
+.tpl-sub-label{font-size:12px;color:var(--text3);letter-spacing:.04em;margin:0 0 6px 2px;}
+.tpl-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;}
+.chip{font-size:13px;font-weight:600;padding:7px 12px;border-radius:6px;border:1px solid var(--border);
+color:var(--text2);cursor:pointer;background:var(--bg3);font-family:var(--font);transition:all .15s;}
+.chip:hover{border-color:var(--green-g);color:var(--green);background:rgba(53,201,139,.05);}
+/* ── 4-slot memories — COMPACT, single row ────── */
+/* ── Template memory list (text-based) ──────────────── */
+.presets-section{padding:0 0 8px;flex-shrink:0;}
+.memory-list{display:flex;flex-direction:column;gap:4px;}
+.mem-item{
+display:flex;align-items:center;gap:8px;padding:7px 11px;
+background:var(--bg2);border:1px solid var(--border);
+border-radius:var(--rs);cursor:pointer;font-family:var(--font);
+color:var(--text);transition:all .15s;
+user-select:none;-webkit-user-select:none;
+}
+.mem-item:hover{border-color:var(--border2);background:var(--bg3);}
+/* mem-active: filled + active = green border + dot */
+.mem-item.mem-active{border-color:var(--green-g);background:rgba(53,201,139,.05);}
+.mem-item.mem-active .mem-radio{border-color:var(--green);}
+.mem-item.mem-active .mem-radio::after{opacity:1;}
+/* mem-empty: radio circle is red, no fill */
+.mem-item.mem-empty .mem-radio{border-color:var(--red);opacity:.6;}
+/* mem-filled: radio circle is gray */
+.mem-item.mem-filled .mem-radio{border-color:var(--text3);}
+/* Radio dot */
+.mem-radio{
+width:17px;height:17px;flex-shrink:0;
+border:2px solid var(--text3);border-radius:50%;position:relative;
+}
+.mem-radio::after{
+content:'';width:7px;height:7px;background:var(--green);border-radius:50%;
+position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+opacity:0;transition:opacity .15s;
+}
+/* Name: same style for ALL states */
+.mem-name{
+font-size:15px;font-weight:600;flex:1;min-width:0;
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+color:var(--text2);
+}
+/* Badge: identical structure, only color differs */
+.mem-badge{font-size:13px;padding:2px 6px;border-radius:3px;font-weight:600;white-space:nowrap;flex-shrink:0;}
+.badge-empty{background:var(--red-d);color:var(--red);}
+.badge-saved{background:rgba(53,201,139,.14);color:var(--green);}
+/* ── Per-source info ──────────────────────────── */
+.src-info-list{display:flex;flex-direction:column;gap:4px;padding:0 12px 8px;flex-shrink:0;}
+.src-info-card{
+background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);
+overflow:hidden;
+}
+.src-info-header{
+display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;
+transition:background .12s;
+}
+.src-info-header:hover{background:var(--bg3);}
+.src-info-chevron{font-size:13px;color:var(--text3);transition:transform .2s;flex-shrink:0;}
+.src-info-card.open .src-info-chevron{transform:rotate(90deg);}
+.src-info-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.src-info-icon svg{width:18px;height:18px;}
+.src-info-name{font-size:15px;font-weight:600;flex:1;min-width:0;
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.src-info-body{display:none;padding:8px 10px;border-top:1px solid var(--border);
+display:flex;flex-direction:column;gap:6px;}
+.src-info-card:not(.open) .src-info-body{display:none;}
+.src-info-card.open .src-info-body{display:flex;}
+.sif-label{font-size:14px;color:var(--text3);font-family:var(--font);font-weight:400;margin-bottom:3px;}
+.sif-input{
+width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;
+padding:4px 7px;color:var(--text);font-size:15px;font-family:var(--font);
+outline:none;transition:border-color .15s;-webkit-user-select:text;user-select:text;
+}
+.sif-input:focus{border-color:rgba(255,255,255,.18);}
+.sif-input::placeholder{color:var(--text3);}
+.sif-textarea{
+width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;
+padding:4px 7px;color:var(--text);font-size:15px;font-family:var(--font);
+outline:none;resize:vertical;min-height:54px;max-height:110px;line-height:1.4;
+transition:border-color .15s;-webkit-user-select:text;user-select:text;
+}
+.sif-textarea:focus{border-color:rgba(255,255,255,.18);}
+.sif-textarea::placeholder{color:var(--text3);}
+/* ── Counter field ─────────────────────────────── */
+.counter-row{display:flex;align-items:flex-start;gap:6px;margin-top:2px;}
+.counter-val-wrap{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.counter-val{
+width:100%;
+background:var(--bg2);border:1px solid var(--border);border-radius:4px;
+padding:0 4px;color:var(--text);font-size:18px;font-family:var(--mono);
+font-weight:700;text-align:center;height:38px;
+outline:none;transition:border-color .15s;-webkit-user-select:text;user-select:text;
+/* Hide native number spinner */
+-moz-appearance:textfield;
+}
+.counter-val::-webkit-inner-spin-button,
+.counter-val::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.counter-val.overridden{color:var(--red);}
+.counter-val:focus{border-color:var(--green-g);}
+.counter-val.overridden{border-color:var(--accent-g);color:var(--blue);}
+.counter-pm{
+width:38px;height:38px;flex-shrink:0;
+display:flex;align-items:center;justify-content:center;
+background:var(--bg3);border:1px solid var(--border);border-radius:4px;
+color:var(--text2);font-size:22px;font-weight:300;cursor:pointer;
+font-family:var(--font);transition:all .15s;line-height:1;padding:0;
+}
+.counter-pm:hover{border-color:var(--border2);color:var(--text);background:var(--bg4);}
+.counter-pm:active{transform:scale(.92);}
+.counter-reset{
+padding:0 12px;height:38px;flex-shrink:0;
+display:flex;align-items:center;justify-content:center;
+background:var(--bg3);border:1px solid var(--border);
+border-radius:4px;color:var(--text3);font-size:13px;
+letter-spacing:.04em;cursor:pointer;
+font-family:var(--font);transition:all .15s;white-space:nowrap;
+}
+.counter-reset:hover{border-color:var(--green-g);color:var(--green);}
+.counter-pad{display:flex;gap:8px;margin-top:12px;}
+.cpad{
+flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+padding:10px 0;color:var(--text3);font-family:var(--mono);font-size:15px;font-weight:700;
+letter-spacing:.04em;cursor:pointer;transition:border-color .15s,color .15s,background .15s;
+}
+.cpad:hover{border-color:var(--border2);color:var(--text2);}
+.cpad.on{border-color:var(--accent);color:var(--text);background:var(--bg4);}
+/* ── Context menu ─────────────────────────────── */
+#ctx-menu{
+display:none;position:fixed;z-index:2000;
+background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);
+padding:4px;box-shadow:0 8px 32px rgba(0,0,0,.6);min-width:190px;
+animation:popIn .12s ease;
+}
+#ctx-menu.open{display:block;}
+.ctx-item{
+padding:7px 12px;border-radius:5px;font-size:13px;cursor:pointer;font-family:var(--font);
+display:flex;align-items:center;gap:8px;transition:background .1s;color:var(--text);
+}
+.ctx-item:hover{background:var(--bg4);}
+.ctx-item.disabled{color:var(--text3);cursor:default;}
+.ctx-item.disabled:hover{background:transparent;}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0;}
+.ctx-icon{font-size:14px;opacity:.8;}
+.ctx-item.danger{color:var(--red);}
+.ctx-item.danger:hover{background:var(--red-d);}
+/* ── Launch ───────────────────────────────────── */
+#launch{padding:8px 12px 10px;flex-shrink:0;}
+#launch-row{display:flex;gap:10px;}
+#pause-btn{flex:1;padding:15px;border-radius:var(--r);border:1px solid rgba(242,163,62,.5);
+font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:.08em;cursor:pointer;
+transition:box-shadow .25s ease,background .2s,transform .1s;display:flex;align-items:center;
+justify-content:center;gap:8px;text-transform:uppercase;background:#2b2410;color:var(--orange,#f2a33e);}
+#pause-btn:active{transform:translateY(1px);}
+#pause-btn.resume{background:#0f2c1d;border-color:rgba(53,201,139,.45);color:var(--green);}
+#pause-badge{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;
+background:#2b2410;border:1px solid rgba(242,163,62,.35);border-radius:8px;
+font-size:12px;font-weight:600;color:var(--orange,#f2a33e);letter-spacing:.03em;}
+#start-btn{flex:1;width:100%;padding:15px;border-radius:var(--r);border:1px solid transparent;
+font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:.08em;
+cursor:pointer;transition:box-shadow .25s ease,background .2s,transform .1s;display:flex;align-items:center;
+justify-content:center;gap:8px;text-transform:uppercase;}
+/* START — dark green tint (SRC/DST style), vivid text; glow only on hover */
+#start-btn:not(:disabled){background:#0f2c1d;border-color:rgba(53,201,139,.45);color:var(--green);
+box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
+#start-btn:not(:disabled):hover{animation:btnGlowGreen 1.9s ease-in-out infinite;}
+#start-btn:not(:disabled):active{transform:translateY(1px);}
+/* CANCEL — dark red tint, vivid text; continuous breathing glow while ingest runs */
+#start-btn.danger:not(:disabled){background:#341819;border-color:rgba(242,85,90,.5);color:var(--red);
+animation:btnGlowRed 1.9s ease-in-out infinite;}
+#start-btn:disabled{background:var(--bg3);color:var(--text3);cursor:not-allowed;border-color:transparent;}
+/* INSERT YOUR CARD — no card loaded: orange tint, breathing. */
+#start-btn.insert:disabled{background:#2c1f0e;border-color:rgba(242,160,61,.45);color:var(--orange);cursor:default;
+animation:btnGlowOrange 1.9s ease-in-out infinite;}
+@keyframes btnGlowOrange{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 6px 0 rgba(242,160,61,.32);}
+50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 18px 2px rgba(242,160,61,.75);}}
+@media (prefers-reduced-motion:reduce){#start-btn.insert:disabled{animation:none;}}
+@keyframes btnGlowRed{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 6px 0 rgba(242,85,90,.35);}
+50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 18px 2px rgba(242,85,90,.8);}}
+@keyframes btnGlowGreen{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 6px 0 rgba(53,201,139,.32);}
+50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 17px 2px rgba(53,201,139,.72);}}
+/* ── Footer ───────────────────────────────────── */
+#footer{padding:6px 14px;border-top:1px solid var(--border);
+display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;}
+.fc{font-size:14px;color:var(--text3);}
+.fc a{color:var(--text3);text-decoration:none;border-bottom:1px solid transparent;transition:all .15s;cursor:pointer;}
+.fc a:hover{color:var(--text2);border-color:var(--text3);}
+/* The wordmark takes the footer's own text colour, so it sits at the weight of
+   everything else down there rather than shouting in pure white, and brightens
+   on hover like a link. The violet is the brand's, untouched. */
+.je-link{display:flex;align-items:center;cursor:pointer;color:var(--text3);
+transition:color .15s,opacity .15s;opacity:.85;flex-shrink:0;}
+.je-link:hover{color:var(--text);opacity:1;}
+.je-logo{height:13px;width:auto;display:block;}
+/* ── Center volumes ───────────────────────────── */
+#center{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+/* The header can hold a lot during an ingest: the queue ring and its legend,
+   the title, the count, the view switch, the volume filters and refresh. On a
+   window narrower than about 1250 px that would overflow a single nowrap row,
+   and flex would shrink the ICON SWITCH — the one item with no text to resist —
+   down to two pixels, leaving the operator who had gone to look at the volumes
+   no way back to the transfers. So it wraps onto a second line instead, and
+   nothing in it is allowed to shrink. */
+#vols-hd{padding:14px 18px 10px;border-bottom:1px solid var(--border);
+display:flex;align-items:center;gap:9px;flex-shrink:0;flex-wrap:wrap;row-gap:8px;}
+#vols-hd > *{flex:0 0 auto;}
+#vols-hd h2{white-space:nowrap;}
+#vols-hd h2{font-size:14px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);}
+.vcnt{font-size:13px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:1px 7px;}
+.vcnt.vcnt-hidden{color:var(--red);background:var(--red-d);border-color:var(--red-g);}
+#refresh-btn{padding:6px;background:transparent;border:0;
+border-radius:7px;color:var(--text3);cursor:pointer;
+transition:all .15s;display:flex;align-items:center;justify-content:center;}
+#refresh-btn:hover{color:var(--text);background:var(--bg3);}
+#refresh-btn:disabled{opacity:.7;cursor:default;}
+#refresh-btn .rfr-ico{display:inline-flex;align-items:center;line-height:1;}
+#refresh-btn .rfr-ico svg{width:17px;height:17px;}
+#refresh-btn.scanning .rfr-ico svg{animation:spin .7s linear infinite;}
+/* New-volume proposal — centered overlay, same base as the info modals */
+#vol-proposal{display:none;position:fixed;inset:0;z-index:5001;background:rgba(0,0,0,.7);
+backdrop-filter:blur(6px);align-items:center;justify-content:center;}
+#vol-proposal.open{display:flex;}
+#vol-proposal .vp-names{font-family:var(--mono);font-size:13px;color:var(--text2);word-break:break-word;}
+/* ── Refusals, warnings and busy states ──────────────────────────────────
+   Three colours read before the text: red = it cannot start, orange = it can
+   start but you must know, blue = it is already running. The title says what
+   WOULD happen, never the name of the defect. */
+#pf-ov{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(8px);
+z-index:6000;display:flex;align-items:center;justify-content:center;padding:16px;}
+.pf-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:480px;
+max-width:100%;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.6);}
+.pf-hd{display:flex;align-items:flex-start;gap:13px;margin-bottom:13px;}
+.pf-ico{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+flex-shrink:0;border:1px solid transparent;}
+.pf-ico svg{width:23px;height:23px;}
+.pf-block .pf-ico{background:var(--red-d);border-color:var(--red-g);color:var(--red);}
+.pf-warn  .pf-ico{background:var(--orange-d);border-color:var(--orange-g);color:var(--orange);}
+.pf-busy  .pf-ico{background:var(--blue-d);border-color:rgba(77,144,240,.3);color:var(--blue);}
+.pf-info  .pf-ico{background:var(--blue-d);border-color:rgba(77,144,240,.3);color:var(--blue);}
+/* Two lines, broken by hand in the text so the second is never longer than the
+   first. balance is the safety net, not the plan. */
+.pf-title{font-size:19px;font-weight:700;line-height:1.25;letter-spacing:.01em;text-wrap:balance;}
+.pf-block .pf-title{color:var(--red);}
+.pf-warn  .pf-title{color:var(--orange);}
+.pf-busy  .pf-title{color:var(--blue);}
+.pf-info  .pf-title{color:var(--blue);}
+/* The constant line. It is the first thing read after the title and it is never
+   negotiated: on a refusal nothing was touched, and saying so is the whole
+   difference between "refused" and "failed". */
+.pf-lead{font-size:13px;font-weight:700;margin-top:5px;letter-spacing:.01em;}
+.pf-lead.ok{color:var(--green);} .pf-lead.warn{color:var(--orange);} .pf-lead.info{color:var(--blue);}
+/* Cause, then action. Never fused into one paragraph: the eye must be able to
+   skip the cause and read the instruction. */
+.pf-cause{font-size:14px;line-height:1.6;color:var(--text2);margin-bottom:11px;text-wrap:pretty;}
+.pf-act{font-size:14px;line-height:1.6;color:var(--text);margin-bottom:16px;text-wrap:pretty;}
+.pf-cause b,.pf-act b{color:var(--text);}
+.pf-cause .m,.pf-act .m{font-family:var(--mono);font-size:12.5px;background:var(--bg4);
+padding:1px 5px;border-radius:4px;color:var(--text2);word-break:break-all;}
+.pf-cause .g{color:var(--green);font-weight:700;}
+.pf-btns{display:flex;gap:9px;}
+.pf-btn{flex:1;padding:11px 8px;border-radius:var(--rs);border:1px solid var(--border2);
+background:var(--bg3);color:var(--text2);font-family:var(--font);font-size:12.5px;font-weight:700;
+letter-spacing:.05em;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.pf-btn:hover{background:var(--bg4);color:var(--text);}
+/* Exactly one accented button per window: the one that FIXES the problem. */
+.pf-btn.fix{background:rgba(139,111,240,.16);border-color:rgba(139,111,240,.5);color:var(--accent);}
+.pf-btn.fix:hover{background:rgba(139,111,240,.26);}
+/* On a warning, the button that starts anyway is orange: it owns the decision. */
+.pf-btn.go{background:var(--orange-d);border-color:var(--orange-g);color:var(--orange);}
+.pf-btn.go:hover{background:rgba(242,160,61,.24);}
+.pf-btn.ghost{flex:.7;background:transparent;color:var(--text3);}
+.pf-btn.ghost:hover{color:var(--red);border-color:var(--red-g);}
+.vp-actions{display:flex;gap:10px;margin-top:4px;}
+.vp-use{flex:1;padding:11px;border-radius:var(--rs);border:none;background:var(--blue);color:var(--bg);
+font-weight:700;font-size:14px;font-family:var(--font);cursor:pointer;}
+.vp-use:hover{filter:brightness(1.08);}
+.vp-ign{flex:1;padding:11px;border-radius:var(--rs);border:1px solid var(--border2);background:transparent;
+color:var(--text2);font-size:14px;font-family:var(--font);cursor:pointer;}
+.vp-ign:hover{color:var(--text);}
+#vols-grid{flex:1;overflow-y:auto;padding:14px 18px;
+display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px;align-content:start;}
+/* ── Transfers view ────────────────────────────────────────────────────────
+   Replaces the volumes grid while an ingest runs. One block per card; in
+   multi-destination the block nests one sub-line per destination, so two
+   destinations of the SAME card can never read as two different cards.
+   The card-level bar carries the card-level phases (copy, source re-read);
+   the sub-lines carry the per-destination verify. */
+#tf-list{flex:1;overflow-y:auto;padding:14px 18px;display:none;flex-direction:column;}
+#tf-list.on{display:flex;}
+.tf-card{border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.025);
+padding:11px 13px;margin-bottom:10px;}
+.tf-card.multi{border-color:var(--border2);background:rgba(255,255,255,.04);padding-bottom:10px;}
+.tf-card.queued{opacity:.55;}
+.tf-card.done{opacity:.7;}
+.tf-hd{display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap;}
+.tf-nm{font-weight:800;font-size:13.5px;color:var(--text);}
+.tf-sub{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.tf-arrow{color:var(--text3);}
+.tf-net{font-size:9.5px;font-weight:800;letter-spacing:.06em;color:var(--blue);
+border:1px solid rgba(77,144,240,.4);border-radius:4px;padding:1px 5px;}
+.tf-chip{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.08em;
+padding:3px 8px;border-radius:5px;white-space:nowrap;}
+.tf-chip.copy{background:rgba(53,201,139,.15);color:var(--green);}
+.tf-chip.verify{background:rgba(77,144,240,.15);color:var(--blue);}
+.tf-chip.source{background:rgba(168,128,255,.15);color:var(--pro);}
+.tf-chip.done{background:rgba(53,201,139,.15);color:var(--green);}
+.tf-chip.queued{background:rgba(255,255,255,.06);color:var(--text3);}
+.tf-chip.copied{background:rgba(53,201,139,.10);color:var(--green);}
+.tf-chip.err{background:rgba(242,85,90,.15);color:var(--red);}
+.tf-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:6px;}
+.tf-bar.thin{height:4px;}
+.tf-bar i{display:block;height:100%;border-radius:3px;transition:width .2s linear;}
+.tf-ft{display:flex;justify-content:space-between;gap:12px;font-size:11px;
+color:var(--text3);font-family:var(--mono);}
+.tf-file{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tf-meta{flex-shrink:0;}
+.tf-kids{padding:8px 0 0 16px;display:flex;flex-direction:column;gap:7px;}
+.tf-kid{border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.02);padding:8px 11px;}
+.tf-dot{width:5px;height:5px;border-radius:50%;background:var(--text3);flex:0 0 auto;}
+/* Global queue ring, first item in the header — left of the TRANSFERS title.
+   60 px: at 38 px the figure inside is unreadable beyond arm's length, which
+   is exactly the distance the operator watches it from. */
+.tf-ring{display:flex;align-items:center;gap:11px;margin-right:6px;flex:0 0 auto;}
+.tf-ring .rl{white-space:nowrap;}
+.tf-ring .rw{position:relative;width:60px;height:60px;flex:0 0 auto;}
+.tf-ring svg{transform:rotate(-90deg);}
+.tf-ring .rp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+/* The -90° above is for the ARC, so that it starts at twelve o'clock. The tick
+   drawn inside the ring must not inherit it, or the check lies on its side. */
+.tf-ring .rp svg, .tf-cring .cp svg{transform:none;}
+.tf-ring .rl{font-size:10.5px;color:var(--text3);line-height:1.5;}
+/* The queue title lives here: separate TRANSFERS and QUEUE headings would say
+   the same thing twice, so one heading carries both, and the count. */
+.tf-ring .rl b{display:block;font-size:14px;font-weight:600;letter-spacing:.12em;
+text-transform:uppercase;color:var(--text3);}
+.tf-ring .rl span{font-family:var(--mono);}
+/* Per-card ring. The card bar shows the phase; the ring carries the figure. */
+.tf-cring{position:relative;width:34px;height:34px;flex:0 0 auto;}
+.tf-cring svg{transform:rotate(-90deg);}
+.tf-cring .cp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+font-size:9.5px;font-weight:800;font-variant-numeric:tabular-nums;}
+.tf-kpct{font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+font-family:var(--mono);flex:0 0 auto;}
+/* Throughput of THIS destination — measured per disk, so a NAS
+   dragging behind two local drives is visible instead of averaged away. */
+.tf-kid .tf-kspd{margin-left:auto;font-size:11px;color:var(--text3);
+font-family:var(--mono);font-variant-numeric:tabular-nums;}
+.tf-kid .tf-chip{margin-left:8px;}
+/* Header stats strip: the stat boxes sit up here, next to the queue they
+   describe. */
+#tf-stats{display:none;padding:9px 18px 10px;border-bottom:1px solid var(--border);
+gap:8px;flex-shrink:0;--pb-color:var(--green);}
+#tf-stats.on{display:flex;}
+#tf-stats .sbox-file{flex:1.8;}
+#tf-stats .sbox-size{flex:1.25;}
+#tf-stats .slabel{font-size:9.5px;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#tf-stats .sval{font-size:16px;}
+.tf-spark{position:absolute;left:0;bottom:0;width:100%;height:70%;opacity:.3;pointer-events:none;}
+.tf-spark .spark-area{fill:var(--pb-color,var(--green));opacity:.5;stroke:none;}
+.tf-spark .spark-line{fill:none;stroke:var(--pb-color,var(--green));stroke-width:1.4;
+stroke-linecap:round;stroke-linejoin:round;}
+.tf-spark .spark-dot{fill:var(--pb-color,var(--green));}
+/* Sources / Destinations locked while an ingest runs. Kept visible and
+   readable — only the controls stop responding. */
+.lockable{transition:opacity .18s ease;}
+body.ingesting .lockable{opacity:.55;pointer-events:none;user-select:none;}
+#vols-grid::-webkit-scrollbar{width:4px;}
+#vols-grid::-webkit-scrollbar-thumb{background:var(--bg4);}
+.vc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
+padding:12px 10px 9px;cursor:grab;transition:all .2s;
+display:flex;flex-direction:column;align-items:center;gap:7px;min-height:120px;position:relative;}
+body.win32 .vc, body.linux .vc{cursor:pointer;}
+.vc:hover{border-color:var(--border2);background:var(--bg3);transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.4);}
+.vc:active{transform:scale(.96);cursor:grabbing;}
+.vc.dragging{opacity:.3;}
+.vc.vc-hidden{opacity:.5;border-style:dashed;}
+.vc.vc-hidden:hover{opacity:.85;}
+.vc-tag.tag-hidden{background:var(--bg3);color:var(--text3);}
+.vc-icon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.vc-icon svg{width:100%;height:100%;}
+.vc-name{font-size:14px;font-weight:500;text-align:center;line-height:1.3;word-break:break-word;max-width:100%;}
+.vc-meta{font-size:13px;color:var(--text3);font-family:var(--mono);}
+.vc-cam{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--blue);
+margin:2px 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.vc-bar{width:100%;height:2px;background:var(--bg4);border-radius:1px;overflow:hidden;margin-top:auto;}
+.vc-fill{height:100%;border-radius:1px;background:var(--text3);}
+.vc-tag{position:absolute;top:8px;right:8px;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border:1px solid transparent;}
+.tag-src{background:var(--red-d);color:var(--red);border-color:var(--red-g);}
+.tag-dst{background:var(--green-d);color:var(--green);border-color:var(--green-g);}
+/* ── Progress ─────────────────────────────────── */
+/* No bottom bar: during an ingest it would repeat what the Transfers view and
+   the header strip already show. The stat-box styles below are used by
+   #tf-stats. */
+.sbox{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);padding:6px 8px;min-width:0;position:relative;overflow:hidden;}
+.sbox-spd{overflow:hidden;}
+.sbox-err{padding:6px 6px;}
+.slabel{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;}
+.sval{font-size:17px;font-weight:700;color:var(--text);font-family:var(--mono);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sval.serr{color:var(--red);}
+.sval.sprg{color:var(--green);}
+.sval .stot{color:var(--text3);font-weight:400;}
+/* ── Summary ──────────────────────────────────── */
+#sum-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+backdrop-filter:blur(8px);z-index:999;align-items:center;justify-content:center;}
+#sum-ov.open{display:flex;}
+.sum-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;
+width:520px;max-height:80vh;overflow-y:auto;padding:24px;
+box-shadow:0 24px 80px rgba(0,0,0,.6);animation:popIn .25s ease;}
+.sum-hd{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.sum-ico{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid transparent;}
+.sum-ico svg{width:26px;height:26px;}
+.sum-ico.ok{background:var(--green-d);border-color:var(--green-g);color:var(--green);}
+.sum-ico.err{background:var(--red-d);border-color:var(--red-g);color:var(--red);}
+.sum-ico.cancel{background:var(--orange-d);border-color:rgba(242,160,61,.3);color:var(--orange);}
+/* The headline IS the result, in capitals, and it carries the colour of that
+   result. "Successful" congratulates without informing; "Transfer Complete"
+   can claim success over a card that was not fully copied. */
+.sum-h1{font-size:21px;font-weight:700;line-height:1.2;letter-spacing:.01em;text-wrap:balance;}
+.sum-h1.t-ok{color:var(--green);}
+.sum-h1.t-warn{color:var(--orange);}
+.sum-h1.t-bad{color:var(--red);}
+.sum-h2{font-size:14px;color:var(--text3);margin-top:3px;font-family:var(--mono);}
+.sum-h2 .caveat{color:var(--red);font-weight:700;}
+/* The constant line when something failed. "Do not format this card." is the
+   only instruction that matters, and it is true in all twelve cases. */
+.sum-lead{font-size:13px;font-weight:700;margin-top:5px;letter-spacing:.01em;text-wrap:balance;}
+.sum-lead.bad{color:var(--red);} .sum-lead.warn{color:var(--orange);} .sum-lead.ok{color:var(--green);}
+/* Two rows, each sized by what it holds: MODE·FILES·SIZE, then the tempos and,
+   on a single card, the speed. No empty cell is ever reserved. */
+.sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:7px;}
+.sum-grid2{display:grid;gap:7px;margin-bottom:12px;}
+.srow{background:var(--bg3);border-radius:var(--rs);padding:8px 10px;min-width:0;}
+.sr-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;
+overflow:hidden;text-overflow:ellipsis;}
+.sr-val{font-size:16px;font-weight:700;margin-top:3px;font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Five tempo tiles leave about 88px each: the label shrinks before the value. */
+.sum-grid2.n5 .sr-lbl{font-size:9.5px;letter-spacing:.04em;}
+.sum-grid2.n5 .sr-val{font-size:13.5px;}
+/* A label longer than its tile (French "VÉRIFICATION", "DÉBIT MOYEN") goes on
+   two lines instead of being cut; the values stay on one baseline because each
+   tile puts its value at the bottom. English labels fit on one line. */
+.sum-grid2 .srow{display:flex;flex-direction:column;justify-content:space-between;}
+.sum-grid2 .sr-lbl{white-space:normal;overflow:hidden;text-overflow:clip;line-height:1.2;}
+.sum-grid2.n5 .sr-lbl{letter-spacing:0;}
+/* MODE tile: the only coloured one. The tempos are measurements, not verdicts.
+   The option rides on the SAME line, smaller; without it, nothing is written. */
+.sr-mode{font-size:16px;font-weight:800;margin-top:3px;font-family:var(--mono);line-height:1.15;
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sr-opt{font-size:10px;font-weight:700;letter-spacing:.02em;}
+.sr-note{font-size:13px;font-weight:600;margin-top:3px;color:var(--orange);line-height:1.45;
+text-wrap:pretty;}
+/* Cards and their destinations. EJECT acts on a card, REVEAL on a destination:
+   each button sits on the thing it acts upon, not in a row of exits. */
+.sc{background:var(--bg3);border-radius:var(--rs);margin-bottom:6px;overflow:hidden;}
+.sc-row{display:flex;align-items:center;gap:8px;padding:8px 10px;}
+/* The clickable area is a SIBLING of EJECT, never its parent: nested, a click
+   on EJECT would also fold the card open. */
+.sc-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+.sc-open.clk{cursor:pointer;}
+.sc-caret{font-size:10px;color:var(--text3);transition:transform .15s;flex-shrink:0;}
+.sc-caret.open{transform:rotate(90deg);}
+.sc-name{font-size:14px;font-weight:700;font-family:var(--mono);color:var(--text);
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sc-count{font-size:11px;color:var(--text3);white-space:nowrap;flex-shrink:0;}
+.sc-dests{border-top:1px solid var(--border);}
+.sc-dest{display:flex;align-items:center;gap:8px;padding:7px 10px 7px 14px;}
+.sc-path{flex:1;min-width:0;font-size:12.5px;font-family:var(--mono);color:var(--text2);
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mini-btn{flex-shrink:0;padding:3px 9px;border-radius:5px;border:1px solid var(--border2);
+background:transparent;color:var(--text3);font-family:var(--font);font-size:10px;font-weight:700;
+letter-spacing:.06em;cursor:pointer;transition:all .15s;}
+.mini-btn:hover{border-color:var(--blue);color:var(--blue);}
+.mini-btn.ej:hover{border-color:var(--red);color:var(--red);}
+.mini-btn:disabled{opacity:.45;cursor:default;}
+.mini-btn.done{border-color:var(--green-g);color:var(--green);}
+/* Remarks. Nothing failed, something was not done. Orange, under the
+   destinations, on a window whose title stays green: they are remarks, not
+   alarms, and each says what is NOT affected. */
+.s-note{background:rgba(242,160,61,.09);border-left:2px solid var(--orange);border-radius:0 6px 6px 0;
+padding:9px 11px;margin-bottom:6px;}
+.s-note-h{font-size:13px;font-weight:600;color:var(--text);line-height:1.45;text-wrap:pretty;}
+.s-note-d{font-size:12px;color:var(--text3);line-height:1.5;margin-top:3px;text-wrap:pretty;}
+.sc-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 2px 6px;}
+.sc-hd-l{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);}
+/* DONE is the only exit, alone and centred. REVEAL and EJECT are not exits. */
+.sum-actions{display:flex;justify-content:center;}
+.sum-actions #sum-close{width:190px;}
+.err-block{background:rgba(242,85,90,.06);border:1px solid rgba(242,85,90,.18);
+border-radius:var(--rs);padding:9px 11px;margin-bottom:12px;max-height:230px;overflow-y:auto;}
+.err-item{font-size:13px;font-family:var(--mono);color:var(--text3);padding:2px 0;}
+/* One block per CAUSE, not per file: thirty corrupt clips are one line that
+   unfolds, not thirty identical lines nobody reads to the end. */
+.fg{padding:6px 0;border-bottom:1px solid rgba(242,85,90,.13);}
+.fg:last-child{border-bottom:0;}
+.fg-h{display:flex;align-items:center;gap:7px;cursor:pointer;}
+.fg-what{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--text);line-height:1.4;}
+.fg-n{font-size:11px;color:var(--red);font-weight:700;white-space:nowrap;flex-shrink:0;}
+.fg-why{font-size:12.5px;color:var(--text3);line-height:1.5;margin:3px 0 0 17px;text-wrap:pretty;}
+/* The raw system code stays, small and grey, at the end: for a bug report,
+   never as the message itself. */
+.fg-code{font-family:var(--mono);font-size:11px;color:var(--text3);opacity:.7;}
+.fg-files{margin:5px 0 2px 17px;max-height:120px;overflow-y:auto;}
+.fg-file{font-family:var(--mono);font-size:11.5px;color:var(--text2);padding:1px 0;word-break:break-all;}
+/* DONE = green (the safe, expected exit) · EJECT SOURCE = red (physical action) */
+#sum-close{width:100%;padding:10px;border-radius:var(--rs);border:1px solid rgba(53,201,139,.5);
+background:var(--green-d);color:var(--green);font-family:var(--font);font-size:18px;font-weight:700;cursor:pointer;transition:all .15s;}
+.sum-close{width:100%;padding:10px;border-radius:var(--rs);border:1px solid var(--border2);
+background:var(--bg3);color:var(--text);font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px;}
+.sum-close:hover{background:var(--bg4);}
+
+/* ── Verify Folder ────────────────────────────────────────── */
+.vf-card{background:rgba(22,24,30,.95);border:1px solid var(--border2);border-radius:var(--r-lg);
+padding:32px 30px;width:340px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.6);}
+.vf-title{font-size:16px;font-weight:700;margin-bottom:18px;}
+.vf-ring-wrap{position:relative;width:160px;height:160px;margin:0 auto 16px;}
+.vf-ring-wrap svg{width:100%;height:100%;}
+.vf-ring-track{stroke:var(--bg3);}
+.vf-ring-fill{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset .2s ease;}
+.vf-ring-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.vf-pct{font-size:32px;font-weight:800;font-family:var(--mono);color:var(--text);}
+.vf-file{font-size:12px;color:var(--text3);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.vf-cancel{margin-top:18px;width:100%;padding:10px;border-radius:var(--rs);border:1px solid var(--border2);
+background:var(--bg3);color:var(--text2);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;}
+.vf-cancel:hover{background:var(--bg4);}
+.vf-flist{background:var(--bg3);border-radius:var(--rs);padding:9px 11px;margin-bottom:10px;max-height:190px;overflow-y:auto;}
+.vf-flist-h{font-size:11px;font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;}
+.vf-flist-h.bad{color:var(--red);}
+.vf-flist-h.warn{color:var(--orange);}
+.vf-fitem{font-size:13px;font-family:var(--mono);color:var(--text2);padding:2px 0;}
+.vf-fitem.bad{color:var(--red);}
+.vf-fitem .vf-tag{font-size:10px;color:var(--text3);margin-left:6px;font-family:var(--font);}
+/* Prose inside a file list: what is NOT affected, then what to do. Never
+   monospace, so it never reads as one more file name in the list. */
+.vf-note{font-size:12.5px;font-family:var(--font);color:var(--text3);line-height:1.5;padding-top:6px;}
+.vf-note b{color:var(--text2);}
+.vf-skip{font-size:11.5px;color:var(--text3);line-height:1.5;margin:2px 2px 0;}
+.sum-h1.vf-g{color:var(--green);} .sum-h1.vf-o{color:var(--orange);} .sum-h1.vf-r{color:var(--red);}
+.ufc-actions{display:flex;gap:8px;}
+.ufc-abtn{flex:1;padding:12px 10px;border-radius:var(--rs);font-family:var(--font);
+cursor:pointer;transition:all .15s;border:1px solid var(--border2);text-align:center;}
+/* One line each: "COPY NEW / FILES" over two lines would make three buttons of
+   different heights and read as five options. */
+.ufc-abtn-title{font-size:13px;font-weight:700;letter-spacing:.04em;white-space:nowrap;}
+.ufc-abtn-primary{background:var(--green-d);color:var(--green);border-color:var(--green-g);}
+.ufc-abtn-primary:hover{background:rgba(53,201,139,.22);}
+.ufc-abtn-secondary{background:var(--bg3);color:var(--text);}
+.ufc-abtn-secondary:hover{background:var(--bg);}
+.ufc-abtn-cancel{flex:.7;background:transparent;color:var(--text3);}
+.ufc-abtn-cancel:hover{color:var(--red);border-color:var(--red-g);}
+.ufc-fitem{font-size:14px;font-family:var(--mono);color:var(--text2);padding:2px 0;}
+.ufc-fsize{color:var(--text3);}
+.ufc-flist{max-height:180px;overflow-y:auto;padding:6px 10px 8px 14px;}
+.ufc-fitem{font-size:12.5px;}
+/* The sentence that stops "62 new files" from reading as a guarantee. It
+   sits under the buttons, small, and it is not decoration: for a card ingested
+   yesterday to drive A, re-inserted today with a fresh drive B, that reading
+   would mean 2 clips out of 14 on that drive under a "Transfer Complete". */
+.ufc-caveat{margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--text3);text-align:center;}
+#sum-close:hover{background:var(--green-g);}
+.empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;
+justify-content:center;gap:8px;padding:40px;color:var(--text3);}
+.empty-ico{font-size:39px;opacity:.3;}
+.empty-txt{font-size:15px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.95) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.titlebar-logo {
+display:inline-block;
+width: 18px;
+height: 18px;
+margin-right: 6px;
+vertical-align: middle;
+-webkit-user-drag: none;
+user-select: none;
+border-radius: 4px;
+}
+
+/* ── Windows window controls ──────────────────────────────── */
+.win-controls { display:none; -webkit-app-region:no-drag; margin-left:auto; flex-shrink:0; height:100%; }
+body.win32 .win-controls, body.linux .win-controls { display:flex; }
+.win-btn {
+  width:46px; height:100%; border:none; background:transparent;
+  color:var(--text2); font-size:15px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s;
+  -webkit-app-region:no-drag;
+}
+.win-btn:hover { background:rgba(255,255,255,.08); color:var(--text1); }
+.win-btn.close:hover { background:#e81123; color:#fff; }
+.win-btn svg { pointer-events:none; }
+
+
+/* ── Volume / template-memory context menus ──────────────────────────── */
+.win-vol-ctx{
+  background:var(--bg3);border:1px solid var(--border2);font-family:var(--font);
+  border-radius:8px;padding:4px 0;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:190px;
+}
+.wvc-item{
+  padding:8px 14px;font-size:13px;font-weight:600;font-style:normal;
+  letter-spacing:0;cursor:pointer;transition:background .1s;
+}
+.wvc-src{color:var(--red);}
+.wvc-src:hover{background:var(--red-d);}
+.wvc-dst{color:var(--green);}
+.wvc-dst:hover{background:var(--green-d);}
+.wvc-unload{color:var(--text2);}
+.wvc-unload.wvc-src:hover,.wvc-unload.wvc-dst:hover{background:var(--bg4);}
+.wvc-hide{color:var(--text2);border-top:1px solid var(--border);margin-top:4px;padding-top:9px;}
+.wvc-hide:hover{background:var(--bg4);}
+.wvc-eject{color:var(--blue);border-top:1px solid var(--border);margin-top:4px;padding-top:9px;}
+.wvc-eject:hover{background:var(--bg4);}
+.wvc-item.wvc-disabled{opacity:.45;cursor:default;}
+.wvc-item.wvc-disabled:hover{background:none;}
+
+/* ══ KIOSK MODE ══ */
+#kiosk-ov{display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);
+overflow:auto;padding:30px 16px;}
+#kiosk-ov.on{display:flex;align-items:flex-start;justify-content:center;}
+.k-card{width:100%;max-width:460px;background:var(--bg);border:1px solid #1f1f24;border-radius:14px;overflow:hidden;}
+.k-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--bg3);}
+.k-logo{font-weight:800;font-size:18px;letter-spacing:-.01em;color:var(--text);}
+.k-logo span{color:var(--accent);}
+.k-badge{font-size:10px;font-weight:700;letter-spacing:.13em;color:var(--green);background:var(--green-d);border:1px solid var(--green-g);padding:2px 8px;border-radius:4px;white-space:nowrap;}
+.k-cardno{font-size:12px;font-weight:800;letter-spacing:.08em;color:var(--blue);background:var(--blue-d);border:1px solid var(--accent-g);padding:2px 9px;border-radius:4px;font-family:var(--mono);white-space:nowrap;}
+.k-admin{margin-left:auto;}
+.k-body{padding:20px 18px;display:flex;flex-direction:column;gap:16px;}
+.k-field{display:flex;flex-direction:column;}
+.k-lbl{font-size:14px;font-weight:400;color:var(--text3);font-family:var(--font);margin-bottom:7px;display:flex;align-items:center;gap:8px;}
+.k-lbl.k-src{color:var(--red);}
+.k-dot{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 7px var(--red);}
+.k-auto{font-weight:500;letter-spacing:0;color:var(--green);font-size:11px;}
+.k-input{background:var(--bg2);border:1px solid #26262c;border-radius:9px;padding:13px 14px;font-size:15px;color:var(--text);font-family:var(--font);outline:none;width:100%;box-sizing:border-box;}
+.k-input:focus{border-color:var(--blue);}
+.k-ta{resize:none;min-height:60px;font-family:var(--font);}
+.k-browse{width:100%;box-sizing:border-box;background:var(--bg2);border:1px dashed #33333a;border-radius:9px;padding:20px;color:var(--text2);font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:9px;}
+.k-browse:hover{border-color:var(--blue);color:var(--blue);}
+.k-loaded{background:var(--bg2);border:1px solid #26262c;border-radius:9px;padding:13px 14px;display:flex;align-items:center;gap:12px;}
+.k-loaded .kl-ico{color:var(--text3);flex-shrink:0;}
+.k-loaded .kl-main{flex:1;min-width:0;}
+.k-loaded .kl-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.k-loaded .kl-meta{font-size:12px;color:var(--text3);margin-top:2px;}
+.k-loaded .kl-badge{font-size:11px;font-weight:700;color:var(--blue);background:var(--blue-d);border:1px solid rgba(77,144,240,.35);padding:3px 8px;border-radius:5px;white-space:nowrap;}
+.k-loaded .kl-x{background:transparent;border:none;color:var(--text3);font-size:16px;cursor:pointer;flex-shrink:0;padding:2px 4px;}
+.k-loaded .kl-x:hover{color:var(--red);}
+.k-start{width:100%;box-sizing:border-box;margin-top:4px;border-radius:var(--r);padding:16px;font-size:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;font-family:var(--font);
+background:#0f2c1d;border:1px solid rgba(53,201,139,.45);color:var(--green);box-shadow:inset 0 1px 0 rgba(255,255,255,.06);transition:box-shadow .25s ease;}
+.k-start:not(:disabled):hover{animation:btnGlowGreen 1.9s ease-in-out infinite;}
+.k-start:disabled{background:var(--bg3);border-color:transparent;color:var(--text3);cursor:not-allowed;}
+.k-hint{font-size:11px;color:var(--text3);text-align:center;}
+/* PIN pad */
+#kiosk-pin-ov{display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.8);align-items:center;justify-content:center;}
+#kiosk-pin-ov.on{display:flex;}
+.kp-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:26px;width:290px;text-align:center;}
+.kp-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:7px;}
+.kp-sub{font-size:12px;color:var(--text3);line-height:1.45;margin:0 auto 15px;max-width:250px;}
+.kp-dots{display:flex;justify-content:center;gap:14px;margin-bottom:8px;}
+.kp-dots span{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--text3);}
+.kp-dots span.on{background:var(--blue);border-color:var(--blue);}
+.kp-err{font-size:12px;color:var(--red);height:16px;margin-bottom:8px;}
+.kp-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.kp-pad button{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px 0;font-size:20px;font-weight:600;color:var(--text);cursor:pointer;font-family:var(--font);}
+.kp-pad button:hover{border-color:var(--blue);}
+.kp-pad button.kp-x{background:transparent;font-size:16px;color:var(--text3);}
+/* Result */
+#kiosk-result-ov{display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:16px;}
+#kiosk-result-ov.on{display:flex;}
+.kr-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:34px 30px;width:360px;max-width:100%;text-align:center;}
+.kr-icon{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+margin:0 auto 14px;border:1px solid transparent;}
+.kr-icon svg{width:32px;height:32px;}
+.kr-card.ok .kr-icon{background:var(--green-d);border-color:var(--green-g);color:var(--green);}
+.kr-card.fail .kr-icon{background:var(--red-d);border-color:var(--red-g);color:var(--red);}
+.kr-title{font-size:22px;font-weight:800;margin-bottom:8px;}
+.kr-sub{font-size:14px;color:var(--text2);line-height:1.5;margin-bottom:22px;
+/* Balanced, so a kiosk line never ends on a single word. This screen is read
+   from two metres away by someone holding a camera. */
+text-wrap:balance;}
+.kr-card.ok .kr-title{color:var(--green);}
+.kr-card.fail .kr-title{color:var(--red);}
+/* A deliberate stop is neither success nor failure — neutral, not alarming. */
+.kr-card.warn .kr-icon{background:var(--orange-d);border-color:var(--orange-g);color:var(--orange);}
+.kr-card.warn .kr-title{color:var(--orange);}
+/* The line that decides what happens to the card. Always last, always bold. */
+.kr-answer{margin-top:11px;font-size:15px;font-weight:700;color:var(--text);line-height:1.4;text-wrap:balance;}
+.kr-card.stop .kr-icon{background:var(--bg4);border-color:var(--border2);color:var(--text2);}
+.kr-card.stop .kr-title{color:var(--text);}
+.kr-btn{width:100%;padding:14px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font);}
+.kr-btn:hover{border-color:var(--blue);}
+/* KIOSK running */
+#kiosk-run-ov{display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:16px;}
+#kiosk-run-ov.on{display:flex;}
+.krun-phase{font-size:18px;font-weight:700;color:var(--text);margin-bottom:16px;text-align:center;}
+.kr-run{padding-bottom:28px;}
+.krun-ring-wrap{position:relative;width:200px;height:200px;margin:0 auto 20px;}
+.krun-card{font-size:17px;color:var(--text3);font-weight:600;margin-top:4px;}
+.krun-ring-track{stroke:var(--bg3);}
+.krun-ring-fill{stroke:var(--green);stroke-linecap:round;transition:stroke-dashoffset .3s ease, stroke .3s ease;}
+.krun-ring-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.krun-pct{font-size:44px;font-weight:800;letter-spacing:-.02em;font-family:var(--mono);color:var(--text);}
+.krun-stats{display:flex;justify-content:center;gap:40px;margin-bottom:12px;}
+.krun-stat{text-align:center;}
+.krun-stat b{display:block;font-size:19px;font-weight:800;font-family:var(--mono);color:var(--text);}
+.krun-stat span{display:block;font-size:11px;color:var(--text3);margin-top:3px;letter-spacing:.03em;}
+.krun-file{font-size:12px;color:var(--text3);font-family:var(--mono);text-align:center;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Settings */
+.gear-btn{display:inline-flex;align-items:center;justify-content:center;padding:5px;border-radius:7px;border:1.5px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;-webkit-app-region:no-drag;transition:all .15s;}
+.gear-btn:hover{border-color:var(--text3);color:var(--text);}
+.set-section{margin:6px 0 4px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.set-section:last-of-type{border-bottom:none;}
+.set-hd{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.set-sec-title{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text);}
+.set-desc{font-size:13px;color:var(--text3);line-height:1.4;margin:0 0 8px 48px;}
+.set-details{margin-left:48px;display:none;}
+.set-details.on{display:block;}
+.set-subrow{display:flex;align-items:center;gap:9px;padding:3px 0;}
+.set-subrow .switch{width:30px;height:17px;}
+.set-subrow .slider::before{width:11px;height:11px;}
+.set-subrow input:checked + .slider::before{transform:translateX(13px);}
+.set-sub-lbl{font-size:13px;color:var(--text);}
+.set-sub-hint{font-size:12px;color:var(--text3);}
+.set-sep{height:1px;background:var(--border);margin:9px 0 7px;}
+.set-subnote{font-size:11.5px;color:var(--text3);line-height:1.5;margin:5px 0 0 39px;}
+.set-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.set-lbl{font-size:14px;color:var(--text);}
+.set-field{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.set-field label{width:64px;flex-shrink:0;font-size:13px;color:var(--text3);}
+.set-select{flex:1;background:var(--bg2);border:1px solid #26262c;border-radius:var(--rs);padding:9px 11px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;}
+.set-field input{flex:1;background:var(--bg2);border:1px solid #26262c;border-radius:var(--rs);padding:9px 11px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;}
+.set-field input:focus{border-color:var(--blue);}
+.set-hint{font-size:12px;color:var(--text3);line-height:1.5;margin:8px 0 14px;}
+/* ntfy: getting the app onto the phone. The QR is a fixed link to ntfy.sh —
+   the store links live there, so one code covers iPhone and Android. It is a
+   static SVG on purpose: nothing to compute, nothing that can fail to render. */
+.ntfy-setup{display:flex;gap:16px;align-items:center;background:var(--bg2);
+border:1px solid var(--border);border-radius:var(--r);padding:14px;margin:12px 0 14px;}
+.ntfy-qr{width:132px;height:132px;flex:0 0 auto;border-radius:8px;overflow:hidden;background:#fff;}
+.ntfy-qr svg{display:block;width:100%;height:100%;}
+.ntfy-steps{flex:1;min-width:0;}
+.ntfy-scan{font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px;}
+.ntfy-sub{font-size:12.5px;color:var(--text2);line-height:1.55;}
+.ntfy-link{color:var(--blue);text-decoration:none;font-weight:600;cursor:pointer;}
+.ntfy-link:hover{text-decoration:underline;}
+.set-test{padding:9px 14px;border-radius:var(--rs);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);}
+.set-test:hover{border-color:var(--blue);color:var(--blue);}
+.set-test-res{font-size:12px;margin-left:10px;}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DES SURFACES, PAS DE FILETS
+   Trois niveaux et rien d'autre : la page, la carte, le creux dans la carte.
+   Chaque trait de separation disparait, le groupement est porte par le fond.
+   Ecrit comme un bloc a la fin de la feuille plutot qu'en modifiant mille
+   regles en place : la peau se lit d'un seul tenant, et se retire de meme.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --page:#0a0b0e;      /* le fond de fenetre */
+  --card:#14161c;      /* une carte posee dessus */
+  --ins:#0e1014;       /* un creux dans une carte : champ, tuile, ligne */
+  --bg:#0a0b0e;        /* le fond des regles de base, aligne sur la page */
+}
+html,body{background:var(--page);}
+
+/* Les colonnes ne sont pas separees par un trait : ce sont les cartes qui
+   portent la structure, et un trait le redirait une deuxieme fois. */
+#main{grid-template-columns:376px 1fr 396px;gap:12px;padding:4px 14px 14px;}
+/* Sur un ecran de portable, les deux colonnes laterales rendent de la place a
+   la colonne centrale plutot que de serrer les quatre modes de copie au point
+   de couper leur nom. */
+@media (max-width:1500px){ #main{grid-template-columns:336px 1fr 356px;gap:10px;padding:4px 10px 10px;} }
+@media (max-width:1300px){ #main{grid-template-columns:310px 1fr 330px;}
+  /* Le nom du mode passe avant sa description : coupe, il ne veut plus rien
+     dire, alors que la description peut se lire sur trois lignes. */
+  .mbadge{font-size:10px;padding:2px 6px;letter-spacing:.04em;}
+  .mdesc{font-size:11px;}
+  .msel{display:none;} }
+.panel-left{border-right:none;}
+.panel-right{border-left:none;}
+.panel{overflow:visible;}
+
+/* En-tete de colonne : une etiquette, pas un titre. La pastille garde la
+   couleur, le mot passe en gris comme partout ailleurs. */
+.panel-hd{border-bottom:none;padding:2px 4px 6px;}
+.panel-hd h2{font-size:11px;font-weight:700;letter-spacing:.15em;color:var(--text2);}
+.panel-hd h2.src-h,.panel-hd h2.dst-h{color:var(--text2);}
+
+/* La colonne devient une pile de cartes espacees de 12. */
+.panel-scroll{padding:0 2px;display:flex;flex-direction:column;gap:12px;}
+.panel-scroll::-webkit-scrollbar{width:8px;}
+.panel-scroll::-webkit-scrollbar-thumb{background:#2a2d36;border-radius:8px;}
+
+/* Les blocs de la colonne deviennent des cartes. :not(:empty) evite la carte
+   vide quand aucune carte n est chargee et qu aucune destination n est posee. */
+.src-info-list:not(:empty), .meta-sec, .zone-list:not(:empty),
+.tpl-section, .memory-list, .tpl-preview-wrap{
+  background:var(--card); border-radius:14px; padding:13px; margin:0;
+}
+/* Un titre de section colle a la carte qu il annonce, en petit et en gris. */
+.sec-title{font-size:10px;font-weight:700;letter-spacing:.14em;
+  color:var(--text3);text-transform:uppercase;padding:0 4px;margin:0 0 -6px;}
+.sec-title.sec-red,.sec-title.sec-green,.sec-title.sec-violet{color:var(--text3);}
+
+/* La liste des cartes chargees n est pas une carte : ce sont ses enfants qui
+   en sont, sinon une carte se retrouve dans une carte. */
+.src-info-list:not(:empty){background:transparent;padding:0;gap:10px;}
+.src-info-card{background:var(--card);border:none;border-radius:14px;overflow:hidden;}
+
+/* Le compteur, les volumes et les modes de copie deviennent des cartes eux
+   aussi : pas de bandeau colle en bas de fenetre. */
+#center{padding:4px 14px 14px;display:flex;flex-direction:column;gap:12px;}
+#vols-hd{border-bottom:none;padding:2px 4px 0;}
+#vols-hd h2{font-size:11px;font-weight:700;letter-spacing:.15em;color:var(--text2);}
+#vols-grid{background:var(--card);border-radius:14px;padding:13px;flex:0 0 auto;
+  overflow-y:auto;}
+#vols-grid::-webkit-scrollbar{width:8px;}
+#vols-grid::-webkit-scrollbar-thumb{background:#2a2d36;border-radius:8px;}
+.vc{background:var(--ins);border:none;border-radius:11px;}
+/* Deux rangees de volumes, puis la carte defile sur elle-meme : une tuile
+   fait 120, l ecart 10, la carte 13 de marge en haut et en bas. Une lichette
+   de la troisieme rangee depasse, et c est ce qui dit qu il y a une suite. */
+#vols-grid{max-height:290px;}
+#center-controls{border-top:none;background:var(--card);border-radius:14px;
+  padding:13px;flex-shrink:0;}
+.modes{padding:0;gap:9px;}
+.mbtn{background:var(--ins);border:none;border-radius:11px;}
+
+.tpl-io-btn{padding:6px 8px;display:flex;align-items:center;justify-content:center;
+  color:var(--text2);border-radius:7px;}
+.tpl-io-sep{width:1px;height:16px;background:rgba(255,255,255,.1);margin:0 2px;}
+
+/* Le journal de session, qui remplit la colonne centrale sous la carte des
+   volumes. */
+#sess-card{background:var(--card);border-radius:14px;padding:13px;
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
+.sess-hd{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-shrink:0;}
+.sess-lbl{font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--text3);}
+.sess-sum{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.sess-clear{width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  background:var(--ins);border:none;border-radius:7px;color:var(--text3);cursor:pointer;flex-shrink:0;}
+.sess-clear:hover{color:var(--text);}
+.sess-clear:disabled{opacity:.35;cursor:default;}
+#sess-open{background:var(--ins);border:none;border-radius:8px;padding:6px 12px;
+  color:var(--text2);font-size:11.5px;font-weight:600;font-family:var(--font);cursor:pointer;flex-shrink:0;}
+#sess-open:hover{color:var(--text);}
+.sess-restore{background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;
+  padding:0;margin-left:6px;font-family:var(--font);}
+.sess-list{flex-grow:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:7px;}
+.sess-row{display:flex;align-items:center;gap:11px;background:var(--ins);border-radius:10px;
+  padding:10px 12px;}
+.sess-n{font-family:var(--mono);font-size:13px;color:var(--text3);width:34px;flex-shrink:0;}
+.sess-name{font-size:13px;font-weight:600;width:96px;flex-shrink:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.sess-folder{font-family:var(--mono);font-size:11.5px;color:var(--text3);flex-grow:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sess-drives{font-family:var(--mono);font-size:11px;color:var(--text3);flex-shrink:0;}
+.sess-rev{background:transparent;border:none;color:var(--text3);padding:2px;display:flex;
+  flex-shrink:0;cursor:pointer;}
+.sess-rev:hover{color:var(--text);}
+.sess-ft{display:flex;align-items:center;gap:10px;padding-top:12px;flex-shrink:0;
+  font-size:11px;color:var(--text3);}
+.sess-ft span{flex-grow:1;}
+.sess-empty{font-size:12px;color:var(--text3);padding:14px 2px;}
+/* Une ligne d historique s ouvre sur ses details, au clic ou au clavier. */
+.sess-item{background:var(--ins);border-radius:10px;flex-shrink:0;}
+.sess-item .sess-row{background:transparent;cursor:pointer;}
+.sess-chev{color:#6f757f;flex-shrink:0;transition:transform .15s;margin-right:-5px;}
+.sess-item.open .sess-chev{transform:rotate(90deg);color:var(--text2);}
+.sess-det{display:none;grid-template-columns:repeat(auto-fill,minmax(96px,max-content));gap:10px 28px;
+  padding:4px 14px 13px 38px;}
+.sess-item.open .sess-det{display:grid;}
+.sd-wide{grid-column:1/-1;}
+.sd-k{font-size:9px;font-weight:700;letter-spacing:.1em;color:#6f757f;margin-bottom:3px;}
+.sd-v{font-family:var(--mono);font-size:12px;color:var(--text2);overflow-wrap:anywhere;}
+.sd-v .md-note{font-family:var(--font);font-size:12.5px;line-height:1.45;}
+.sd-v .md-note p,.sd-v .md-note h3,.sd-v .md-note ul,.sd-v .md-note ol{margin:0;}.sd-v .md-note h3{font-size:inherit;font-weight:700;color:var(--text);}
+.sd-v .md-note ul,.sd-v .md-note ol{padding-left:16px;}.sd-v .md-note ul.task{list-style:none;padding-left:0;}
+.sd-v .md-note ul.task li::before{content:'☐ ';}.sd-v .md-note ul.task li.done::before{content:'☑ ';}
+
+/* Un interrupteur eteint n est pas une erreur : fond creux et pastille grise,
+   plutot que le rouge, qui est la couleur de l echec partout ailleurs. Allume,
+   il prend le vert plein : l etat se lit d un coup d oeil de loin. */
+.switch .slider{background:var(--ins);border:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);}
+.switch .slider::before{background:#5c6270;}
+.switch input:checked + .slider{background:var(--green);border:none;box-shadow:none;}
+.switch input:checked + .slider::before{background:#fff;}
+.switch.sw-pro input:checked + .slider{background:var(--pro);}
+.switch.sw-pro input:checked + .slider::before{background:#fff;}
+.switch .slider.ff-mixed{background:var(--ins);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.set-sub-lbl{white-space:nowrap;}
+
+/* Le bouton Done des reglages reste au bas de la fenetre au lieu de defiler
+   avec le contenu : huit sections, et il faudrait sinon descendre jusqu en bas
+   pour refermer. Colle, avec une bande de la couleur de la carte au-dessus, pour
+   que le texte qui passe dessous ne se lise pas a travers. */
+#settings-ov .mi-close{position:sticky;bottom:0;z-index:2;margin-top:14px;
+  background:#1b1d24;color:var(--text);box-shadow:0 -16px 0 0 var(--card), 0 48px 0 32px var(--card);}
+#settings-ov .mi-close:hover{background:#23262e;}
+
+/* ── Les fenetres : memes surfaces que la fenetre principale ──────────────
+   Une modale est une carte posee sur un voile, ses sections sont des cartes,
+   ses sous-options descendent dans le creux. Aucun contour. */
+.mi-card,.sum-card,.vf-card,.k-card,.kp-card,.kr-card{
+  background:var(--card);border:none;border-radius:18px;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);
+}
+.set-section{background:var(--ins);border:none;border-radius:12px;padding:13px;margin-bottom:10px;}
+.set-details{background:transparent;border:none;padding:6px 0 0;}
+.set-field input,.set-hook input,.set-section input[type="text"]{
+  background:var(--card) !important;border:none !important;border-radius:8px;}
+.mi-close,.pw-back,.pw-use,.set-test,.kr-btn,.k-start{border:none;border-radius:11px;}
+.mi-close,.pw-back{background:var(--ins);}
+.k-input{background:var(--ins) !important;border:none !important;border-radius:10px;}
+.kp-pad button{background:var(--ins);border:none;border-radius:12px;}
+.k-cardno{border:none;}
+.ctx-menu{background:var(--card);border:none;border-radius:12px;
+  box-shadow:0 18px 44px rgba(0,0,0,.6);}
+
+/* La carte source : deux colonnes de champs, etiquette en petites capitales.
+   La hauteur fixe de l etiquette est ce qui garde les deux colonnes alignees
+   quand l une porte un picto de 12 et l autre non. */
+.src-info-header{padding:12px 13px 4px;}
+.src-info-header:hover{background:transparent;}
+.src-info-name{font-size:16px;letter-spacing:-.2px;}
+.sic-sub{padding:0 13px 10px 13px;}
+.sic-preview{font-size:11px;color:var(--green);}
+.src-info-body{border-top:none;padding:0 13px 13px;flex-direction:column;gap:10px;}
+.sif-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.sif-label{display:flex;align-items:center;height:12px;line-height:12px;gap:6px;
+  font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--text3);margin-bottom:6px;}
+.sif-mk{flex-shrink:0;display:block;}
+.sif-input,.sif-textarea{background:var(--ins);border:none;border-radius:8px;}
+.sif-input:focus,.sif-textarea:focus{border:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+
+/* Les presets : une liste de motifs nommes. Le preset en service est le seul
+   pose sur le niveau creux, sans couleur supplementaire ; les autres sont a
+   plat sur la carte. C est la presence du fond qui dit "celui-la". */
+.memory-list{display:flex;flex-direction:column;gap:3px;}
+.mem-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;
+  background:transparent;border:none;cursor:pointer;}
+.mem-item.mem-active{background:var(--ins);}
+.mem-body{flex-grow:1;min-width:0;}
+.mem-name{font-size:12px;font-weight:600;color:var(--text2);}
+.mem-item.mem-active .mem-name{color:var(--text);}
+.mem-motif{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mem-tick{color:var(--green);flex-shrink:0;}
+.mem-item .mem-radio,.mem-item .mem-badge{display:none;}
+
+/* Le menu Insert : des entrees groupees plutot que quinze puces. */
+.tpl-section{padding:13px;}
+.tpl-hd{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-bottom:10px;}
+.tpl-ins{display:flex;align-items:center;gap:6px;background:#1b1d24;border:none;border-radius:7px;
+  padding:6px 11px;color:var(--text);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);}
+.tpl-slash{background:var(--ins);border:none;border-radius:7px;padding:5px 12px;
+  color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--mono);}
+.tipwrap{position:relative;display:inline-flex;}
+.tip{position:absolute;top:calc(100% + 8px);right:0;width:212px;background:#1b1d24;color:var(--text);
+  font-size:11px;line-height:1.5;padding:9px 11px;border-radius:9px;box-shadow:0 10px 26px rgba(0,0,0,.55);
+  opacity:0;pointer-events:none;transition:opacity .12s;z-index:40;}
+.tipwrap:hover .tip,.tipwrap:focus-within .tip{opacity:1;}
+.ins-menu{display:none;position:absolute;top:calc(100% + 7px);right:0;width:238px;background:var(--card);
+  border-radius:12px;padding:6px;box-shadow:0 18px 44px rgba(0,0,0,.6);z-index:50;
+  max-height:340px;overflow-y:auto;}
+.ins-menu.on{display:block;}
+.ins-grp{font-size:9px;font-weight:700;letter-spacing:.14em;color:#6f757f;padding:9px 10px 4px;}
+.ins-it{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:6px 10px;
+  border:none;background:transparent;border-radius:7px;color:var(--text);font-size:12.5px;
+  cursor:pointer;font-family:var(--font);}
+.ins-it span{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3);}
+.ins-it:hover{background:#1b1d24;}
+.ins-it.ins-txt,.ins-it.ins-txt span{color:var(--orange);}
+.tpl-raw{width:100%;box-sizing:border-box;}
+
+/* Une destination porte le dossier qu elle va creer : la racine en gris, le
+   dossier en vert, l un sous l autre. */
+.zi-folder{font-family:var(--mono);font-size:11.5px;color:var(--green);
+  margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.zi-more{font-size:10.5px;color:var(--text3);margin-top:3px;}
+.zi-path{font-size:11px;color:var(--text3);}
+
+/* Le bloc compteur devient une carte lui aussi. Il est ecrit en HTML sans
+   classe a lui, d ou le :has() qui le designe par ce qu il contient. */
+.panel-left .lockable:has(> .counter-row){
+  background:var(--card);border-radius:14px;padding:13px;margin:0;
+}
+.counter-val-wrap{flex-grow:1;}
+.counter-pm,.counter-reset{border-radius:9px;}
+
+/* Meme regle pour les petits controles : un fond creux, jamais un contour.
+   Les seules bordures qui restent dans l app sont celles qui portent un sens,
+   l etat selectionne d un mode de copie par exemple. */
+.chip, .tpl-io-btn, .counter-pm, .counter-reset,
+.tpl-preview, .mini, .info-btn{
+  background:var(--ins) !important; border:none !important;
+}
+/* Les pilules de filtre et le bouton Browse sont restyles SANS !important :
+   ils ont un etat actif (.on, .over) qui doit pouvoir reprendre la main. */
+.pillbtn{background:var(--ins);border:none;}
+.pillbtn:hover{background:#1b1d24;color:var(--text2);}
+.dz-browse{background:#1b1d24;border:none;color:var(--text2);}
+.chip{border-radius:7px;}
+.tpl-preview{border-radius:10px;}
+.tpl-preview-wrap{padding:13px;}
+.sic-num{border:none;}
+
+/* Plus aucune bordure sur les elements poses dans une carte : ils descendent
+   d un niveau au lieu de s entourer d un trait. */
+.mf input, .mf textarea, #meta-note, .counter-val, .tpl-raw, .zi{
+  background:var(--ins) !important; border:none !important; border-radius:8px;
+}
+.drop-zone{background:var(--card);border:none;border-radius:14px;}
+
+/* ── Reparations, mesurees dans l app qui tourne ──────────────────────────
+   Des regles de la peau ci-dessus debordent sur des composants qu elles ne
+   visent pas. Ce bloc vient EN DERNIER, apres elles, sinon le !important de
+   la regle des petits controles l emporte. */
+
+/* 1. La zone de depot garde son pointille et recoit la surface prevue, sinon
+   elle flotte sur le fond. Le pointille est une exception assumee
+   a la regle "aucune bordure" : il ne decore pas, il dit "depose ici". */
+.drop-zone{background:var(--card) !important;border:1.5px dashed rgba(255,255,255,.10) !important;
+  border-radius:14px;}
+.drop-zone.src-z{border-color:rgba(242,85,90,.30) !important;}
+.drop-zone.dst-z{border-color:rgba(53,201,139,.28) !important;}
+.drop-zone.over.src-z{border-color:var(--red) !important;background:var(--red-d) !important;}
+.drop-zone.over.dst-z{border-color:var(--green) !important;background:var(--green-d) !important;}
+/* Nothing loaded yet: the empty zone is tinted, red for the cards,
+   green for the destinations, in the manner of Presto's RUNNING button. */
+.drop-zone.src-z.dz-empty:not(.over){background:rgba(242,85,90,.10) !important;border-color:rgba(242,85,90,.45) !important;}
+.drop-zone.dst-z.dz-empty:not(.over){background:rgba(53,201,139,.09) !important;border-color:rgba(53,201,139,.42) !important;}
+.drop-zone.src-z.dz-empty .dz-hint{color:#e7a0a2;}
+.drop-zone.dst-z.dz-empty .dz-hint{color:#8fd9b6;}
+
+
+/* 2. Le focus clavier a son propre repere : les regles de base posent
+   outline:none, et la peau retire les bordures qui le porteraient. */
+input:focus-visible, textarea:focus-visible, .fld:focus, .k-input:focus,
+.tpl-raw:focus, .counter-val:focus, .set-field input:focus{
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.30) !important;
+}
+button:focus-visible, .mem-item:focus-visible, .src-info-header:focus-visible,
+[role="button"]:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
+
+/* 3. Les pilules de filtre gardent leur etat allume, que le !important de la
+   regle des petits controles ecraserait sinon. */
+.pillbtn.on, #vols-hd .pillbtn.on{background:rgba(242,85,90,.15) !important;color:var(--red) !important;
+  box-shadow:inset 0 0 0 1px rgba(242,85,90,.45) !important;}
+
+/* 4. La zone des jetons et son jumeau en saisie libre ont la meme forme,
+   sinon le champ change d aspect au double-clic. */
+.tpl-box{background:var(--ins) !important;border:none !important;border-radius:8px;}
+/* Et la fenetre d enregistrement d un preset prend les angles des cartes. */
+#save-name-overlay .sno-card, #save-name-overlay > div{border-radius:18px;}
+
+/* 9. Le balai de Copy Info, a droite du titre, comme la gomme de l historique. */
+.ci-title{display:flex;align-items:center;gap:8px;}
+.ci-title > span{flex-grow:1;}
+.ci-clear{width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+  background:var(--ins);border:none;border-radius:7px;color:var(--text3);cursor:pointer;flex-shrink:0;padding:0;}
+.ci-clear:hover{color:var(--text);}
+body.ingesting .ci-clear{opacity:.35;pointer-events:none;}
+
+/* 10. Le menu Insert sur une colonne de 486 px serait coupe a 340 : Custom
+   text et les separateurs passeraient sous le bord, et macOS masque la barre de
+   defilement au trackpad. Deux colonnes, tout visible d un coup, et la teinte
+   de ce qui flotte (charte : #1b1d24) au lieu de celle de la carte dessous. */
+.tpl-hd{position:relative;}
+.tpl-hd > .tipwrap:first-child{position:static;}
+.ins-menu{left:0;right:0;width:auto !important;min-width:300px;padding:5px !important;max-height:calc(100vh - 140px) !important;background:#1b1d24 !important;
+  box-shadow:0 18px 44px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.04) !important;}
+.ins-menu.on{display:grid !important;grid-template-columns:1fr 1fr;column-gap:6px;}
+.ins-it:hover{background:#252832;}
+.ins-menu .ins-it{padding:6px 8px;font-size:12px;gap:6px;white-space:nowrap;}
+.ins-menu .ins-it span{font-size:9.5px;}
+.ins-menu .ins-grp{padding:8px 8px 3px;}
+
+/* 11. Barres de defilement : sombres, fines, et visibles. Sans style, macOS
+   les masque au trackpad (rien ne dit qu une liste continue) ou les dessine
+   en blanc avec une souris. */
+::-webkit-scrollbar{width:8px;height:8px;background:transparent;}
+::-webkit-scrollbar-thumb{background:#2a2d36;border-radius:8px;}
+::-webkit-scrollbar-thumb:hover{background:#3a3e4a;}
+::-webkit-scrollbar-corner{background:transparent;}
+
+/* 5. Le mot SELECTED du mode choisi serait coupe ("SELECTEI") sur tout ecran
+   de moins de ~1780 px : le bouton mesure 171 px a 1500 px de large, et
+   SIZE CHECK + SELECTED en demandent 184 sans les marges. Le mode choisi est
+   deja dit par son contour, sa teinte et son halo : quand le mot ne tient
+   pas, il s efface au lieu d etre coupe. Mesure sur le bouton lui-meme, pas
+   sur la fenetre, pour suivre aussi les colonnes laterales. */
+.modes-row .mbtn{container-type:inline-size;}
+@container (max-width:224px){ .msel{display:none !important;} }
+
+/* 6. Pendant un ingest, la file prend toute la colonne : l historique n a
+   rien a faire sous elle, et il la reduirait a une lucarne. */
+body.tf-on #sess-card{display:none !important;}
+
+/* 7. Chaque case de chiffres de la file prend la part de ce qu elle affiche :
+   a largeur egale, "CHECKS REMAINING" et "40.3 GB (102.3 GB)" seraient coupes
+   a 1500 px, pendant que ETA garderait de la place pour trois caracteres. */
+#tf-stats .sbox-file{flex:1.35;}
+#tf-stats .sbox-files{flex:1.2;}
+#tf-stats .sbox-size{flex:1.6;}
+#tf-stats .sbox-spd{flex:1.1;}
+#tf-stats .sbox-eta{flex:.75;}
+@media (max-width:1300px){ #tf-stats{gap:6px;padding:8px 12px 9px;} #tf-stats .sval{font-size:13px;} #tf-stats .slabel{font-size:8.5px;letter-spacing:.03em;} }
+
+/* 8. Kiosk : la carte chargee est creuse comme les champs, sans filet (ce
+   serait le seul de l ecran), et son badge camera suit le gabarit commun. */
+.k-loaded{background:var(--ins) !important;border:none !important;border-radius:11px;}
+.k-loaded .kl-badge{border:none !important;background:rgba(77,144,240,.15);font-size:9px;letter-spacing:.06em;padding:2px 6px;border-radius:4px;}
+.k-auto{display:inline-flex;vertical-align:middle;margin-left:2px;position:relative;top:-1px;}
+
+/* 12. Copy Info : Operator, Camera et Profile sur une ligne, le profil
+   choisi dans un menu, les notes en markdown.
+   Le bouton Profile reprend exactement le remplissage du champ voisin, sinon
+   la ligne a deux hauteurs. */
+.row3{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 88px;gap:8px;}
+.sif-grid.row3{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 88px;gap:8px;}
+.k-body .row3{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 112px;gap:10px;}
+.row3 > *{min-width:0;}
+.row3 .mf-label,.row3 .sif-label,.row3 .k-lbl{white-space:nowrap;overflow:hidden;}
+.pp-btn{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:space-between;gap:4px;
+  background:var(--ins);color:var(--text);font-family:var(--font);font-size:15px;line-height:normal;border-radius:8px;}
+.mf .pp-btn{padding:8px 8px 8px 11px;}
+.sif-grid .pp-btn{padding:4px 6px 4px 7px;}
+.k-field .pp-btn{padding:13px 12px 13px 14px;border-radius:10px;}
+.pp-btn:hover{box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);}
+.pp-btn:focus-visible,.pp-btn[aria-expanded="true"]{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.pp-btn:disabled{cursor:default;opacity:.55;box-shadow:none;}
+.pp-btn .v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pp-btn .v.ph{color:var(--text3);}
+.pp-btn svg{flex:none;width:12px;height:12px;color:var(--text3);}
+.pp-menu{position:fixed;z-index:2600;background:#1b1d24;border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.6);
+  padding:10px;display:none;font-family:var(--font);}
+.pp-menu.open{display:block;}
+.pp-cols{display:grid;grid-template-columns:repeat(3,172px);gap:4px 10px;}
+.pp-g{margin-bottom:6px;}
+.pp-gh{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:4px 8px 3px;}
+.pp-it{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  height:24px;padding:0 8px;border-radius:6px;font-size:12.5px;color:var(--text);cursor:pointer;}
+.pp-it .w{font-family:var(--mono);font-size:10px;color:#6f757f;}
+.pp-it:hover,.pp-it:focus-visible{background:rgba(255,255,255,.05);}
+.pp-it.cur{background:var(--ins);}
+.pp-it.cur .w{color:var(--green);}
+.pp-foot{display:flex;gap:8px;align-items:center;margin-top:6px;padding-top:4px;}
+.pp-foot input{all:unset;box-sizing:border-box;flex:1;background:var(--ins);border-radius:8px;height:28px;padding:0 10px;
+  font-size:12.5px;color:var(--text);font-family:var(--mono);}
+.pp-foot input::placeholder{color:#6f757f;font-family:var(--font);}
+.pp-foot input:focus{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.pp-foot .none{all:unset;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);background:var(--ins);border-radius:8px;
+  height:28px;padding:0 12px;display:flex;align-items:center;}
+.pp-hint{font-size:11px;color:#6f757f;margin-top:6px;padding:0 2px;}
+
+.op-cb{position:relative;}
+.op-cb input{padding-right:26px !important;}
+.k-field .op-cb input{padding-right:32px !important;}
+.op-arrow{all:unset;cursor:pointer;position:absolute;right:4px;top:50%;transform:translateY(-50%);width:20px;height:22px;
+  display:flex;align-items:center;justify-content:center;color:#6f757f;border-radius:5px;}
+.k-field .op-arrow{right:8px;}
+.op-arrow:hover{color:var(--text);}
+.op-arrow:disabled{display:none;}
+.op-arrow svg{width:12px;height:12px;}
+.op-list{position:fixed;z-index:2600;background:#1b1d24;border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.6);
+  padding:6px;display:none;font-family:var(--font);max-height:280px;overflow-y:auto;}
+.op-list.open{display:block;}
+.op-lh{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);padding:6px 8px 4px;}
+.op-it{height:28px;display:flex;align-items:center;padding:0 8px;border-radius:6px;font-size:13px;color:var(--text2);cursor:pointer;}
+.op-it b{color:var(--text);font-weight:600;}
+.op-it.hl,.op-it:hover{background:var(--ins);color:var(--text);}
+.op-empty{font-size:11.5px;color:#6f757f;padding:4px 8px 6px;}
+
+.mdn-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.mdn-hd .sif-label,.mdn-hd .mf-label,.mdn-hd .k-lbl{margin-bottom:0;}
+.mdn-sw{display:flex;gap:2px;}
+.mdn-sw button{all:unset;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;color:#6f757f;
+  height:18px;line-height:18px;padding:0 7px;border-radius:5px;}
+.mdn-sw button[aria-checked="true"]{background:var(--ins);color:var(--text);}
+.mdn-sw button:hover{color:var(--text2);}
+.mdn-box{background:var(--ins);border-radius:8px;display:flex;flex-direction:column;}
+.k-field .mdn-box{border-radius:10px;}
+.mdn-box:focus-within{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.mdn-tb{display:flex;align-items:center;gap:1px;padding:4px 4px 0;}
+.mdn-tb .sep{width:8px;}
+.mdn-tb button{all:unset;cursor:pointer;width:26px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text3);}
+.mdn-tb button:hover,.mdn-tb button.on{background:#1b1d24;color:var(--text);}
+.mdn-tb svg{width:14px;height:14px;}
+.mdn[data-mode="md"] .mdn-tb button.on{background:none;}
+.mdn-ed{min-height:150px;max-height:260px;overflow-y:auto;padding:6px 10px 4px;color:var(--text);font-family:var(--font);
+  font-size:14px;line-height:1.45;outline:none;-webkit-user-select:text;user-select:text;overflow-wrap:anywhere;}
+.k-field .mdn-ed{font-size:15px;}
+.mdn-ed:empty::before{content:attr(data-ph);color:var(--text3);}
+.mdn-ed p,.mdn-ed div{margin:0;}
+.mdn-ed h3{margin:2px 0;font-size:inherit;font-weight:700;color:var(--text);}
+.mdn-ed ul,.mdn-ed ol{margin:0;padding-left:18px;}
+.mdn-ed ul.task{list-style:none;padding-left:2px;}
+.mdn-ed ul.task li{position:relative;padding-left:20px;}
+.mdn-ed ul.task li::before{content:"";position:absolute;left:0;top:.38em;width:11px;height:11px;border-radius:3px;box-shadow:inset 0 0 0 1.5px #6f757f;}
+.mdn-ed ul.task li.done{color:var(--text3);text-decoration:line-through;}
+.mdn-ed ul.task li.done::before{background:var(--green);box-shadow:none;}
+.mdn-ed[contenteditable="false"]{opacity:.6;}
+textarea.mdn-src,#meta-note.mdn-src,.k-ta.mdn-src,.sif-textarea.mdn-src{
+  all:unset;box-sizing:border-box;display:block;width:100%;min-height:150px;max-height:260px;overflow-y:auto;
+  padding:6px 10px 4px;color:var(--text2);font-family:var(--mono);font-size:12.5px;line-height:1.5;
+  white-space:pre-wrap;overflow-wrap:anywhere;resize:none;-webkit-user-select:text;user-select:text;
+  background:none !important;border:none !important;box-shadow:none !important;}
+textarea.mdn-src::placeholder{color:#6f757f;}
+.mdn[data-mode="rich"] .mdn-src,.mdn[data-mode="md"] .mdn-ed{display:none !important;}
+.mdn-ft{display:flex;justify-content:flex-end;padding:0 10px 6px;font-family:var(--mono);font-size:10px;color:#6f757f;}
+
+

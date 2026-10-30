@@ -14,7 +14,7 @@ const fs   = require('fs');
 const path = require('path');
 const vm   = require('vm');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(src, name) {
   const start = src.indexOf(`function ${name}(`);
@@ -44,7 +44,7 @@ function makeEl() {
                            contains:c=>el._cl.has(c) } };
   return el;
 }
-const ctx = vm.createContext({
+const ctx = vm.createContext({ ...require('../src/shared/modes'),
   console,
   document: { getElementById: id => (els[id] || (els[id] = makeEl())) },
   S: { sources: [], dests: [] },

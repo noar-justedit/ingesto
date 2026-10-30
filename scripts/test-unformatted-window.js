@@ -18,7 +18,7 @@ const fs   = require('fs');
 const path = require('path');
 const vm   = require('vm');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(src, name) {
   const start = src.indexOf(`function ${name}(`);
@@ -38,6 +38,7 @@ const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fai
 const made = [];
 function makeEl(id) {
   const el = { id: id||'', innerHTML:'', textContent:'', style:{ cssText:'' }, onclick:null,
+               querySelector:()=>({}), querySelectorAll:()=>[],
                _cl:new Set(),
                classList:{ add:c=>el._cl.add(c), remove:c=>el._cl.delete(c),
                            toggle:(c,v)=>{ v?el._cl.add(c):el._cl.delete(c); },
@@ -114,7 +115,7 @@ console.log('\nDETAILS is folded, and it holds what nobody reads before deciding
 {
   const h = open(248, 186);
   ok(/id="ufc-full" style="display:none"/.test(h), 'the list starts folded');
-  ok(/onclick="ufcToggleAll\(\)"/.test(h), 'the DETAILS row unfolds it');
+  ok(/data-js="ufc-toggle"/.test(h) && /\.onclick = \(\) => ufcToggleAll\(\);/.test(REND), 'the DETAILS row unfolds it');
   ok(/186 already ingested<\/span>/.test(h), 'and says how many are in there while folded');
   ok(/Previous destination/.test(h), 'the previous destination moved inside it');
   ok(h.indexOf('Previous destination') > h.indexOf('id="ufc-full"'),

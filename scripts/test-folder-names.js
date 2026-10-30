@@ -15,8 +15,13 @@ const fs   = require('fs');
 const path = require('path');
 const vm   = require('vm');
 
-const MAIN = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const MAIN = require('./lib/source').ENGINE;
+const REND = require('./lib/source').RENDERER;
+// Folder names and source kinds live in src/shared since 2.10.2 (one copy for
+// the engine and the window).
+const SHARED = ['folder-names.js', 'sources.js']
+  .map(f => fs.readFileSync(path.join(__dirname, '..', 'src', 'shared', f), 'utf8')).join('\n');
+const SHARED_API = Object.assign({}, require('../src/shared/folder-names'), require('../src/shared/sources'));
 
 function extractFn(src, name) {
   let start = src.indexOf(`function ${name}(`);
@@ -35,8 +40,8 @@ const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fai
 
 // ── Engine ────────────────────────────────────────────────────────────────
 const eng = vm.createContext({ console });
-vm.runInContext([extractConst(MAIN, 'CLOCK_TOKENS'), 'resolveTemplateVars', 'cleanSegment', 'buildFolderSegments',
-  'templateSegments', 'makeCounterMatcher'].map(n => n.startsWith('const') ? n : extractFn(MAIN, n)).join('\n'), eng);
+vm.runInContext([extractConst(SHARED, 'CLOCK_TOKENS'), 'asciiFold', 'resolveTemplateVars', 'cleanSegment', 'buildFolderSegments',
+  'templateSegments', 'makeCounterMatcher'].map(n => n.startsWith('const') ? n : extractFn(SHARED, n)).join('\n'), eng);
 
 // ── Interface ─────────────────────────────────────────────────────────────
 function rendCtx(lang) {
@@ -44,8 +49,9 @@ function rendCtx(lang) {
     console, INGESTO_I18N: { getLanguage: () => lang },
     S: { counter: 1, tokens: [] }, padCounter: n => String(n).padStart(3, '0'),
     document: { getElementById: () => null },
+    window: { IngestoShared: SHARED_API }, asciiFold: SHARED_API.asciiFold,
   });
-  vm.runInContext(['nameRule', 'asciiFold', 'tplText', 'sanitizeMeta', 'resolveTplSegs', 'buildTplStr', 'litTokens']
+  vm.runInContext(['nameRule', 'tplText', 'sanitizeMeta', 'resolveTplSegs', 'buildTplStr', 'litTokens']
     .map(n => extractFn(REND, n)).join('\n'), c);
   return c;
 }

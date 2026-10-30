@@ -5,7 +5,7 @@
  * (github.com/wibi8bo/ingesto, 2.8.1, GPL-3.0), so that a language file
  * written for one plugs into the other unchanged.
  *
- * How it works: index.html stays in English and its code is untouched.
+ * How it works: index.html and scripts/ stay in English, code untouched.
  * Once the page is loaded, this script replaces the VISIBLE English texts
  * with the chosen language, looked up in a dictionary. A text missing from
  * the dictionary simply stays in English: nothing breaks, nothing is lost.
@@ -20,7 +20,7 @@
  * Not covered here: what the main process writes (dialogs, notifications,
  * the report files). Those are translated on their own side.
  *
- * What must NEVER be translated is marked data-i18n-skip in index.html:
+ * What must NEVER be translated is marked data-i18n-skip (index.html, scripts/):
  * user data (card, drive, folder and file names, notes, operator...). A
  * card called "Done" stays "Done". scripts/test-i18n.js checks it.
  * ============================================================ */
@@ -44,7 +44,7 @@
    * and text nodes are changed, and its only text is an icon <title>. */
   var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, IFRAME: 1, OBJECT: 1 };
 
-  /* User data, by the class index.html gives it: drive names (.vc-name),
+  /* User data, by the class the interface gives it: drive names (.vc-name),
    * loaded cards and destinations (.zi-name, .src-info-name, .sc-name,
    * .kl-name, .tf-nm), history lines (.sess-name, .sess-folder), template
    * parts typed by the user (.tok-txt), notes (.md-note, .mdn), names in the
@@ -207,7 +207,7 @@
    * whole in dict.blocks, by its HTML, then in dict.blockPatterns (for the
    * ones that carry a name or a number). The translation brings its own
    * tags. Not found: the engine goes down to the text nodes as usual.
-   * wibi8bo's `html` (by element id) is still honoured, before this. */
+   * wibi8bo's `html` (by element id) is honoured too, before this. */
   var INLINE = { B: 1, I: 1, U: 1, S: 1, EM: 1, STRONG: 1, CODE: 1, SPAN: 1, BR: 1, A: 1, KBD: 1, SUB: 1, SUP: 1 };
   function isBlock(el) {
     var text = false, tag = false;
@@ -283,10 +283,10 @@
 
   /* The records above hold every node ever translated. A label rewritten by
    * the code (progress, ~10 times a second during an ingest) is a NEW text
-   * node each time, and the old one stayed in the maps for ever: in 2.9.0 a
-   * day of ingests in French grew the memory by tens of MB. English has no
-   * dictionary, records nothing, and never had the problem. A node no longer
-   * in the page cannot be restored and is dropped; the sweep runs every few
+   * node each time, and the old one would stay in the maps for ever: a day
+   * of ingests in French would grow the memory by tens of MB. English has no
+   * dictionary, records nothing, and is not affected. A node no longer in the
+   * page cannot be restored and is dropped; the sweep runs every few
    * thousand changes, which costs nothing next to the changes themselves. */
   var sinceSweep = 0;
   function sweep() {

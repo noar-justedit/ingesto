@@ -17,23 +17,28 @@
 
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell, screen, powerSaveBlocker } = require('electron');
 const path   = require('path');
-const i18n   = require('./lang');   // the main process's own texts (2.9.0)
+const i18n   = require('./lang');   // the main process's own texts
 const fs     = require('fs');
 const os     = require('os');
 const zlib   = require('zlib');   // ingest reports embed their data gzipped
-const { execSync, execFileSync, execFile } = require('child_process');
-const { promisify } = require('util');
-const execFileP = promisify(execFile);
-// Run a command, resolve its stdout, and NEVER reject — an unreadable volume
-// must not blow up the whole scan. Async so the main thread stays responsive
-// (the old synchronous diskutil/df calls froze the UI for seconds per volume).
-function tryExecFile(cmd, args, timeout) {
-  return execFileP(cmd, args, { encoding: 'utf8', timeout, windowsHide: true, maxBuffer: 4 * 1024 * 1024 })
-    .then(r => r.stdout || '')
-    .catch(() => '');
-}
+const { execFileSync } = require('child_process');
+// Shared with the window (src/shared): source kinds and copy modes.
+const { makeCounterMatcher } = require('../shared/folder-names');
+const { isHdeSource } = require('../shared/sources');
+const { MODE, modeVerifiesContents } = require('../shared/modes');
+// The engine and its tools, one file per job (see ETAT_PROJET, « Architecture en bref »).
+const { performCopyMulti } = require('./engine');
+const { ctl, pauseEnd } = require('./run-control');
+const { checkOnePath, getMountedVolumes, volumeIdentity } = require('./volumes');
+const { FAILED_SUFFIX, resetFsyncBusyState } = require('./copy-io');
+const { hashPro, newProHasher } = require('./hashing');
+const { isIngestoResidue, isIngestoSidecar, isIngestoTemp, makeManifestHas, readChecksumListFile, readMHLFile, scanDirFiles, writeAscMhl, writeChecksumList, writeFileAtomic, writeMHL } = require('./manifests');
+const { isVirtualMountType, isVirtualSource, mountOfPath, readMountTable } = require('./mounts');
+const { lockSource, pathContains, safeRename, safeRmTree, safeUnlink, unlockSource } = require('./source-lock');
+const { execFileP, nfc, tryExecFile } = require('./util');
+const { scanCounterInDests, walkDestination } = require('./counter-scan');
+const { VOLUME_PROBE_MS, statWithin } = require('./io-deadline');
 const https = require('https');
-
 // ── Update check — reads a small shared JSON hosted on GitHub ──────────────
 // Never blocks startup, fails silently on any network issue.
 const UPDATE_URL = 'https://raw.githubusercontent.com/noar-justedit/ingesto/main/version.json';
@@ -71,678 +76,41 @@ function checkForUpdate() {
   fetchFollow(UPDATE_URL, 0, (body) => {
     if (!body) return;
     let data; try { data = JSON.parse(body); } catch (e) { return; }
-    // This version.json is now dedicated to ingesto alone (one file per app,
-    // each in its own repo) — no more "ingesto" wrapper key like on the old
-    // shared multi-app NAS file.
+    // This version.json is dedicated to ingesto alone (one file per app, each
+    // in its own repo), so the version sits at the top level, with no
+    // "ingesto" wrapper key around it.
     if (!data || !data.version) return;
     if (semverGt(data.version, app.getVersion()) && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-available', { version: data.version, url: data.url || 'https://github.com/noar-justedit/ingesto/releases/latest' });
     }
   });
 }
-
 const { detectCamera }                 = require('./camera-detect');
 const { inspectCard, appendIngest, listAllFiles } = require('./sentinel');
-const nocache = require('./nocache');   // uncached read-back verification (macOS)
-
-// All fingerprints (SECURE xxHash64, PRO xxHash64/128/MD5, Verify) go through
-// hash-wasm — a single library, pure WASM, no native binary. ingesto ≤ 2.0.2
-// used a second library (xxhash-wasm) for SECURE, whose hex output omitted
-// leading zeros and caused false "hash mismatch" results in Verify.
-let _hashwasm = null;
-function getHashWasm() { if (!_hashwasm) _hashwasm = require('hash-wasm'); return _hashwasm; }
-const PRO_EXT = { xxh64:'.xxh', xxh128:'.xxh3', md5:'.md5' };
-async function newProHasher(algo) {
-  const hw = getHashWasm();
-  if (algo === 'md5')   return hw.createMD5();
-  if (algo === 'xxh64') return hw.createXXHash64();
-  return hw.createXXHash128();               // default: xxHash128
-}
-// Fingerprint a file with the chosen algo (used by SECURE, PRO and Verify).
-//  Every file is streamed with a bounded buffer, so RAM stays flat and the read
-//  can go through the uncached path.
-// ─── A source that stops answering ─────────────────────────────────────────
-// A card reader that hangs, or a virtual volume whose service stalls (the
-// "_hde" volume of CODEX Platform (ex Device Manager) encodes on the fly while it is read),
-// does not fail: it simply never answers. A synchronous call on it froze the
-// whole engine, and an asynchronous one waited for ever. Every read of the
-// source now has a deadline. Past it, the card is declared silent for the rest
-// of the run, so a stuck volume costs one wait, not one per file.
-const SOURCE_STALL_MS = 60000;
-// The volume list is not an ingest: a volume that has not answered in a few
-// seconds is shown as such, and asked again at the next refresh.
-const VOLUME_PROBE_MS = 3000;
-// A CODEX Platform (ex Device Manager) HDE volume: its name ends in "_hde" (A003_hde), and a
-// folder dropped from inside it carries that segment in its path. The same
-// rule as isHdeSource() in index.html (test-hde.js keeps them identical).
-function isHdeSource(p) {
-  return String(p || '').split(/[\\/]/).some(seg => /_hde$/i.test(seg));
-}
-// A volume served by a PROGRAM rather than read from a disk (2.9.2). CODEX
-// Platform does this for HDE: the "_hde" volume of a CFast card, but also,
-// since version 8, the card's own volume on ALEXA LF / SXT / XT media, which
-// keeps its usual name. Both go through FUSE (macFUSE on macOS). The mount
-// table says so, whatever the name.
-// Not virtual, on purpose: "fuseblk" (Linux) is FUSE over a real block device
-// (ntfs-3g, exfat-fuse: ordinary NTFS or exFAT drives and cards).
-// Windows: CODEX Platform does not exist there.
-async function readMountTable() {
-  if (process.platform === 'darwin') {
-    const out = await tryExecFile('mount', [], 2000);
-    return out.split('\n').map(line => {
-      const m = line.match(/^(.*?) on (\/.*) \(([^,)]*)/);
-      return m ? { source: m[1], point: m[2].trim(), type: m[3].trim() } : null;
-    }).filter(Boolean);
-  }
-  if (process.platform === 'linux') {
-    let txt = '';
-    try { txt = await fs.promises.readFile('/proc/mounts', 'utf8'); } catch (_) { return []; }
-    const unesc = (x) => x.replace(/\\([0-7]{3})/g, (m, o) => String.fromCharCode(parseInt(o, 8)));
-    return txt.split('\n').map(line => {
-      const f = line.split(' ');
-      return f.length >= 3 ? { source: unesc(f[0]), point: unesc(f[1]), type: f[2] } : null;
-    }).filter(Boolean);
-  }
-  return [];
-}
-function isVirtualMountType(type) {
-  const t = String(type || '').toLowerCase();
-  return /fuse/.test(t) && t !== 'fuseblk';
-}
-// The mount a path lives on: the longest mount point that contains it.
-function mountOfPath(p, table) {
-  const abs = String(p || '');
-  let best = null;
-  for (const m of table) {
-    const pt = m.point === '/' ? '/' : m.point.replace(/\/+$/, '');
-    const inside = pt === '/' ? abs.startsWith('/') : (abs === pt || abs.startsWith(pt + '/'));
-    if (inside && (!best || pt.length > best.point.length)) best = { ...m, point: pt };
-  }
-  return best;
-}
-async function isVirtualSource(p) {
-  if (process.platform === 'win32' || !p) return false;
-  try { const m = mountOfPath(path.resolve(String(p)), await readMountTable()); return !!(m && isVirtualMountType(m.type)); }
-  catch (_) { return false; }
-}
-// One call in flight per path: a call that never comes back keeps a worker
-// thread busy, and starting a second one on the same path would take another.
-const _ioInFlight = new Map();
-function settleWithin(key, start, ms) {
-  if (key && _ioInFlight.has(key)) return Promise.resolve({ timeout: true });
-  const pr = Promise.resolve().then(start).then(v => ({ v }), err => ({ err }));
-  if (key) {
-    _ioInFlight.set(key, pr);
-    pr.then(() => { if (_ioInFlight.get(key) === pr) _ioInFlight.delete(key); });
-  }
-  let timer = null;
-  const late = new Promise(res => { timer = setTimeout(() => res({ timeout: true }), ms); if (timer.unref) timer.unref(); });
-  return Promise.race([pr, late]).then(x => { clearTimeout(timer); return x; });
-}
-function statWithin(p, ms) { return settleWithin('stat:' + p, () => fs.promises.stat(p), ms); }
-function stallError(what) {
-  return Object.assign(new Error(`the card stopped answering (${what}, no reply for ${Math.round(SOURCE_STALL_MS / 1000)} s)`), { stalled: true });
-}
-// Watches a read stream: no data for `ms` while it is flowing, and onStall()
-// is called once. A stream paused on purpose (a destination still writing the
-// previous chunk) is waiting for the DRIVE, not the card, and is not counted.
-function stallWatch(stream, ms, onStall) {
-  let last = Date.now(), stopped = false;
-  const touch = () => { last = Date.now(); };
-  stream.on('data', touch); stream.on('resume', touch);
-  const t = setInterval(() => {
-    if (stopped) return;
-    if (stream.destroyed) { stop(); return; }
-    if (stream.isPaused()) { touch(); return; }
-    if (Date.now() - last > ms) { stop(); onStall(); }
-  }, Math.max(20, Math.min(1000, Math.floor(ms / 4))));
-  if (t.unref) t.unref();
-  function stop() { stopped = true; clearInterval(t); }
-  stream.once('end', stop); stream.once('close', stop); stream.once('error', stop);
-  return stop;
-}
-async function hashPro(fp, hasher, opts) {
-  hasher.init();
-  // NOTE: no readFile() shortcut for small files any more. It bypassed the
-  // uncached path entirely, so every file under the threshold was verified
-  // against the OS cache instead of the medium — on a mixed photo/video card
-  // that is most of the files. Everything goes through the (uncached on macOS)
-  // stream now; the cost is negligible next to reading the media.
-  return new Promise((res, rej) => {
-    // Read-back for verification: uncached on macOS so it hits the medium, not
-    // the RAM copy of what we just wrote.
-    const s = nocache.createReadStream(fp, { highWaterMark: 4*1024*1024 });
-    s.on('data', d => {
-      // A hasher failure here used to be swallowed, producing a partial digest
-      // reported as "checksum mismatch" — sending the operator chasing a
-      // perfectly healthy card. Surface the real error instead.
-      try { hasher.update(d); }
-      catch (e) { try { s.destroy(); } catch(_) {} rej(e instanceof Error ? e : new Error('hash update failed')); }
-    });
-    // digest() can throw (a hasher used by two readers at once, an internal
-    // WASM failure). Thrown from a stream listener it escaped the promise
-    // entirely and took the whole main process down, killing an ingest in
-    // progress. Turn it into a rejection the verify loop can report.
-    s.on('end', () => { try { res(hasher.digest()); } catch (e) { rej(e instanceof Error ? e : new Error('hash digest failed')); } });
-    s.on('error', rej);
-    // Reads of the CARD only (the card re-read): a destination is not watched.
-    if (opts && opts.stallMs) stallWatch(s, opts.stallMs, () => { try { s.destroy(); } catch(_) {} rej(stallError('a file could not be read')); });
-  });
-}
-// Write a file the way the copy engine writes media: to a temp name in the same
-// folder, then rename over the target. `writeFileSync` truncates the target
-// FIRST, so a drive unplugged (or an app killed) mid-write left a zero-length
-// manifest, report or sentinel — destroying the very record it was updating.
-// Rename within a folder is atomic on every filesystem we target.
-const ATOMIC_TMP_SUFFIX = '.ingesto-tmp';
-function writeFileAtomic(target, content) {
-  // NOT PART_SUFFIX: that one means "an interrupted media copy", and a stranded
-  // manifest temp would then be reported to the user as a lost clip.
-  const tmp = target + ATOMIC_TMP_SUFFIX;
-  try {
-    safeWriteTarget(target); safeWriteTarget(tmp);
-    // Atomic was not enough: the rename cannot be undone, but the CONTENT can
-    // still be in the drive's cache when the power goes. The footage is flushed
-    // file by file (F_FULLFSYNC); the checksum list, the MHL, the ASC MHL, the
-    // report and the shooting note went through here and were not. After a
-    // power cut, a green run could leave a drive with its rushes and no list.
-    // Flush the file, then the directory entry that names it.
-    const fd = fs.openSync(tmp, 'w');
-    try {
-      fs.writeFileSync(fd, content, 'utf8');
-      try { if (!nocache.fullFsync(fd)) fs.fsyncSync(fd); } catch (_) {}
-    } finally { try { fs.closeSync(fd); } catch (_) {} }
-    safeRename(tmp, target);
-    try { const dfd = fs.openSync(path.dirname(target), 'r'); try { fs.fsyncSync(dfd); } finally { fs.closeSync(dfd); } } catch (_) {}
-    return true;
-  } catch (e) {
-    try { safeUnlink(tmp); } catch (_) {}
-    throw e;
-  }
-}
-// Write a TeraCopy-style checksum list at the root of a destination folder.
-function writeChecksumList(destPath, algo, entries) {
-  try {
-    const ext  = PRO_EXT[algo] || '.xxh3';
-    const name = path.basename(destPath) + ext;
-    const lines = entries.slice()
-      .sort((a,b)=> a.rel<b.rel?-1 : a.rel>b.rel?1 : 0)
-      .map(e => `${e.hash} *${nfc(e.rel.replace(/\\/g,'/'))}`);
-    writeFileAtomic(path.join(destPath, name), lines.join('\n') + '\n');
-    return name;
-  } catch(_) { return null; }
-}
-// Write a classic MHL (Media Hash List) manifest, mirroring what DaVinci Resolve's
-// Clone Tool produces: hashlist version 1.0, one <hash> block per file. Read by
-// Silverstack, YoYotta, OffShoot. Only MD5 and xxHash64 are valid in classic MHL.
-function xmlEsc(s){
-  return String(s==null?'':s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    // Escaped for ATTRIBUTE position too — ASC MHL puts the tool version and the
-    // author name in attributes, and one quote in a user name produced a
-    // manifest no parser would open.
-    .replace(/"/g,'&quot;').replace(/'/g,'&apos;')
-    // A carriage return survives as a literal today, and every conforming XML
-    // parser then turns it into a newline: the name that comes back out is not
-    // the name on disk. Encode it instead.
-    .replace(/\r/g,'&#13;')
-    // Strip characters that are simply illegal in XML 1.0, so one exotic byte in
-    // a filename can't produce a manifest that no parser will open.
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
-}
-// Seconds-resolution ISO timestamp. A corrupt/absurd mtime (exFAT after a bad
-// unmount) makes `new Date(ms)` invalid and .toISOString() throw — which used
-// to abort the ENTIRE manifest. Fall back to "now" for that one file instead.
-function isoSec(ms){
-  let d = new Date(ms);
-  if (isNaN(d.getTime())) d = new Date();
-  return d.toISOString().replace(/\.\d{3}Z$/,'Z');
-}
-// Normalize a path to Unicode NFC. macOS stores filenames decomposed (NFD);
-// Windows and most tools use composed (NFC). Without this, an accented clip
-// verified across platforms shows up as BOTH missing and extra.
-function nfc(s){ try { return String(s).normalize('NFC'); } catch(_) { return String(s); } }
-
-// A manifest is a text file listing files. 256 MB is already absurd for one
-// (a million files at 250 bytes a line). Past that it is either corrupt or not
-// a manifest, and reading it whole into memory is how the app dies on a folder
-// somebody else's tool wrote.
-const MANIFEST_MAX_BYTES = 256 * 1024 * 1024;
 // The ingest report on a destination: an HTML page carrying its own history as
 // a compressed block. Same reasoning, tighter numbers, because a report is
 // generated by ingesto and its real size is known. Anything bigger is either
 // corrupt or somebody else's file wearing our name.
 const REPORT_MAX_BYTES      = 64 * 1024 * 1024;
 const REPORT_JSON_MAX_BYTES = 256 * 1024 * 1024;
-// ─── ASC MHL v2.0 ──────────────────────────────────────────────────────────
-// Written IN ADDITION to the classic .mhl, never instead of it: the classic
-// manifest is what most tools on set read today, ASC MHL is where the industry
-// is going. Everything here reuses fingerprints already computed during the
-// ingest — nothing is hashed twice.
-//
-// Validated against the ASC's own reference implementation (the `ascmhl`
-// Python package): our four algorithms produce byte-identical values, and the
-// C4 identifier below matches theirs on a real manifest.
-//
-// Deliberately NOT written: directory and root hashes. They are optional in the
-// schema, and the verifiers that consume ASC MHL (Pomfort MediaVerify among
-// them) check the folder against the manifest's FILE LIST and then re-hash each
-// file — a missing file is caught either way. A directory hash that was subtly
-// wrong would make a verifier reject a perfectly good folder, which is the one
-// failure this application must never produce.
-
-const ASCMHL_ALGOS = { xxh64:'xxh64', xxh128:'xxh128', xxh3:'xxh3', md5:'md5', sha1:'sha1' };
-const C4_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-
-// C4 identifier of a buffer: SHA-512, base58, left-padded to 88 characters
-// after the "c4" prefix — 90 characters in all. The chain file demands one and
-// the schema makes it mandatory, so a folder without it is not an ASC MHL
-// history, only something that looks like one.
-async function c4Id(buf){
-  const hw = getHashWasm();
-  const hex = await hw.sha512(buf);
-  let n = BigInt('0x' + hex), out = '';
-  const B = 58n;
-  while (n > 0n) { const r = n % B; out = C4_ALPHABET[Number(r)] + out; n = n / B; }
-  return 'c4' + out.padStart(88, '1');
-}
-
-// ISO timestamp with a UTC offset, the shape the reference implementation emits.
-function ascIso(ms){
-  let d = new Date(ms);
-  if (isNaN(d.getTime())) d = new Date();
-  return d.toISOString().replace(/\.\d{3}Z$/, '+00:00');
-}
-
-// Next free generation number in an existing ascmhl folder.
-function ascNextSeq(dir){
-  let max = 0;
-  try {
-    for (const f of fs.readdirSync(dir)) {
-      const m = /^(\d{4,})_.*\.mhl$/.exec(f);
-      if (m) { const n = parseInt(m[1], 10); if (n > max) max = n; }
-    }
-  } catch (_) {}
-  return max + 1;
-}
-
-// destPath/ascmhl/NNNN_<folder>_<YYYY-MM-DD>_<HHMMSSZ>.mhl  +  ascmhl_chain.xml
-async function writeAscMhl(destPath, algo, entries, meta){
-  try {
-    const tag = ASCMHL_ALGOS[algo];
-    if (!tag || !entries || !entries.length) return null;
-    const dir = path.join(destPath, 'ascmhl');
-    fs.mkdirSync(dir, { recursive: true });
-
-    const now = new Date();
-    const seq = ascNextSeq(dir);
-    const iso = now.toISOString();                       // 2026-08-29T14:49:15.000Z
-    const day = iso.slice(0, 10);
-    const hms = iso.slice(11, 19).replace(/:/g, '') + 'Z';
-    const folder = path.basename(destPath);
-    const name = `${String(seq).padStart(4, '0')}_${folder}_${day}_${hms}.mhl`;
-
-    let user = ''; try { user = os.userInfo().username || ''; } catch(_) {}
-    const host = os.hostname() || '';
-    const created = ascIso(now.getTime());
-
-    const hashes = entries.slice()
-      .sort((a, b) => a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0)
-      .map(e => {
-        const rel = nfc(String(e.rel).replace(/\\/g, '/'));
-        const mt  = ascIso(e.mtimeMs || now.getTime());
-        // action="verified": every entry in this list was read back from the
-        // destination and compared during V1. Saying "original" would understate
-        // what ingesto actually did.
-        return '    <hash>\n'
-             + `      <path size="${e.size || 0}" lastmodificationdate="${mt}">${xmlEsc(rel)}</path>\n`
-             + `      <${tag} action="verified" hashdate="${created}">${xmlEsc(e.hash)}</${tag}>\n`
-             + '    </hash>';
-      }).join('\n');
-
-    // "transfer": these files were copied here from somewhere else, which is
-    // exactly what an ingest is. "in-place" would claim we merely fingerprinted
-    // a folder that was already there.
-    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-      + '<hashlist version="2.0" xmlns="urn:ASC:MHL:v2.0">\n'
-      + '  <creatorinfo>\n'
-      + `    <creationdate>${created}</creationdate>\n`
-      + `    <hostname>${xmlEsc(host)}</hostname>\n`
-      + `    <tool version="${xmlEsc(app.getVersion())}">ingesto</tool>\n`
-      + (user ? `    <author name="${xmlEsc(user)}"></author>\n` : '')
-      + '  </creatorinfo>\n'
-      + '  <processinfo>\n'
-      + '    <process>transfer</process>\n'
-      + '    <ignore>\n'
-      + '      <pattern>.DS_Store</pattern>\n'
-      + '      <pattern>ascmhl</pattern>\n'
-      + '    </ignore>\n'
-      + '  </processinfo>\n'
-      + '  <hashes>\n' + hashes + '\n  </hashes>\n'
-      + '</hashlist>\n';
-
-    writeFileAtomic(path.join(dir, name), xml);
-
-    // The chain references every generation by its C4 identifier. It is READ
-    // BACK from disk rather than hashed from the string above, so the recorded
-    // identifier is the one covering the bytes that actually landed.
-    const onDisk = fs.readFileSync(path.join(dir, name));
-    const c4 = await c4Id(onDisk);
-
-    const chainPath = path.join(dir, 'ascmhl_chain.xml');
-    let rows = [];
-    try {
-      // Measured before it is read: the chain lives on the destination, where
-      // other tools and other people write too. If it is not a size a chain
-      // can be, it is treated as damaged and rebuilt from the manifests below.
-      const cst = fs.statSync(chainPath);
-      if (!cst.isFile() || cst.size > MANIFEST_MAX_BYTES) throw new Error('chain too large');
-      const prev = fs.readFileSync(chainPath, 'utf8');
-      rows = prev.match(/<hashlist[\s\S]*?<\/hashlist>/g) || [];
-    } catch (_) {}
-
-    // A chain that is missing, empty or damaged used to be replaced by a single
-    // row carrying the NEW sequence number, leaving every earlier manifest
-    // unreferenced — a history with holes, written without a word. If what we
-    // read does not account for every manifest in the folder, rebuild the chain
-    // from the folder itself: the manifests are the truth, the chain is an index.
-    const onDiskMhl = (() => {
-      try {
-        return fs.readdirSync(dir)
-          .filter(f => /^(\d{4,})_.*\.mhl$/.test(f))
-          .sort();
-      } catch (_) { return []; }
-    })();
-    if (rows.length !== onDiskMhl.length - 1) {
-      rows = [];
-      for (const f of onDiskMhl) {
-        if (f === name) continue;
-        const n = parseInt(/^(\d{4,})_/.exec(f)[1], 10);
-        let h;
-        try { h = await c4Id(fs.readFileSync(path.join(dir, f))); }
-        catch (_) { continue; }
-        rows.push(`  <hashlist sequencenr="${n}">\n`
-                + `    <path>${xmlEsc(f)}</path>\n`
-                + `    <c4>${h}</c4>\n`
-                + '  </hashlist>');
-      }
-    }
-
-    rows.push(`  <hashlist sequencenr="${seq}">\n`
-            + `    <path>${xmlEsc(name)}</path>\n`
-            + `    <c4>${c4}</c4>\n`
-            + '  </hashlist>');
-    writeFileAtomic(chainPath,
-      '<?xml version="1.0" encoding="UTF-8"?>\n'
-      + '<ascmhldirectory xmlns="urn:ASC:MHL:DIRECTORY:v2.0">\n'
-      + rows.join('\n') + '\n'
-      + '</ascmhldirectory>\n');
-
-    return name;
-  } catch (_) { return null; }
-}
-
-function writeMHL(destPath, algo, entries, meta){
-  try {
-    if (algo!=='md5' && algo!=='xxh64') return null;      // classic MHL: MD5 or xxHash64 only
-    const tag = algo==='md5' ? 'md5' : 'xxhash64be';
-    const name = path.basename(destPath) + '.mhl';
-    const startIso  = isoSec(meta && meta.startMs ? meta.startMs : Date.now());
-    const finishIso = isoSec(Date.now());
-    let user=''; try { user = os.userInfo().username || ''; } catch(_){}
-    const host = os.hostname() || '';
-    const hashes = entries.slice()
-      .sort((a,b)=> a.rel<b.rel?-1 : a.rel>b.rel?1 : 0)
-      .map(e => {
-        const rel = nfc(e.rel.replace(/\\/g,'/'));
-        const mtime = isoSec(e.mtimeMs || Date.now());
-        return '  <hash>\n'+
-               '    <file>'+xmlEsc(rel)+'</file>\n'+
-               '    <size>'+(e.size||0)+'</size>\n'+
-               '    <lastmodificationdate>'+mtime+'</lastmodificationdate>\n'+
-               '    <'+tag+'>'+e.hash+'</'+tag+'>\n'+
-               '    <hashdate>'+finishIso+'</hashdate>\n'+
-               '  </hash>';
-      }).join('\n');
-    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'+
-      '<hashlist version="1.0">\n'+
-      '  <creatorinfo>\n'+
-      '    <username>'+xmlEsc(user)+'</username>\n'+
-      '    <hostname>'+xmlEsc(host)+'</hostname>\n'+
-      '    <tool>INGESTO '+app.getVersion()+'</tool>\n'+
-      '    <startdate>'+startIso+'</startdate>\n'+
-      '    <finishdate>'+finishIso+'</finishdate>\n'+
-      '  </creatorinfo>\n'+
-      hashes+'\n'+
-      '</hashlist>\n';
-    writeFileAtomic(path.join(destPath, name), xml);
-    return name;
-  } catch(_) { return null; }
-}
-
-// ── Verify Folder: read back an existing checksum list or MHL and re-check ──
-const VERIFY_SKIP = new Set(['.DS_Store','.Spotlight-V100','.Trashes','.fseventsd','.TemporaryItems']);
-// AppleDouble sidecars: on filesystems without native macOS metadata support
-// (exFAT cards, SMB/NAS), macOS shadows every file with a "._<name>" companion
-// holding Finder metadata. They are not media, and the OS rewrites them behind
-// our back on the destination — so in SECURE/PRO they show up as checksum
-// mismatches on files that are actually fine (reported in the field: 5/10
-// "corrupted" files, all of them ._*.m4v). Skip them everywhere: transfer scan,
-// sentinel tracking, and Verify's extra-file listing. Directories are never
-// filtered by this (a folder legitimately named "._x" is copied normally).
-function isAppleDouble(entry) {
-  return entry.isFile() && entry.name.startsWith('._');
-}
-
-// Recursively list every file under root as {abs, rel} (rel uses forward slashes).
-function scanDirFiles(root) {
-  const out = [];
-  (function walk(dir) {
-    let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch(_) { return; }
-    for (const e of entries) {
-      if (VERIFY_SKIP.has(e.name) || isAppleDouble(e)) continue;
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) walk(full);
-      else out.push({ abs: full, rel: nfc(path.relative(root, full).replace(/\\/g, '/')) });
-    }
-  })(root);
-  return out;
-}
-
-// Look for a TeraCopy-style checksum list (<basename>.xxh/.xxh3/.md5) at the root
-// of destPath. Prefer this over MHL when both exist — it also covers xxHash128,
-// which classic MHL cannot express.
-function readChecksumListFile(destPath) {
-  const base = path.basename(destPath);
-  const EXT_ALGO = { '.xxh':'xxh64', '.xxh3':'xxh128', '.md5':'md5' };
-  for (const ext of Object.keys(EXT_ALGO)) {
-    const file = base + ext;
-    const fp = path.join(destPath, file);
-    let cst = null; try { cst = fs.statSync(fp); } catch (_) { continue; }
-    if (!cst.isFile() || cst.size > MANIFEST_MAX_BYTES) continue;
-    try {
-      const lines = fs.readFileSync(fp, 'utf8').replace(/^﻿/, '').split('\n').map(l => l.replace(/\r?\n?$/, '').replace(/^\s+/, '')).filter(Boolean);
-      const entries = [];
-      for (const line of lines) {
-        const m = line.match(/^([0-9a-fA-F]+)\s+\*(.+)$/);
-        if (m) entries.push({ rel: nfc(m[2].replace(/\\/g,'/')), hash: m[1] });
-      }
-      if (entries.length) return { algo: EXT_ALGO[ext], file, entries };
-    } catch(_) {}
-  }
-  return null;
-}
-
-// Every path an ASC MHL history vouches for, across all its generations.
-// Only the paths: this is used to answer "is this file covered by a manifest",
-// never to verify a hash.
-function readAscMhlRels(destPath) {
-  const out = new Set();
-  const dir = path.join(destPath, 'ascmhl');
-  let names; try { names = fs.readdirSync(dir); } catch (_) { return out; }
-  for (const n of names) {
-    if (!/\.mhl$/i.test(n)) continue;
-    const fp = path.join(dir, n);
-    try {
-      // A manifest is data, and data has no business being 300 MB. Checked
-      // before reading, not after: readFileSync on a huge file is the crash.
-      const st = fs.statSync(fp);
-      if (!st.isFile() || st.size > MANIFEST_MAX_BYTES) continue;
-      const xml = fs.readFileSync(fp, 'utf8');
-      const re = /<path\b[^>]*>([\s\S]*?)<\/path>/g;
-      let m;
-      while ((m = re.exec(xml))) {
-        const rel = m[1].trim()
-          .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
-          .replace(/&apos;/g, "'").replace(/&amp;/g, '&');
-        if (rel) out.add(nfc(rel.replace(/\\/g, '/')));
-      }
-    } catch (_) {}
-  }
-  return out;
-}
-
-// "Is this file covered by a manifest in this folder?"
-//
-// Handed to inspectCard, which decides which files may be SKIPPED on the next
-// ingest of the same card. A sentinel record plus a file of the right size is
-// not proof that a good copy is there: a truncated file repadded to its old
-// size, a file replaced by another of the same length, a folder restored from
-// an incomplete backup all pass that test. The proof a Verify run would use
-// tomorrow is the manifest, so it is the proof used here.
-//
-// One read per folder per inspection, no hashing: the decision has to be
-// instant on a card the operator has just plugged in.
-function hasManifestFile(folder) {
-  const base = path.basename(folder);
-  for (const ext of ['.xxh', '.xxh3', '.md5', '.mhl'])
-    if (fs.existsSync(path.join(folder, base + ext))) return true;
-  try { return fs.readdirSync(path.join(folder, 'ascmhl')).some(n => /\.mhl$/i.test(n)); }
-  catch (_) { return false; }
-}
-function makeManifestHas() {
-  const cache = new Map();
-  const setFor = (folder) => {
-    let set = cache.get(folder);
-    if (!set) {
-      set = new Set();
-      try { const ck = readChecksumListFile(folder); if (ck) for (const e of ck.entries) set.add(nfc(e.rel)); } catch (_) {}
-      try { const mh = readMHLFile(folder);          if (mh) for (const e of mh.entries) set.add(nfc(e.rel)); } catch (_) {}
-      try { for (const r of readAscMhlRels(folder)) set.add(r); } catch (_) {}
-      cache.set(folder, set);
-    }
-    return set;
-  };
-  return {
-    // Does this folder carry a manifest at all? Not every verified ingest
-    // leaves one: the checksum list is a switch the operator can turn off, and
-    // a manifest write can fail. Demanding an entry from a folder that has no
-    // manifest would make "copy new files only" re-copy a 512 GB card in full
-    // for those users, which is not a safety gain, only a cost.
-    // The FILE, not the entries. A manifest that exists but reads as empty (a
-    // truncated write, a tool that rewrote it, a hand-edited list) is not the
-    // same as a folder that never had one: it claims to vouch for the folder,
-    // so it is what decides, and a file it does not list is copied again.
-    any:  (folder)      => setFor(folder).size > 0 || hasManifestFile(folder),
-    has:  (folder, rel) => setFor(folder).has(nfc(String(rel).replace(/\\/g, '/'))),
-  };
-}
-
-// Look for a classic MHL (<basename>.mhl) at the root of destPath. Only MD5 and
-// xxHash64 exist in classic MHL, matching what ingesto itself ever writes.
-function readMHLFile(destPath) {
-  const base = path.basename(destPath);
-  const file = base + '.mhl';
-  const fp = path.join(destPath, file);
-  let mst = null; try { mst = fs.statSync(fp); } catch (_) { return null; }
-  if (!mst.isFile() || mst.size > MANIFEST_MAX_BYTES) return null;
-  try {
-    const xml = fs.readFileSync(fp, 'utf8');
-    const blocks = xml.match(/<hash>[\s\S]*?<\/hash>/g) || [];
-    if (!blocks.length) return null;
-    let algo = null;
-    const entries = [];
-    for (const b of blocks) {
-      const relM = b.match(/<file>([\s\S]*?)<\/file>/);
-      const md5M = b.match(/<md5>([0-9a-fA-F]+)<\/md5>/);
-      const xxhM = b.match(/<xxhash64be>([0-9a-fA-F]+)<\/xxhash64be>/);
-      if (!relM) continue;
-      // Unescape in REVERSE order of xmlEsc (which does & first): &lt;/&gt; must
-      // come before &amp;, or "a&amp;lt;b" wrongly becomes "a<b".
-      const rel = nfc(relM[1].replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&'));
-      // Size and modification date are parsed too, so a manifest that has to be
-      // rewritten (after a retry) keeps them instead of resetting every entry
-      // to size 0 and today's date.
-      const szM = b.match(/<size>(\d+)<\/size>/);
-      const mtM = b.match(/<lastmodificationdate>([\s\S]*?)<\/lastmodificationdate>/);
-      const size = szM ? Number(szM[1]) : 0;
-      let mtimeMs = 0;
-      if (mtM) { const t = Date.parse(mtM[1].trim()); if (isFinite(t)) mtimeMs = t; }
-      if (md5M) { algo = 'md5'; entries.push({ rel, hash: md5M[1], size, mtimeMs }); }
-      else if (xxhM) { algo = 'xxh64'; entries.push({ rel, hash: xxhM[1], size, mtimeMs }); }
-    }
-    if (entries.length) return { algo, file, entries, complete: entries.length === blocks.length };
-  } catch(_) {}
-  return null;
-}
-
-// Sidecar files ingesto itself writes — excluded from the "extra files" list,
-// since they're not footage the user needs to be alerted about.
-// Residue this app leaves behind on purpose: a quarantined bad copy, or a temp
-// file from a run that was killed. Neither is an "extra file the user added".
-function isIngestoResidue(name) {
-  return name.endsWith(FAILED_SUFFIX) || name.endsWith(PART_SUFFIX);
-}
-// A half-written sidecar/report temp: our own bookkeeping, not the user's media.
-function isIngestoTemp(name) { return name.endsWith(ATOMIC_TMP_SUFFIX); }
-// The shooting note written after the copy. It is deliberately NOT in the
-// manifest: a text file people open and correct would then be read back as
-// "corrupted". Recognised by its name AND by its first line, so a rush that
-// happens to be called "001_note.txt" is never waved through on the name alone.
-// Since 2.8.0 the note is markdown, "001_note.md", and its first line is the
-// same header as a level-1 title. Folders written by 2.7 and earlier hold the
-// .txt form: both stay ours.
-const NOTE_HEADER = 'ingesto - Shooting Note';
-function isShootingNote(rel, abs) {
-  if (!/^[^/]*_note\.(txt|md)$/.test(rel)) return false;   // root of the folder only
-  if (!abs) return false;
-  try {
-    const fd = fs.openSync(abs, 'r');
-    const buf = Buffer.alloc(64);
-    let n = 0;
-    try { n = fs.readSync(fd, buf, 0, 64, 0); } finally { fs.closeSync(fd); }
-    const head = buf.subarray(0, n).toString('utf8');
-    return /\.md$/.test(rel) ? head.startsWith('# ' + NOTE_HEADER) : head.startsWith(NOTE_HEADER);
-  } catch (_) { return false; }
-}
-// A value from the interface written into the markdown header of the note:
-// "A_001" or "*B*" must read as typed, not as italics.
-function mdEscapeText(v) { return String(v == null ? '' : v).replace(/[\\`*_{}\[\]<>#|~]/g, '\\$&'); }
-function isIngestoSidecar(rel, destBase, abs) {
-  // `rel` is the path RELATIVE TO THE DESTINATION FOLDER, forward slashes, and
-  // it keeps its folders: the ASC MHL test below needs them. Passing a
-  // basename here made that test unmatchable and pushed the whole ascmhl
-  // directory into "extra files" on every Verify.
-  // The ASC MHL history and the recovery copies of an unreadable report are
-  // files ingesto writes itself; listing them back as "extra files (not in
-  // manifest)" made the operator doubt a folder the application had just
-  // produced.
-  if (/^ascmhl\//.test(rel)) return true;
-  if (/^INGESTO_report(\.unreadable)?(-\d+)?\.(html|csv|json)$/.test(rel)) return true;
-  if (rel === destBase + '.xxh' || rel === destBase + '.xxh3' || rel === destBase + '.md5' ||
-      rel === destBase + '.mhl') return true;
-  return isShootingNote(rel, abs);
-}
-
+// Each Verify has its own cancel flag: Cancel stops the verifications running
+// when it is pressed, and a Verify started afterwards starts uncancelled. One
+// flag shared by all would let a second Verify clear the Cancel of the first.
+const verifyRuns = new Set();
 ipcMain.handle('verify-folder', async (event, destPath) => {
-  cancelVerify = false;
+  const run = { canceled: false };
+  verifyRuns.add(run);
+  try { return await verifyFolder(event, destPath, run); }
+  finally { verifyRuns.delete(run); }
+});
+async function verifyFolder(event, destPath, run) {
   const manifest = readChecksumListFile(destPath) || readMHLFile(destPath);
   if (!manifest) return { ok:false, reason:'no-manifest' };
 
-  // Drop AppleDouble entries from OLD manifests (written before we filtered
-  // them): macOS keeps rewriting those sidecars on the destination, so hashing
-  // them yields the same false "corrupted ._*.m4v" the field reported. They're
-  // metadata, never footage — ignore them on read too.
+  // Drop AppleDouble entries that older manifests may still list: macOS keeps
+  // rewriting those sidecars on the destination, so hashing them yields a
+  // false "corrupted ._*.m4v". They're metadata, never footage: ignore them on
+  // read too.
   manifest.entries = manifest.entries.filter(e => !path.basename(e.rel).startsWith('._'));
   const hasher = await newProHasher(manifest.algo);
   const total = manifest.entries.length;
@@ -757,15 +125,15 @@ ipcMain.handle('verify-folder', async (event, destPath) => {
   // single accented character). Manifest entries are normalised one way; the
   // name on a Linux, Windows or NAS volume keeps the bytes it was given. Joining
   // the normalised name onto the folder path then finds nothing, and Verify
-  // reported every accented file in the folder as MISSING: the loudest thing it
-  // can say about a delivered rush, on a folder that is perfectly fine.
+  // would report every accented file in the folder as MISSING: the loudest
+  // thing it can say about a delivered rush, on a folder that is perfectly fine.
   // scanDirFiles normalises what it reads, so a lookup by name matches whatever
   // is really on the disk.
   const onDiskFiles = scanDirFiles(destPath);
   const absByRel = new Map(onDiskFiles.map(f => [f.rel, f.abs]));
 
   for (let i=0; i<total; i++) {
-    if (cancelVerify) break;
+    if (run.canceled) break;
     const entry = manifest.entries[i];
     const abs = absByRel.get(entry.rel) || path.join(destPath, entry.rel);
     // A manifest is data, not trust: never hash a path that escapes the folder.
@@ -799,13 +167,12 @@ ipcMain.handle('verify-folder', async (event, destPath) => {
                                    && !isIngestoTemp(path.basename(rel)));
 
   return {
-    ok: true, canceled: cancelVerify,
+    ok: true, canceled: run.canceled,
     algo: manifest.algo, manifestFile: manifest.file,
     total, matched: matched.length, corrupted, missing, extra, quarantined,
   };
-});
-ipcMain.handle('cancel-verify', async () => { cancelVerify = true; return true; });
-
+}
+ipcMain.handle('cancel-verify', async () => { for (const run of verifyRuns) run.canceled = true; return true; });
 let mainWindow;
 // Every message to the interface goes through here. A window that is gone —
 // closed, crashed, or simply never created (the engine is also driven by the
@@ -815,12 +182,7 @@ function sendUI(channel, data) {
   try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, data); }
   catch (_) {}
 }
-let cancelCopy = false;
-let pauseCopy = false;     // pause between files — never mid-file (see pauseGate)
-let activeCopyCount = 0;   // guards against quitting mid-ingest — see 'before-quit' below
-let forceQuit = false;     // set once the user confirms quitting despite an active ingest
-let cancelVerify = false;
-
+ctl.send = sendUI;
 // ─── Preferences ────────────────────────────────────────────────────────────
 const PREFS_PATH = path.join(app.getPath('userData'), 'ingesto-prefs.json');
 function loadPrefs() {
@@ -833,7 +195,6 @@ function savePrefs(p) {
   try { fs.writeFileSync(PREFS_PATH, JSON.stringify(p, null, 2)); } catch (_) {}
 }
 try { i18n.setLanguage(loadPrefs().language || 'en'); } catch (_) {}
-
 // Application menu WITHOUT "Reload" or "Toggle DevTools" — those are the two
 // one-keystroke ways out of kiosk mode. Clipboard/undo shortcuts are kept via
 // the built-in edit roles so text fields still behave normally.
@@ -847,7 +208,6 @@ function installAppMenu() {
   // handles Ctrl+C/V/X/A inside inputs.
   Menu.setApplicationMenu(isMac ? Menu.buildFromTemplate(template) : null);
 }
-
 // ─── Window — show IMMEDIATELY, volumes load async ──────────────────────────
 function createWindow() {
 
@@ -900,7 +260,7 @@ function createWindow() {
   // mainWindow.webContents.send() would throw on a destroyed window mid-copy.
   // Setting forceQuit here also means 'before-quit' below won't double-prompt.
   mainWindow.on('close', (e) => {
-    if (forceQuit || activeCopyCount === 0) return;
+    if (ctl.forceQuit || ctl.activeCopyCount === 0) return;
     e.preventDefault();
     dialog.showMessageBox(mainWindow, {
       type: 'warning',
@@ -909,13 +269,13 @@ function createWindow() {
       cancelId: 1,
       title: i18n.t('An ingest is running'),
       // The card is safe either way: say that first, then what quitting costs.
-      // The old wording named only the danger, so "Cancel" read as "cancel the
-      // ingest" rather than "do not quit".
+      // A wording that names only the danger makes "Cancel" read as "cancel
+      // the ingest" rather than "do not quit".
       message: i18n.t('An ingest is running. Your card is untouched either way.'),
       detail: i18n.t('Quitting now stops the copy immediately. Files being written at that moment would be '
             + 'left incomplete on the destination.') + '\n\n' + i18n.t('Cancel the ingest first if you want a clean stop.'),
     }).then(({ response }) => {
-      if (response === 0) { forceQuit = true; app.quit(); }
+      if (response === 0) { ctl.forceQuit = true; app.quit(); }
     });
   });
 
@@ -945,7 +305,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 }
-
 // Windows: fix GPU context crash on hybrid Intel Arc + NVIDIA (Optimus) systems
 if (process.platform === 'win32') {
   // Force ANGLE to use D3D11 — works reliably on Intel Arc and NVIDIA hybrid configs
@@ -958,12 +317,11 @@ if (process.platform === 'win32') {
   app.commandLine.appendSwitch('disable-features', 'UseOzonePlatform,VaapiVideoDecoder,VaapiVideoEncoder');
   // Do NOT call disableHardwareAcceleration() — D3D11 is hardware but stable
 }
-
 // ONE ingesto per machine. Two instances on the same destination both scan the
 // counter before either creates its folder, both get 001, both pass their own
 // collision check, and both write into the same card folder — each one's
 // promotions replacing files the other had already copied and verified. The
-// engine's "existing folder" guard now catches the second one, but the honest
+// engine's "existing folder" guard also catches the second one, but the honest
 // answer is not to let it start: a second launch hands over to the first.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -972,9 +330,9 @@ if (!app.requestSingleInstanceLock()) {
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show(); mainWindow.focus();
-      // The second launch simply vanished. Someone double-clicking the icon a
-      // second time saw nothing happen and clicked again. A permanent, harmless
-      // refusal belongs in a toast, not a window.
+      // Without a word, the second launch simply vanishes: someone
+      // double-clicking the icon a second time sees nothing happen and clicks
+      // again. A permanent, harmless refusal belongs in a toast, not a window.
       sendUI('second-instance-blocked');
     }
   });
@@ -988,7 +346,7 @@ if (!app.requestSingleInstanceLock()) {
 // activeCopyCount is set by the main process itself around the actual file
 // I/O, so this can't be fooled by a renderer that's out of sync.
 app.on('before-quit', (e) => {
-  if (forceQuit || activeCopyCount === 0) return;
+  if (ctl.forceQuit || ctl.activeCopyCount === 0) return;
   e.preventDefault();
   dialog.showMessageBox(mainWindow, {
     type: 'warning',
@@ -999,13 +357,11 @@ app.on('before-quit', (e) => {
     message: i18n.t('An ingest is currently running.'),
     detail: i18n.t('Quitting now will stop the copy immediately. Files being written at that moment may be left incomplete on the destination.'),
   }).then(({ response }) => {
-    if (response === 0) { forceQuit = true; app.quit(); }
+    if (response === 0) { ctl.forceQuit = true; app.quit(); }
   });
 });
-
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
-
 // ─── IPC: Preload drop (Windows drag & drop fix) ────────────────────────────
 
 // ─── IPC: Window controls (Windows only) ────────────────────────────────────
@@ -1015,11 +371,9 @@ ipcMain.on('win-maximize', () => {
   mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
 });
 ipcMain.on('win-close', () => { if (mainWindow) mainWindow.close(); });
-
 // ─── IPC: Prefs ─────────────────────────────────────────────────────────────
 ipcMain.handle('load-prefs', async () => loadPrefs());
 ipcMain.handle('save-prefs', async (_, p) => { savePrefs(p); return true; });
-
 // ─── Live volume detection — no manual refresh needed ───────────────────────
 // macOS: fs.watch('/Volumes') fires on mount/unmount, event-driven, near-instant.
 // Windows: no filesystem-level mount event exists for drive letters, so we poll
@@ -1060,10 +414,10 @@ function startVolumeWatch() {
     attachAll();
   } else if (process.platform === 'win32') {
     let lastLetters = null;
-    // Asynchronous, with a deadline (2.9.2). The letters were tested with a
-    // synchronous call every 2 s: one drive that stopped answering (a reader,
-    // a network letter) froze the application every 2 s. A letter that does
-    // not answer keeps the state it had.
+    // Asynchronous, with a deadline. Testing the letters with a synchronous
+    // call every 2 s lets one drive that stops answering (a reader, a network
+    // letter) freeze the application every 2 s. A letter that does not answer
+    // keeps the state it had.
     let polling = false;
     _volWatchTimer = setInterval(async () => {
       if (polling) return;
@@ -1082,359 +436,15 @@ function startVolumeWatch() {
     }, 2000);
   }
 }
-
 ipcMain.handle('get-volumes', async () => {
   return getMountedVolumes();
 });
-
-async function getMountedVolumes() {
-  if (process.platform === 'win32') return getMountedVolumesWin();
-  if (process.platform === 'linux') return getMountedVolumesLinux();
-  if (process.platform !== 'darwin') return [];
-
-  // Network detection. The mountpoint sits between " on " and " (" and is always
-  // absolute — anchoring to " on /" stops a share NAMED "…on" (Canon, Nikon)
-  // from being mis-parsed, which used to send network shares through diskutil.
-  const networkPaths = new Set();
-  // Volumes served by a program rather than a disk (macFUSE, X2XFUSE: Codex
-  // Platform's "_hde" volume among them). Their files are produced while
-  // they are read, so the volume is never browsed beyond its root here.
-  const virtualPaths = new Set();
-  try {
-    for (const line of (await tryExecFile('mount', [], 2000)).split('\n')) {
-      const m = line.match(/ on (\/.*) \(([^,)]*)/);
-      if (!m) continue;
-      if (/smbfs|afpfs|nfs|webdav|ftpfs/.test(line)) networkPaths.add(m[1].trim());
-      if (isVirtualMountType(m[2])) virtualPaths.add(m[1].trim());
-    }
-  } catch (_) {}
-
-  let entries = [];
-  try { entries = fs.readdirSync('/Volumes'); } catch (_) { return []; }
-
-  let rootDev = null;
-  try { rootDev = fs.statSync('/').dev; } catch (_) {}
-
-  // Probe every volume CONCURRENTLY — the async execFile calls no longer block
-  // the main thread, and total wall-time is that of the slowest single volume
-  // instead of the sum of all of them.
-  const results = await Promise.all(entries.map(async (name) => {
-    const fullPath = '/Volumes/' + name;
-    // With a deadline (2.9.2): a volume whose reader or service hangs froze
-    // the application at the next mount event. It is listed as not
-    // answering, never dropped: a card that vanished from the list in the
-    // middle of an ingest would read as a card pulled out.
-    const vs = await statWithin(fullPath, VOLUME_PROBE_MS);
-    const isVirtual = virtualPaths.has(fullPath);
-    if (vs.timeout) return { name, label: name, path: fullPath, isSystem: false, isNetwork: networkPaths.has(fullPath),
-      fsType: 'external', totalSize: 0, freeSize: 0, usedSize: 0, camera: null, unresponsive: true, isVirtual, hde: isHdeSource(fullPath) };
-    if (vs.err || !vs.v.isDirectory()) return null;
-
-    let isSystem = false, isNetwork = networkPaths.has(fullPath);
-    let fsType = 'external';
-    if (rootDev && vs.v.dev === rootDev) isSystem = true;
-
-    if (!isNetwork && !isSystem) {
-      const info = await tryExecFile('diskutil', ['info', fullPath], 3000);
-      if (info) {
-        if (/Device Location:\s+Internal/i.test(info)) isSystem = true;
-        const proto = (info.match(/Protocol:\s+(.+)/i)||[])[1]?.trim().toLowerCase() || '';
-        if      (/\bsdxc?\b/.test(proto) || proto.includes('secure digital')) fsType = 'sdcard';
-        else if (proto.includes('usb'))            fsType = 'usb';
-        else if (/Solid State:\s+Yes/i.test(info)) fsType = 'ssd';
-        const mediaName = (info.match(/Media Name:\s+(.+)/i)||[])[1]?.trim().toLowerCase() || '';
-        // "sd" must be a whole word, or "Samsung Portable SSD" gets mislabelled a card.
-        if ((/\bsd(hc|xc)?\b/.test(mediaName) || mediaName.includes('card')) && !mediaName.includes('ssd')) fsType = 'sdcard';
-        if (mediaName.includes('cfr') || mediaName.includes('cfast') || mediaName.includes('sxs')) fsType = 'sdcard';
-      }
-    }
-
-    let totalSize=0, freeSize=0;
-    const dfOut = await tryExecFile('df', ['-k', fullPath], 1500);
-    const parts = dfOut.trim().split('\n')[1]?.trim().split(/\s+/);
-    if (parts?.length >= 4) { totalSize=parseInt(parts[1])*1024; freeSize=parseInt(parts[3])*1024; }
-
-    // Skip phantom snapshot/sealed-system mounts named by a raw UUID.
-    if ((totalSize === 0 || freeSize === 0) &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(name)) {
-      return null;
-    }
-
-    let camera = null;
-    // detectCamera reads the volume synchronously: not on a virtual one.
-    if (!isSystem && !isNetwork && !isVirtual) { try { camera = detectCamera(fullPath) || null; } catch (_) {} }
-    // On macOS the /Volumes entry name IS the volume label, so display name and
-    // card name are the same string — but the field must exist on every
-    // platform, or the renderer would fall back per-platform.
-    return { name, label: name, path: fullPath, isSystem, isNetwork, fsType,
-      totalSize, freeSize, usedSize: totalSize-freeSize, camera, isVirtual, hde: isHdeSource(fullPath) };
-  }));
-
-  return results.filter(Boolean);
-}
-
-// ─── Linux volume scan (Pop!_OS, Ubuntu, and udisks2-based distros) ────────
-// Block devices come from lsblk (util-linux, present everywhere); desktop
-// automount puts removable media under /media/$USER (Debian/Ubuntu family)
-// or /run/media/$USER (Fedora/Arch family) — both are covered. Network
-// mounts (SMB/NFS/SSHFS) come from /proc/mounts. Returned objects carry the
-// exact same fields as the macOS and Windows scanners.
-function getMountedVolumesLinux() {
-  const volumes = [];
-  const seen = new Set();
-  let tree = null;
-  try {
-    const out = execFileSync('lsblk',
-      ['-J', '-b', '-o', 'NAME,MOUNTPOINT,SIZE,FSAVAIL,RM,LABEL,TYPE'],
-      { encoding: 'utf8', timeout: 4000, stdio: ['ignore', 'pipe', 'ignore'] });
-    tree = JSON.parse(out);
-  } catch (_) {}
-
-  const walk = (nodes) => {
-    for (const n of (nodes || [])) {
-      const mp = n.mountpoint;
-      if (mp && !seen.has(mp)) {
-        const total = Number(n.size) || 0;
-        const free  = Number(n.fsavail) || 0;
-        if (mp === '/') {
-          seen.add(mp);
-          volumes.push({
-            name: 'System', label: 'System', path: '/', isSystem: true, isNetwork: false, fsType: 'system',
-            totalSize: total, freeSize: free, usedSize: total - free, camera: null,
-          });
-        } else if (/^\/(media|run\/media)\//.test(mp)) {
-          seen.add(mp);
-          const name = (n.label || '').trim() || path.basename(mp);
-          let camera = null;
-          try { camera = detectCamera(mp) || null; } catch (_) {}
-          volumes.push({
-            name, label: name, path: mp, isSystem: false, isNetwork: false, fsType: 'usb',
-            totalSize: total, freeSize: free, usedSize: total - free, camera,
-          });
-        }
-      }
-      walk(n.children);
-    }
-  };
-  if (tree) walk(tree.blockdevices);
-
-  // Fallback: if lsblk is missing or too old to report FSAVAIL (util-linux
-  // < 2.33), the walk above yields nothing and the user sees NO local volumes
-  // at all. Recover the removable mounts straight from /proc/mounts.
-  try {
-    // If lsblk failed entirely, even "/" is missing — recover it here too.
-    const haveSystem = volumes.some(v => v.isSystem);
-    for (const line of fs.readFileSync('/proc/mounts', 'utf8').split('\n')) {
-      const parts = line.split(' ');
-      const mp = (parts[1] || '').replace(/\\040/g, ' ');
-      if (!mp || seen.has(mp)) continue;
-      const isRoot = mp === '/';
-      if (!isRoot && !/^\/(media|run\/media)\//.test(mp)) continue;
-      if (isRoot && haveSystem) continue;
-      seen.add(mp);
-      let totalSize = 0, freeSize = 0;
-      try { const st = fs.statfsSync(mp); totalSize = st.blocks * st.bsize; freeSize = st.bavail * st.bsize; } catch (_) {}
-      if (isRoot) {
-        volumes.push({ name: 'System', label: 'System', path: '/', isSystem: true, isNetwork: false,
-          fsType: 'system', totalSize, freeSize, usedSize: totalSize - freeSize, camera: null });
-        continue;
-      }
-      let camera = null; try { camera = detectCamera(mp) || null; } catch (_) {}
-      volumes.push({ name: path.basename(mp), label: path.basename(mp), path: mp, isSystem: false, isNetwork: false,
-        fsType: 'usb', totalSize, freeSize, usedSize: totalSize - freeSize, camera });
-    }
-  } catch (_) {}
-
-  // Network mounts — /proc/mounts, octal-escaped spaces decoded
-  try {
-    for (const line of fs.readFileSync('/proc/mounts', 'utf8').split('\n')) {
-      const parts = line.split(' ');
-      const src = parts[0], mpRaw = parts[1], fstype = parts[2] || '';
-      if (!mpRaw || !/^(cifs|smb3|nfs4?|fuse\.sshfs)$/.test(fstype)) continue;
-      const mp = mpRaw.replace(/\\040/g, ' ');
-      if (seen.has(mp)) continue;
-      seen.add(mp);
-      let totalSize = 0, freeSize = 0;
-      try {
-        const st = fs.statfsSync(mp);
-        totalSize = st.blocks * st.bsize; freeSize = st.bavail * st.bsize;
-      } catch (_) {}
-      volumes.push({
-        name: path.basename(mp) || src, label: path.basename(mp) || src, path: mp, isSystem: false, isNetwork: true,
-        fsType: 'network', totalSize, freeSize, usedSize: totalSize - freeSize, camera: null,
-      });
-    }
-  } catch (_) {}
-  return volumes;
-}
-
-// Windows tells you about a drive through two doors, and each one is deaf on a
-// different side:
-//
-//   Get-PSDrive  lists EVERY drive letter, mapped network drives included, and
-//                gives Used/Free plus the UNC path of a network drive — but its
-//                "Description" carries the volume label only for FIXED disks.
-//                On a REMOVABLE volume it comes back empty. Measured on a real
-//                machine: C: "W11", G: "MEDIAS_GABARA", D: (a LUMIX card) "".
-//                So every card ingested on Windows was named after its drive
-//                letter — "D:" — which the folder-name cleaner then turned into
-//                "D_". The card's own name never reached the template, the
-//                ingest report, or the phone notification.
-//
-//   Get-Volume   knows the real label of a removable volume (FileSystemLabel),
-//                but does NOT list mapped network drives at all — the same
-//                machine returns C, D, G and an unlettered recovery partition,
-//                with no sign of the Z: share that Get-PSDrive reports.
-//
-// Hence both calls, merged by drive letter. Kept as a pure function so it can
-// be tested against the exact JSON a real Windows machine produces.
-function mergeWinDrives(psdriveJson, volumeJson) {
-  const rows = (txt) => {
-    if (!txt) return [];
-    try { const p = JSON.parse(txt); return Array.isArray(p) ? p : [p]; }
-    catch (_) { return []; }
-  };
-  const str = v => String(v == null ? '' : v).trim();
-  // Get-Volume's DriveLetter is a char; ConvertTo-Json may render it as "D" or
-  // as its code point. Accept both rather than depend on a PowerShell version.
-  const letterOf = (v) => {
-    if (typeof v === 'number') {
-      const inRange = (v >= 65 && v <= 90) || (v >= 97 && v <= 122);   // A-Z or a-z, not "[ \\ ] ^ _ `"
-      return inRange ? String.fromCharCode(v).toUpperCase() : '';
-    }
-    const s = str(v).toUpperCase();
-    return /^[A-Z]$/.test(s) ? s : '';
-  };
-
-  const byLetter = new Map();
-  for (const d of rows(psdriveJson)) {
-    if (!d) continue;
-    const L = letterOf(d.Name);
-    if (!L) continue;
-    byLetter.set(L, {
-      used: Number(d.Used) || 0,
-      free: Number(d.Free) || 0,
-      displayRoot: str(d.DisplayRoot),
-      label: str(d.Description),      // right for a fixed disk, empty for a card
-    });
-  }
-  for (const v of rows(volumeJson)) {
-    if (!v) continue;
-    const L = letterOf(v.DriveLetter);
-    if (!L) continue;                 // an unlettered partition (recovery, EFI)
-    const e = byLetter.get(L) || { used: 0, free: 0, displayRoot: '', label: '' };
-    const label = str(v.FileSystemLabel);
-    if (label) e.label = label;       // authoritative — this one sees removable media
-    byLetter.set(L, e);
-  }
-  return byLetter;
-}
-
-// Asynchronous since 2.9.1. The two PowerShell calls used to run with
-// execSync, one after the other: the whole main process waited, up to 13 s
-// with a dead mapped drive, and a card plugged in DURING an ingest froze the
-// copy and the verification for that long. Now they run side by side, off the
-// main thread, and so does the check of each drive letter.
-async function getMountedVolumesWin() {
-  const volumes = [];
-  // Single PowerShell call for every drive. Previously: one process per existing
-  // drive letter (up to ~4 s each) — scans could take 20-30 s with several drives.
-  // No string interpolation in the command → no injection surface.
-  // Force UTF-8 output so accented volume names ("Sauvegarde Vidéo") don't come
-  // back mojibake and then flow into folder names. windowsHide stops a console
-  // window from flashing. No string interpolation in either command → no
-  // injection surface.
-  const sysLetter = String(process.env.SystemDrive || 'C:').replace(/[:\\/]/g,'').toUpperCase() || 'C';
-  // Two calls rather than one merged command: this exact pair was verified by
-  // hand on a real machine, and a single call would need a nested
-  // ConvertTo-Json whose depth behaviour cannot be checked from here.
-  // Get-Volume is local and lists no network drive, so it cannot hang on a dead
-  // share the way Get-PSDrive can — hence the shorter budget.
-  // tryExecFile answers '' on any failure: a missing or refused call must not
-  // lose the whole scan.
-  const ask = async (cmd, ms) => String(await tryExecFile('powershell',
-    ['-NoProfile', '-Command', '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; ' + cmd], ms) || '').trim();
-  const [psdrives, getvolume] = await Promise.all([
-    ask('Get-PSDrive -PSProvider FileSystem | Select-Object -Property Name,Used,Free,Description,DisplayRoot | ConvertTo-Json -Compress', 8000),
-    ask('Get-Volume | Select-Object -Property DriveLetter,FileSystemLabel | ConvertTo-Json -Compress', 5000),
-  ]);
-  const byLetter = mergeWinDrives(psdrives, getvolume);
-
-  // Which letters exist, all checked at once. A dead network drive can take a
-  // long time to answer a stat: it is given 3 s, then treated as absent.
-  const letters = [];
-  for (let code = 65; code <= 90; code++) letters.push(String.fromCharCode(code));
-  const present = await Promise.all(letters.map(L => Promise.race([
-    fs.promises.stat(L + ':\\').then(st => st.isDirectory(), () => false),
-    new Promise(r => setTimeout(() => r(false), 3000)),
-  ])));
-
-  // Enumerate drive letters A-Z
-  for (let li = 0; li < letters.length; li++) {
-    if (!present[li]) continue;
-    const letter = letters[li];
-    const drivePath = letter + ':\\';
-
-    // `label` is the card's own name and nothing else — it is what {cardname}
-    // resolves to, what the ingest report records and what the phone shows.
-    // `name` is the label for the eye, with the drive letter appended so two
-    // identical cards in two readers can be told apart in the volume list. The
-    // two used to be the same string, so a card really called LUMIX produced
-    // the folder "LUMIX (D_)" — the display decoration went into the filename.
-    let label = '';
-    let name = letter + ':';
-    let totalSize = 0, freeSize = 0;
-    let fsType = 'usb'; // default for removable
-    let isSystem = false, isNetwork = false;
-
-    const d = byLetter.get(letter);
-    if (d) {
-      freeSize  = d.free;
-      totalSize = d.used + freeSize;
-      label = d.label;
-      if (label) name = label + ' (' + letter + ':)';
-      // Detect network drive via DisplayRoot (UNC path like \\server\share)
-      if (d.displayRoot.startsWith('\\\\') || d.displayRoot.startsWith('\\')) {
-        isNetwork = true; fsType = 'network';
-      } else if (letter === sysLetter) {
-        isSystem = true; fsType = 'system';
-      }
-    } else if (letter === sysLetter) {
-      // PowerShell info unavailable: system drive is whatever %SystemDrive% says,
-      // not always C: (some machines boot from D:).
-      isSystem = true; fsType = 'system';
-    }
-
-    let camera = null;
-    // detectCamera reads the drive synchronously: only once it has answered
-    // within the deadline (a hung reader froze the application here).
-    let unresponsive = false;
-    if (!isSystem && !isNetwork) {
-      const probe = await statWithin(drivePath, VOLUME_PROBE_MS);
-      if (probe.timeout) unresponsive = true;
-      else { try { camera = detectCamera(drivePath) || null; } catch (_) {} }
-    }
-    const hde = isHdeSource(label || '');
-    volumes.push({
-      // A card formatted in-camera often has no label at all. The fallback is
-      // the bare letter, never "D:" — the colon is exactly the character the
-      // folder-name cleaner turns into "_", which is the symptom this whole
-      // fix is named after ("001_D__noar").
-      name, label: label || letter, path: drivePath, isSystem, isNetwork, fsType,
-      totalSize, freeSize, usedSize: totalSize - freeSize, camera,
-      ...(unresponsive ? { unresponsive: true } : {}), hde
-    });
-  }
-  return volumes;
-}
-
 // ─── IPC: Browse folder ──────────────────────────────────────────────────────
 ipcMain.handle('browse-folder', async () => {
   const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
   return r.canceled ? null : r.filePaths[0];
 });
-
-// ─── IPC: Export / import template presets (item 9) ──────────────────────────
+// ─── IPC: Export / import template presets ─────────────────────────────────
 ipcMain.handle('export-settings', async (_, data) => {
   const r = await dialog.showSaveDialog(mainWindow, {
     title: i18n.t('Export ingesto settings'),
@@ -1459,7 +469,6 @@ ipcMain.handle('import-settings', async () => {
     return { ok: true, data };
   } catch (e) { return { ok: false, error: e.message }; }
 });
-
 ipcMain.handle('export-presets', async (_, data) => {
   const r = await dialog.showSaveDialog(mainWindow, {
     title: i18n.t('Export template presets'),
@@ -1484,7 +493,6 @@ ipcMain.handle('import-presets', async () => {
     return { ok: true, data };
   } catch (e) { return { ok: false, error: e.message }; }
 });
-
 // ─── IPC: Resolve path info (for Finder drops) ───────────────────────────────
 ipcMain.handle('resolve-path', async (_, p) => {
   try {
@@ -1500,20 +508,19 @@ ipcMain.handle('resolve-path', async (_, p) => {
     return { name, path: normalized, isDirectory: true };
   } catch (_) { return null; }
 });
-
 // ─── IPC: Start copy — multi destinations, parallel ──────────────────────────
 // One copy at a time, enforced HERE and not only by the interface: the cancel
 // and pause flags are shared, so a second run starting while one is going
 // would un-cancel a run the operator had just stopped.
 function refuseIfCopying() {
-  if (activeCopyCount > 0) throw new Error('another ingest is already running');
+  if (ctl.activeCopyCount > 0) throw new Error('another ingest is already running');
 }
 ipcMain.handle('start-copy', async (event, { sources, destinations, options }) => {
   refuseIfCopying();
-  cancelCopy = false;
-  pauseCopy = false;
+  ctl.cancelCopy = false;
+  ctl.pauseCopy = false;
   resetFsyncBusyState();   // a new ingest gets a fresh chance at flushing
-  activeCopyCount++;
+  ctl.activeCopyCount++;
   // Every card of the batch is locked for the whole run, released in the
   // finally below whatever happens.
   const lockedHere = (Array.isArray(sources) ? sources : []).map(x => x && x.path).filter(Boolean);
@@ -1524,13 +531,13 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
   //
   // Set on the options object itself, NOT on a copy of it: the engine
   // normalises this very object (an unknown mode becomes SECURE), and the card
-  // journal written afterwards reads it back. A copy made the two disagree,
-  // and the journal recorded "not verified" for a run that was verified.
+  // journal written afterwards reads it back. A copy would make the two
+  // disagree, and the journal would record "not verified" for a verified run.
   if (options && typeof options === 'object') options.batchSources = lockedHere;
   try {
   const allResults = [];
   for (const source of sources) {
-    if (cancelCopy) break;
+    if (ctl.cancelCopy) break;
     const sourceResults = await performCopyMulti(source, destinations, options,
       prog => sendUI('copy-progress', prog)
     );
@@ -1542,12 +549,12 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
     // Never mark a card as ingested when part of it could not even be read:
     // the operator would format a card whose missing files were never seen.
     const scanIncomplete = sourceResults.some(r => r && r.scanIncomplete);
-    if (!cancelCopy && !scanIncomplete) {
+    if (!ctl.cancelCopy && !scanIncomplete) {
       // A file may only be recorded as ingested if it landed OK on EVERY
-      // destination the user asked for. It used to take the first destination's
-      // list and credit it to all of them, so a file that failed verification on
-      // destination B was still marked ingested — and the "copy new files only"
-      // dialog then skipped it forever, leaving B permanently incomplete.
+      // destination the user asked for. Crediting the first destination's list
+      // to all of them would mark a file that failed verification on
+      // destination B as ingested, and the "copy new files only" dialog would
+      // then skip it forever, leaving B permanently incomplete.
       const perDest = sourceResults.map(r => (r && r._copiedForSentinel) || []);
       const keyOf = f => `${f.p}|${f.s}|${f.m}`;
       let common = perDest.length ? perDest[0] : [];
@@ -1562,11 +569,12 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
         try {
           // appendIngest reports a refusal by RETURNING {ok:false} (a
           // write-protected card is the ordinary case) and throws only on an
-          // unexpected error. Only the throw was handled, so the commonest
-          // failure of all went by in silence: green ingest, no note, and the
-          // next "copy new files only" with nothing to compare against.
+          // unexpected error. The refusal is turned into a throw here: handling
+          // only the throw would let the commonest failure of all go by in
+          // silence (green ingest, no note, and the next "copy new files only"
+          // with nothing to compare against).
           const sent = await appendIngest(source.path, allDests, common, app.getVersion(),
-            { mode: options.mode, verified: options.mode === 'slow' || options.mode === 'pro' });
+            { mode: options.mode, verified: modeVerifiesContents(options.mode) });
           if (!sent || sent.ok !== true) throw new Error(sent && sent.reason ? String(sent.reason) : 'unknown reason');
         } catch (e) {
           // A sentinel write failure must never break the ingest result, but it
@@ -1592,28 +600,26 @@ ipcMain.handle('start-copy', async (event, { sources, destinations, options }) =
   });
   sendUI('copy-complete', cleaned);
   return cleaned;
-  } finally { activeCopyCount--; lockedHere.forEach(unlockSource); }
+  } finally { ctl.activeCopyCount--; lockedHere.forEach(unlockSource); }
 });
-
-ipcMain.handle('cancel-copy', async () => { cancelCopy = true; pauseCopy = false; pauseEnd(); return true; });
-ipcMain.handle('pause-copy',  async () => { pauseCopy = true;  return true; });
-ipcMain.handle('resume-copy', async () => { pauseCopy = false; pauseEnd(); return true; });
-
+ipcMain.handle('cancel-copy', async () => { ctl.cancelCopy = true; ctl.pauseCopy = false; pauseEnd(); return true; });
+ipcMain.handle('pause-copy',  async () => { ctl.pauseCopy = true;  return true; });
+ipcMain.handle('resume-copy', async () => { ctl.pauseCopy = false; pauseEnd(); return true; });
 // ─── Re-copy only the files that failed verification, into the SAME folder ───
 ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath, mode, proAlgo, proDoubleRead, files, destRelMap, destIndex, destName, quarantined }) => {
   refuseIfCopying();
-  cancelCopy = false;
-  pauseCopy = false;
-  activeCopyCount++;
+  ctl.cancelCopy = false;
+  ctl.pauseCopy = false;
+  ctl.activeCopyCount++;
   lockSource(sourcePath);
   try {
   const source = { name: sourceName, path: sourcePath };
   const results = await performCopyMulti(
     source, [{ path: '', name: destName || '' }],
     // destRelMap carries each failed file's ORIGINAL destination-relative path.
-    // Without it, a retry after a "Reorganize" run rewrote the file under its
-    // source tree (destPath/100CANON/CLIP.MOV), reported success, and left the
-    // corrupted VIDEO/CLIP.MOV untouched in the delivered folder.
+    // Without it, a retry after a "Reorganize" run would rewrite the file under
+    // its source tree (destPath/100CANON/CLIP.MOV), report success, and leave
+    // the corrupted VIDEO/CLIP.MOV untouched in the delivered folder.
     { mode, proAlgo, proDoubleRead, fixedDestPath: destPath, onlyRel: files,
       destRelOverride: (destRelMap && typeof destRelMap === 'object') ? destRelMap : null },
     prog => sendUI('copy-progress', { ...prog, destIndex: destIndex||0, destName: destName||'' })
@@ -1626,19 +632,19 @@ ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath
   // never-checksummed extras. Only when a matching-algo list already exists —
   // we never create a partial sidecar out of a retry.
   try {
-    if ((mode === 'pro' || mode === 'slow') && Array.isArray(_cksumEntries) && _cksumEntries.length) {
+    if (modeVerifiesContents(mode) && Array.isArray(_cksumEntries) && _cksumEntries.length) {
       const existing = readChecksumListFile(destPath);
-      const algo = mode === 'pro' ? (proAlgo || 'xxh128') : 'xxh64';
+      const algo = mode === MODE.PRO ? (proAlgo || 'xxh128') : 'xxh64';
       if (existing && existing.algo === algo) {
         const byRel = new Map(existing.entries.map(e => [e.rel, e.hash]));
         for (const e of _cksumEntries) byRel.set(nfc(String(e.rel).replace(/\\/g,'/')), e.hash);
         writeChecksumList(destPath, algo, [...byRel].map(([rel, hash]) => ({ rel, hash })));
       }
-      // The MHL manifest needs the same treatment. Without it a retried file was
-      // added to the checksum list but never to the .mhl — so Silverstack,
-      // YoYotta and OffShoot, which read the MHL, saw a manifest missing exactly
+      // The MHL manifest needs the same treatment. Without it a retried file is
+      // added to the checksum list but never to the .mhl, so Silverstack,
+      // YoYotta and OffShoot, which read the MHL, see a manifest missing exactly
       // the files that had been at risk. ingesto's own Verify prefers the
-      // checksum list, which is why this stayed invisible here.
+      // checksum list, which is why such a gap would stay invisible here.
       const mhl = readMHLFile(destPath);
       // `complete` guards against silent data loss: readMHLFile only keeps <hash>
       // blocks carrying md5 or xxhash64be, so rewriting a manifest that also
@@ -1653,23 +659,23 @@ ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath
         writeMHL(destPath, algo, [...byRel.values()], { startMs: Date.now() });
       }
       // ASC MHL: a retry is a new GENERATION, which is exactly what the format's
-      // chain is for. Without this the history kept describing the state before
-      // the retry, and omitted precisely the files that had been at risk.
+      // chain is for. Without this the history keeps describing the state before
+      // the retry, and omits precisely the files that had been at risk.
       if (fs.existsSync(path.join(destPath, 'ascmhl'))) {
         await writeAscMhl(destPath, algo, _cksumEntries, { startMs: Date.now() });
       }
     }
   } catch (_) { /* sidecar refresh is best-effort; the copy result stands */ }
-  // Drop the quarantined bad copies that have now been replaced by a good one.
+  // Drop the quarantined bad copies that this retry replaced with a good one.
   // Driven by _copiedForSentinel, not _cksumEntries: the latter is only filled
-  // in SECURE/PRO, so a VERIFIED retry used to leave the .ingesto-failed file
+  // in SECURE/PRO, so a VERIFIED retry would leave the .ingesto-failed file
   // sitting in the delivered folder forever.
   try {
     // ONLY the paths the failing run actually created. Deriving them from a
-    // name pattern deleted a file the card itself carried called
+    // name pattern would delete a file the card itself carries called
     // "X.MOV.ingesto-failed": copied, verified, then removed as if it were one
-    // of our own set-aside copies. PF-E10 now refuses such a card outright, so
-    // this is the second lock rather than the fix; what it adds on its own is
+    // of our own set-aside copies. PF-E10 refuses such a card outright, so this
+    // is the second lock rather than the only one; what it adds on its own is
     // the rule below, that a set-aside copy is only dropped once its good twin
     // is back. A window can outlive the run that opened it, and its list of
     // set-aside paths is then stale.
@@ -1687,2094 +693,12 @@ ipcMain.handle('recopy-failed', async (event, { sourcePath, sourceName, destPath
     }
   } catch (_) {}
   return rest;
-  } finally { activeCopyCount--; unlockSource(sourcePath); }
+  } finally { ctl.activeCopyCount--; unlockSource(sourcePath); }
 });
-
-// ─── Copy engine — read the source ONCE, write to every destination ─────────
-// Multi-destination used to launch one full copy per destination in parallel,
-// making N simultaneous read passes over the same card that competed for the
-// (usually slow) source medium. The fan-out engine reads each file once and
-// streams the chunks to all destinations at the same time.
-
-// Suffix used while a file is still being written. A file only takes its final
-// name once it is fully written, flushed and (in SECURE/PRO) fsynced, so a name
-// on the destination always means a complete file — never a truncated one left
-// behind by a crash, an unplug or a write error.
-const PART_SUFFIX = '.ingesto-part';
-// A copy that FAILED read-back verification is renamed with this suffix, so a
-// plain filename in a destination always means a file that passed. Kept on disk
-// rather than deleted: the operator may want to look at it, and "Re-copy failed
-// files" recopies from the source anyway.
-const FAILED_SUFFIX = '.ingesto-failed';
-// A name that does not exist yet: "X", then "X-2", "X-3"… renameSync replaces
-// its target silently, and one set-aside copy must never erase another.
-function freeName(p) {
-  if (!fs.existsSync(p)) return p;
-  for (let i = 2; i < 1000; i++) { const q = `${p}-${i}`; if (!fs.existsSync(q)) return q; }
-  return `${p}-${Date.now()}`;
-}
-
-// Byte counts as a DIT reads them. Only used in messages, never in a decision.
-function fmtBytes(n) {
-  n = Number(n) || 0;
-  // Decimal units, like the interface and the Finder (2.9.1).
-  if (n < 1000) return `${n} bytes`;
-  const u = ['KB', 'MB', 'GB', 'TB'];
-  let i = -1, v = n;
-  while (v >= 1000 && i < u.length - 1) { v /= 1000; i++; }
-  return `${v >= 100 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
-}
-
-// Push a file's data out of the OS write cache down to the medium.
-//
-// What this DOES guarantee: the bytes have been handed to the device, so a
-// later read cannot come back from the OS write-behind buffer alone.
-//
-// What it does NOT guarantee — read this before trusting a verify pass:
-//  • fsync does not evict the page cache, so the read-back can still be served
-//    from RAM. On a machine with more RAM than the tail of the ingest, the last
-//    files verified may be compared against cached copies of themselves.
-//    There is no portable way to PURGE a file's cached pages; the data has to
-//    be kept out of the cache in the first place, on BOTH the write and the
-//    read side — F_NOCACHE (macOS) and FILE_FLAG_NO_BUFFERING (Windows) need
-//    fcntl/CreateFile, which Node does not expose (O_DIRECT exists in
-//    fs.constants but on Linux only). Until that lands, a later "Verify folder"
-//    run on a cold cache is the only fully independent check.
-//  • On macOS, fsync(2) does not flush the drive's own write cache; that needs
-//    fcntl(F_FULLFSYNC), also unavailable from Node.
-//
-// Opened 'r+' (not 'r'): Windows' FlushFileBuffers needs a write-capable handle.
-// This is called BEFORE the source's permissions are copied onto the file —
-// doing it the other way round made every fsync fail with EACCES whenever the
-// source card was mounted read-only (write-protect switch), silently disabling
-// the whole guarantee. Errors are now reported to the caller instead of being
-// swallowed.
-// Returns { ok:true } on success, { ok:false, unsupported:true, code } when the
-// filesystem simply has no flush operation (some network shares, some FUSE
-// mounts) — that is a weaker guarantee, not a failed copy, so it is surfaced as
-// a warning. Any other error is a real problem and is thrown.
-const FSYNC_UNSUPPORTED = new Set(['EINVAL', 'ENOTSUP', 'EOPNOTSUPP', 'ENOSYS']);
-// The file is fully written and closed by the time we get here; these codes mean
-// "something else is holding it right now", not "the copy is bad". On Windows a
-// virus scanner opens every freshly written file for a moment, which used to
-// make us DELETE a perfectly good multi-GB copy and report a copy error. Retry
-// briefly, then downgrade to the same warning as an unsupported filesystem.
-// EACCES is deliberately NOT here: that one means the file's own permissions
-// deny us, which is the write-protected-source bug this code was written to
-// surface, not a transient lock.
-const FSYNC_BUSY = new Set(['EBUSY', 'EPERM']);
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-// Once a destination has proved that the lock never clears, stop paying the
-// retry cost on every remaining file: 5 attempts x ~1.5s of sleeping would add
-// hours to a 5,000-file card. Reset at the start of each ingest.
-let _fsyncBusyHopeless = false;
-function resetFsyncBusyState() { _fsyncBusyHopeless = false; }
-async function fsyncFile(fp) {
-  const maxAttempt = _fsyncBusyHopeless ? 0 : 4;
-  for (let attempt = 0; ; attempt++) {
-    let fh = null, retryIn = 0, result = null, thrown = null;
-    try {
-      fh = await fs.promises.open(fp, 'r+');
-      // On macOS, prefer F_FULLFSYNC — plain fsync leaves the data in the
-      // drive's own write cache, so it would not survive a power loss. Fall
-      // back to the portable fsync when the native call is unavailable or fails.
-      if (!nocache.fullFsync(fh.fd)) await fh.sync();
-      result = { ok: true };
-    } catch (e) {
-      if (e && FSYNC_UNSUPPORTED.has(e.code)) result = { ok: false, unsupported: true, code: e.code };
-      else if (e && FSYNC_BUSY.has(e.code)) {
-        if (attempt < maxAttempt) retryIn = 150 * (attempt + 1);
-        else { _fsyncBusyHopeless = true; result = { ok: false, unsupported: true, code: e.code }; }
-      }
-      else thrown = e;
-    }
-    // The handle is closed by the finally below BEFORE we wait — sleeping with
-    // an 'r+' handle open would contend with the very lock we are waiting out.
-    finally { if (fh) { try { await fh.close(); } catch (_) {} } }
-    if (thrown) throw thrown;
-    if (result) return result;
-    await sleep(retryIn);
-  }
-}
-
-// Does this folder hold anything that is not ingesto's own scratch? Used to
-// decide whether a card folder that already exists may be written into: only
-// when every file in it is *.ingesto-part residue of an interrupted run. An
-// unreadable folder, a symbolic link, or any real file means NO.
-// OS litter (.DS_Store, ._AppleDouble, Spotlight, fseventsd…) is not content:
-// opening the folder in Finder to see what happened must not poison it.
-// A *.ingesto-part written in the last two minutes is NOT residue either — it
-// is a copy happening right now, on another machine sharing this drive; the
-// single-instance lock only covers one computer.
-const RESIDUE_FRESH_MS = 2 * 60 * 1000;
-// Directories the OS creates on its own. A card folder holding one of these
-// and nothing else is still an empty folder. The list is deliberately short:
-// every OTHER directory is descended into, whatever it is called.
-const OS_LITTER_DIRS = new Set(['.Spotlight-V100', '.fseventsd', '.Trashes', '.TemporaryItems',
-                                '.DocumentRevisions-V100', 'System Volume Information',
-                                '$RECYCLE.BIN']);
-// Files the OS creates on its own. AppleDouble ("._name") belongs HERE and
-// only here: it is a file convention. Treating a DIRECTORY named "._x" as
-// litter is what let a full card folder read as empty, so the next card was
-// written into it and the first card's footage was replaced. The card scanner
-// copies "._x/" as ordinary content (isAppleDouble tests isFile() too), so the
-// two views of the same folder disagreed.
-function isOsLitterFile(name) {
-  return name === '.DS_Store' || name === 'Thumbs.db' || name === 'desktop.ini' ||
-         name.startsWith('._');
-}
-function holdsForeignContent(dir) {
-  let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return true; }
-  for (const e of entries) {
-    // Directories first, and by an explicit list: never by a name pattern.
-    if (e.isDirectory()) {
-      if (OS_LITTER_DIRS.has(e.name)) continue;
-      if (holdsForeignContent(path.join(dir, e.name))) return true;
-      continue;
-    }
-    if (isOsLitterFile(e.name)) continue;
-    if (e.isFile() && e.name.endsWith(PART_SUFFIX)) {
-      let st = null; try { st = fs.statSync(path.join(dir, e.name)); } catch (_) { return true; }
-      if (Date.now() - st.mtimeMs < RESIDUE_FRESH_MS) return true;   // being written NOW
-      continue;
-    }
-    return true;   // a file, a symlink, anything else
-  }
-  return false;
-}
-
-// Remove every leftover *.ingesto-part under a folder (crash or power-loss
-// residue from an earlier run). Returns the number of files removed.
-//
-// Runs BEFORE the copy phase, never after it: run afterwards, it deleted a
-// file this very run had just copied from the card — a source file whose name
-// happened to end in ".ingesto-part" (a folder from an interrupted ingest,
-// re-ingested as a card). In FAST mode nothing noticed.
-// `keep` — absolute paths this run delivered under their final name; never
-// touched, whatever they are called.
-function sweepPartFiles(root, keep) {
-  let n = 0;
-  (function walk(dir) {
-    let entries; try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
-    for (const e of entries) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) walk(full);
-      else if (e.isFile() && e.name.endsWith(PART_SUFFIX) && !(keep && keep.has(full))) {
-        try { safeUnlink(full); n++; } catch (_) {}
-      }
-    }
-  })(root);
-  return n;
-}
-
-// Is the cache eviction actually working on THIS medium, right now?
-//
-// Why a probe rather than a speed heuristic: the previous check declared the
-// second read "served from memory" when it ran 3x faster than the copy AND
-// above 300 MB/s. That guess failed both ways.
-//  • It was BLIND in MD5. A RAM-served read is capped by the hashing itself at
-//    ~300 MB/s in MD5 (measured: 293 MB/s, against 683 in xxHash on the same
-//    drive), which is indistinguishable from a fast card. MD5 is also one of
-//    the two algorithms that produce an MHL manifest — the archival workflow
-//    was the one with the weakest guard.
-//  • It FALSE-ALARMED on a common professional setup. Fast card, slow shuttle
-//    drives: the copy is bounded by writing, so a perfectly physical re-read is
-//    legitimately three times faster, and the operator was told the check had
-//    not really run.
-//
-// This measures instead, and calibrates itself against the machine it is on:
-// purge one file, read a block and time it (COLD), then read the very same
-// block again, which is certainly cached now (WARM). If the purge worked, cold
-// is far slower than warm. If it did not, the "cold" read WAS the cached read
-// and the two times match. The ratio needs no threshold tied to any particular
-// hardware, and nothing is hashed, so the algorithm cannot skew it.
-const PROBE_BYTES = 8 * 1024 * 1024;
-function probeCacheEviction(file) {
-  let fd = null;
-  try {
-    const size = fs.statSync(file).size;
-    const len = Math.min(PROBE_BYTES, size);
-    // Too small to time reliably — say nothing rather than guess.
-    if (len < 1024 * 1024) return { ok: false };
-    const buf = Buffer.allocUnsafe(len);
-    // Read the block we are about to measure, UNTIMED, so that two things are
-    // true before the purge: the buffer's pages are resident and the file's
-    // read-ahead state is warm (without this the cold read carried ~1 ms of
-    // setup the warm read did not, worth a 2.7x ratio out of nothing), AND —
-    // the part that actually matters — this exact block is known to be in the
-    // cache. The whole test rests on that: if the purge does nothing, the
-    // "cold" read must be served from the cache so the two times match. Warming
-    // a DIFFERENT region left the measured block's residency to chance, and on
-    // a large card the first file's opening bytes had long been evicted by LRU,
-    // so a purge that silently did nothing still looked like it worked.
-    buf.fill(0);
-    fd = fs.openSync(file, 'r');
-    try { fs.readSync(fd, buf, 0, len, 0); } catch (_) {}
-    fs.closeSync(fd); fd = null;
-
-    if (!nocache.purgeFileCache(file)) return { ok: false, purgeFailed: true };
-
-    fd = fs.openSync(file, 'r');
-    const t0 = process.hrtime.bigint();
-    fs.readSync(fd, buf, 0, len, 0);          // COLD: must come from the medium
-    const t1 = process.hrtime.bigint();
-    const coldMs = Number(t1 - t0) / 1e6;
-    // Memory-speed reference: the same bytes, certainly cached now. Take the
-    // FASTEST of three, so one scheduling hiccup cannot inflate it and make a
-    // cached read look like a physical one.
-    let warmMs = Infinity;
-    for (let k = 0; k < 3; k++) {
-      const a = process.hrtime.bigint();
-      fs.readSync(fd, buf, 0, len, 0);
-      const b = process.hrtime.bigint();
-      warmMs = Math.min(warmMs, Number(b - a) / 1e6);
-    }
-    // Timer noise guard: if even the warm read is under a tenth of a
-    // millisecond the numbers are too small to compare.
-    if (!(warmMs > 0.1) || !isFinite(coldMs)) return { ok: false };
-    // Measured on the tightest case available (a fast virtio disk, where the
-    // two times are closest), 5 runs of each of four scenarios — eviction
-    // working or a silent no-op, crossed with the block being cached or already
-    // evicted by LRU: 3.3-8.7x when the eviction works, 1.3-2.2x when it does
-    // nothing. A camera card widens that to 30-50x. 2.5x sits in the gap, and
-    // erring low errs towards NOT crying wolf on a good ingest.
-    return { ok: true, evicted: coldMs >= warmMs * 2.5, coldMs, warmMs };
-  } catch (_) {
-    return { ok: false };
-  } finally {
-    if (fd !== null) { try { fs.closeSync(fd); } catch (_) {} }
-  }
-}
-
-// Read src once; write simultaneously to every path in destFiles.
-// Per-destination failures don't stop the others. Resolves with
-// { digest, failed } where failed[i] is the Error for destination i (or null),
-// and digest is the source fingerprint when a hasher is provided.
-// Rejects only when the SOURCE read itself fails (which affects every dest).
-function copyFanOut(src, destFiles, onBytes, hasher, stallMs) {
-  return new Promise((resolve, reject) => {
-    if (hasher) hasher.init();
-    // In SECURE/PRO (hasher present) the destination is read back for
-    // verification, so write it uncached on macOS — its pages then never sit in
-    // RAM and the read-back is forced to come from the medium. In FAST there is
-    // no read-back, so a plain cached write (faster) is fine.
-    //
-    // The SOURCE, however, is read through the normal cached path on every
-    // platform. It used to be opened uncached on macOS too, but that is now
-    // redundant: the caller purges the source file from the cache immediately
-    // before this call in exactly the same modes (isPro || isSecure), so the
-    // read already hits the card. Keeping F_NOCACHE on for the whole read also
-    // disabled the kernel's read-ahead, costing ~35% on macOS (measured
-    // 22/08/2026 on the same card: 60 MB/s here vs 76-79 on Windows/Linux,
-    // which only evict and then read normally, vs 91 MB/s in FAST).
-    const mkWrite = hasher ? nocache.createWriteStream : fs.createWriteStream;
-    const CHUNK = 8*1024*1024;
-    const rs = fs.createReadStream(src, { highWaterMark: CHUNK });
-    const N = destFiles.length;
-    const wss = new Array(N);
-    const state = new Array(N).fill('open');   // open | done | failed
-    const failed = new Array(N).fill(null);
-    let pendingFinish = N, readEnded = false, settled = false;
-
-    const maybeSettle = () => {
-      if (settled || !readEnded || pendingFinish > 0) return;
-      settled = true;
-      // Same hazard as in hashPro: thrown from a stream listener, this escapes
-      // the promise entirely and takes the whole main process down mid-copy.
-      let dg = null;
-      try { dg = hasher ? hasher.digest() : null; }
-      catch (e) { reject(e instanceof Error ? e : new Error('hash digest failed')); return; }
-      resolve({ digest: dg, failed });
-    };
-    const failDest = (i, err) => {
-      if (state[i] !== 'open') return;
-      state[i] = 'failed';
-      failed[i] = err || new Error('write failed');
-      // Settle only once this stream's fd is actually CLOSED. Decrementing
-      // immediately let the caller unlink the .part while the handle was still
-      // open — a no-op error on POSIX, but EPERM on Windows, leaving orphan
-      // .ingesto-part files in a delivered folder.
-      let doneOnce = false;
-      const done = () => {
-        if (doneOnce) return; doneOnce = true;
-        pendingFinish--;
-        if (state.every(s => s === 'failed')) {
-          // No destination left — stop reading the source.
-          try { rs.destroy(); } catch (_) {}
-          readEnded = true;
-        }
-        maybeSettle();
-      };
-      wss[i].once('close', done);
-      try { wss[i].destroy(); } catch (_) { done(); }
-    };
-
-    for (let i = 0; i < N; i++) {
-      // Same buffer as the read, and this is the single biggest win in the
-      // copy path. A write stream opened with the default 64 KB always answers
-      // "full" to an 8 MB chunk, so rs.pause() fired on EVERY chunk: the card
-      // was never read while a destination was being written, and the two
-      // halves ran strictly in turn instead of overlapping.
-      // Twice the chunk, deliberately: a stream whose buffer is EQUAL to the
-      // chunk still answers "full" after taking it, so the reader stopped
-      // either way. With room for two, the card is read while the previous
-      // chunk is still being written. Bounded cost: destinations x 16 MB.
-      const ws = mkWrite(safeWriteTarget(destFiles[i]), { highWaterMark: CHUNK * 2 });
-      wss[i] = ws;
-      ws.on('error', e => failDest(i, e));
-      // Settle on 'close', NOT on 'finish'. A WriteStream emits 'finish' when
-      // the last chunk is handed over, but close() can still fail afterwards —
-      // ENOSPC/EIO on a write-behind SMB or NFS share are raised right there.
-      // Node emits that late 'error' before 'close', so by the time 'close'
-      // fires the destination has already been marked failed if it did fail.
-      ws.on('close', () => {
-        if (state[i] !== 'open') return;
-        state[i] = 'done'; pendingFinish--; maybeSettle();
-      });
-    }
-
-    rs.on('data', chunk => {
-      // Mid-file cancellation: a 200 GB clip used to ignore "Cancel" until it
-      // finished. Abort the read now; the partial .part files are cleaned up by
-      // the caller. `aborted` is flagged so the caller does not log it as an error.
-      if (cancelCopy) {
-        // Fail every open destination via failDest, which waits for each fd to
-        // CLOSE before settling — so the caller's .part cleanup and the final
-        // sweep run against closed files (unlink would EPERM on Windows
-        // otherwise). failDest's all-failed branch stops the source read.
-        try { rs.destroy(); } catch (_) {}
-        readEnded = true;
-        for (let i = 0; i < N; i++) failDest(i, Object.assign(new Error('canceled'), { aborted: true }));
-        maybeSettle();   // covers the no-open-destination edge
-        return;
-      }
-      if (hasher) {
-        // A hash failure must NOT be swallowed: a silent partial digest turns a
-        // good file into a false "mismatch" (or, worse, two empty digests that
-        // match). Tear down (waiting for the fds to close) and reject so the
-        // file is reported as failed with the real error.
-        try { hasher.update(chunk); }
-        catch (e) {
-          try { rs.destroy(); } catch (_) {}
-          readEnded = true;
-          const open = []; for (let i = 0; i < N; i++) if (state[i] === 'open') { state[i]='failed'; open.push(wss[i]); }
-          const finish = () => { if (!settled) { settled = true; reject(e instanceof Error ? e : new Error('hash update failed')); } };
-          if (!open.length) return finish();
-          let remaining = open.length;
-          for (const ws of open) {
-            ws.once('close', () => { if (--remaining === 0) finish(); });
-            try { ws.destroy(); } catch (_) { if (--remaining === 0) finish(); }
-          }
-          return;
-        }
-      }
-      onBytes(chunk.length);
-      const slow = [];
-      for (let i = 0; i < N; i++) {
-        if (state[i] !== 'open') continue;
-        if (!wss[i].write(chunk)) slow.push(i);
-      }
-      if (slow.length) {
-        // Backpressure: pause the read until every lagging destination drained.
-        // 'close' also unblocks so a failing destination can't stall the read.
-        rs.pause();
-        let remaining = slow.length;
-        let cancelPoll = null;
-        const oneDone = () => {
-          if (--remaining === 0) {
-            if (cancelPoll) { clearInterval(cancelPoll); cancelPoll = null; }
-            if (!settled) rs.resume();
-          }
-        };
-        for (const i of slow) {
-          const ws = wss[i];
-          const onDrain = () => { cleanup(); oneDone(); };
-          const onGone  = () => { cleanup(); oneDone(); };
-          const cleanup = () => {
-            ws.removeListener('drain', onDrain);
-            ws.removeListener('close', onGone);
-          };
-          ws.once('drain', onDrain);
-          ws.once('close', onGone);
-        }
-        // A destination that never drains (wedged SMB/NAS share) used to make
-        // Cancel completely inert: no 'data' event ever fires again, so the
-        // cancel check above is never reached. Poll while paused and tear the
-        // stuck streams down on cancel — their 'close' unblocks via onGone.
-        cancelPoll = setInterval(() => {
-          if (!cancelCopy) return;
-          clearInterval(cancelPoll); cancelPoll = null;
-          // failDest (NOT a bare destroy): a destroyed-while-open stream emits
-          // 'close' without 'error', which the completion handler would count
-          // as a successful copy of a truncated file.
-          for (const i of slow) failDest(i, Object.assign(new Error('canceled'), { aborted: true }));
-        }, 500);
-        if (cancelPoll.unref) cancelPoll.unref();
-      }
-    });
-    rs.on('end', () => {
-      readEnded = true;
-      for (let i = 0; i < N; i++) { if (state[i] === 'open') wss[i].end(); }
-      maybeSettle();
-    });
-    const onReadError = err => {
-      for (let i = 0; i < N; i++) {
-        if (state[i] === 'open') { state[i]='failed'; failed[i]=err; pendingFinish--; try { wss[i].destroy(); } catch (_) {} }
-      }
-      if (settled) return;
-      settled = true;
-      reject(err);
-    };
-    rs.on('error', onReadError);
-    // The card stops answering in the middle of a file: the read would wait
-    // for ever. Same way out as a read error, with its own message.
-    if (stallMs) stallWatch(rs, stallMs, () => { try { rs.destroy(); } catch (_) {} onReadError(stallError('a file could not be read')); });
-  });
-}
-
-// Holds the engine between two files while paused. Announces to the renderer
-// when the hold actually takes effect (the in-flight file finishes first), so
-// the UI can switch from "Pausing…" to "Paused". Cancel breaks the hold.
-// Milliseconds spent PAUSED during the current ingest. The phase durations are
-// wall-clock, so without this an operator who pauses for two minutes during a
-// one-minute copy sees "COPY 3m" in the report — and, worse, the copy speed
-// derived from it collapses.
-// Paused time, measured on the WALL CLOCK. It used to be accumulated inside
-// pauseGate by every caller that waited — fine while one loop ran at a time,
-// wrong the moment several destinations are verified at once: three lanes
-// waiting through the same 10-second pause billed 30 seconds, and the phase
-// durations in the report went to zero.
-let pausedMs = 0, _pauseStart = 0, _pauseHeldSent = false;
-// Close any pause still open before zeroing, or a pause that started between
-// two cards of a batch would be credited to nobody and its minutes would land
-// inside the next card's phase durations.
-function resetPausedMs() { pauseEnd(); pausedMs = 0; _pauseStart = 0; _pauseHeldSent = false; }
-function pauseBegin() { if (!_pauseStart) _pauseStart = Date.now(); }
-function pauseEnd() {
-  if (_pauseStart) { pausedMs += Date.now() - _pauseStart; _pauseStart = 0; }
-  _pauseHeldSent = false;
-}
-// Split a list into groups that can safely be read AT THE SAME TIME: one group
-// per physical device, so two folders on the same disk stay in the same group
-// and are read one after the other. Falls back to "each on its own" when the
-// device cannot be determined — parallel reads of two paths that turn out to
-// share a disk cost speed, never correctness.
-function groupByDevice(items, pathOf) {
-  const byDev = new Map();
-  for (const it of items) {
-    let k;
-    try { k = 'd' + fs.statSync(pathOf(it)).dev; }
-    catch (_) { k = 'p' + pathOf(it); }
-    if (!byDev.has(k)) byDev.set(k, []);
-    byDev.get(k).push(it);
-  }
-  return [...byDev.values()];
-}
-
-// Why a card ended up with nothing to copy — or null when there is nothing to
-// complain about. "Nothing to do" is a legitimate outcome when every file was
-// already ingested; it is NOT one when the folder was empty or the format
-// filter excluded everything. Those two used to come back success:true: green
-// summary, "all verified" notification, and in kiosk mode the card ejected with
-// "You can remove your card" on screen, having read not one of its files.
-function emptyRunReason(seenFiles, skippedAlready, totalFiles) {
-  if (totalFiles > 0 || skippedAlready > 0) return null;
-  return seenFiles === 0
-    ? 'no file was found on this card. Check that you selected the card itself and not an empty folder inside it'
-    : `all ${seenFiles} file${seenFiles > 1 ? 's' : ''} on this card were excluded by the file filter, so nothing was copied`;
-}
-
-async function pauseGate(win) {
-  if (!pauseCopy || cancelCopy) return;
-  // The clock starts HERE, when a lane actually stops — not when the button was
-  // pressed. Between the two the engine is still finishing the file in flight,
-  // and billing that time as pause subtracted it from the phase durations: a
-  // 500-second verify could be reported as 240 seconds, or clamped to zero.
-  pauseBegin();
-  // "Held" is announced once per pause, not once per waiting lane.
-  if (!_pauseHeldSent) { _pauseHeldSent = true; sendUI('pause-held'); }
-  while (pauseCopy && !cancelCopy) await new Promise(r => setTimeout(r, 200));
-}
-
-// Copy one source to every destination. Returns one result object PER
-// destination (same shape as the former per-destination engine, so the
-// renderer and the sentinel logic are unchanged).
-async function performCopyMulti(source, destinations, options, onProgress) {
-  const t0 = Date.now();
-  // tCopyStart is stamped just before the first file is read. t0 is kept for the
-  // ingest's overall duration, but "COPY" must not include the recursive source
-  // scan nor the destination tree pre-creation — on a card with tens of
-  // thousands of files across three destinations that is seconds to tens of
-  // seconds billed as copying, which also understated the copy speed.
-  let tCopyStart=t0, tCopyEnd=0, tV1End=0, tV2End=0;
-  // Paused time is measured per phase and subtracted from each.
-  resetPausedMs();
-  let pausedAtCopyStart=0, pausedAtCopyEnd=0, pausedAtV1End=0, pausedAtV2End=0;
-  // Times the SOURCE cache eviction refused to run (SECURE/PRO). Since 2.4.6
-  // the copy reads the card through the normal cached path, so this purge is
-  // the only thing keeping the copy — and the PRO second read — off the OS
-  // cache. A failure must be reported, never swallowed. The two phases are
-  // counted SEPARATELY: a purge that failed while copying says nothing about
-  // whether the second read hit the card, and mixing them raised a "the card
-  // check didn't really run" alarm on ingests whose second read was genuine.
-  let copyPurgeFails = 0, dblPurgeFails = 0;
-  let copiedBytes=0, totalBytes=0, totalFiles=0;
-  // How the scan ended, so that "nothing to copy" can be told apart from
-  // "nothing worth copying" — see emptyRunReason.
-  let seenFiles=0, skippedAlready=0;
-  // Set once the card has stopped answering (see SOURCE_STALL_MS): from then
-  // on nothing more is asked of it during this run.
-  let sourceStalled = null;
-  // A mode this engine does not know matched none of the branches below, so
-  // the copy ran with no verification at all while the operator believed they
-  // were in SECURE. The safe reading of an unknown mode is the careful one:
-  // verify. It is also what the window will then say, so the two agree.
-  if (!['fast','normal','slow','pro'].includes(options.mode)) options.mode = 'slow';
-  const isPro    = options.mode === 'pro';
-  const isSecure = options.mode === 'slow';
-  const proAlgo  = options.proAlgo || 'xxh128';
-  const cksumAlgo = isPro ? proAlgo : 'xxh64';        // SECURE fingerprints are xxHash64
-  const hasher   = (isPro || isSecure) ? await newProHasher(isPro ? proAlgo : 'xxh64') : null;
-  // An HDE volume (CODEX Platform (ex Device Manager), "A003_hde"): its files are encoded
-  // while they are read and exist nowhere else. Its announced sizes are not
-  // the sizes that arrive, the cache cannot be purged, and a second read only
-  // runs the encoder again: the card re-read is off there (2.9.2).
-  // HDE by name, or any volume produced on read (see isVirtualSource): the
-  // same care for both. On an ordinary card both are false and nothing below
-  // changes.
-  const hdeSource = isHdeSource(source.path) || await isVirtualSource(source.path);
-  const proDouble = isPro && options.proDoubleRead === true && !hdeSource;
-  const hdeSkippedReread = isPro && options.proDoubleRead === true && hdeSource;
-  // The card's destination, level by level. Without a "/" in the template this
-  // is a single segment and everything behaves exactly as before.
-  const tplNow     = new Date();   // ONE clock reading for this card
-  const folderSegs = options.fixedDestPath ? [] : buildFolderSegments(options.folderTemplate, source, tplNow);
-  const folderName = folderSegs.length ? folderSegs[folderSegs.length - 1] : '';
-  const relFolder  = folderSegs.join('/');
-  const destNames  = destinations.map(d => d.name).filter(Boolean).join(' + ');
-
-  // ── Pre-flight guards — refuse to start rather than write in the wrong place ──
-  // Each of these used to fail silently: the ingest ran, reported success, and
-  // either overwrote existing footage or copied nothing at all.
-  // A REFUSAL, not a failure: the engine looked at what it was being asked to
-  // do, decided it would destroy or lose footage, and stopped before touching
-  // anything. The interface has to be able to tell the two apart, because the
-  // operator's next move is not the same: after a refusal nothing is on the
-  // drive and the fix is in the settings; after a failure something IS on the
-  // drive and the fix is to copy again. Until now both arrived as
-  // "Finished with Errors".
-  // `code` names the case so the window can carry the right text and the right
-  // buttons; `data` carries what that text has to name.
-  const abort = (code, msg, data) => destinations.map(d => ({
-    success: false, canceled: false, scanIncomplete: false,
-    refused: true, refusalCode: code, refusalData: data || {},
-    sourceName: source.name, sourcePath: source.path,
-    destPath: options.fixedDestPath || path.join(d.path, ...folderSegs),
-    relFolder,
-    totalFiles: 0, copiedFiles: 0, totalBytes: 0, copiedBytes: 0, skippedFiles: 0,
-    errors: 1, errorList: [{ file: '(pre-flight)', error: msg, phase: 'setup', refused: true }],
-    failedFiles: [], unstableFiles: [],
-    mode: options.mode, proAlgo: isPro ? proAlgo : null, proDoubleRead: proDouble,
-    copyMs: 0, verify1Ms: 0, verify2Ms: 0, duration: 0,
-    _copiedForSentinel: [],
-  }));
-
-  // 1. An empty / "." / ".." folder name would drop the whole card into the
-  //    destination ROOT (path.join(dest,'') === dest), where the next card
-  //    silently overwrites it.
-  if (!options.fixedDestPath) {
-    if (!folderSegs.length) {
-      return abort('PF-E1', 'The folder template produced an empty name, which would write straight into the destination root. Nothing was written.', { card: source.name });
-    }
-    // The card's OWN folder must exist. A level that resolves to nothing simply
-    // disappears — intended for a subfolder (a card with no camera moves up one
-    // level), NEVER for the last one: "{YY}{MM}{DD}/{operator}_{camera}" with
-    // both fields empty resolves to "260903" alone, and every card of the day
-    // is then written INTO that folder, mixed together, tomorrow's over
-    // today's. 2.5.5 refused this (empty name → abort); the "/" must not make
-    // it legal.
-    if (!cleanSegment(resolveTemplateVars(templateLeaf(options.folderTemplate), source, tplNow))) {
-      return abort('PF-E2', 'The last level of the folder template, the card\'s own folder, resolved to nothing, so the card would be written into the subfolder it shares with every other card. Nothing was written.', { card: source.name, shared: folderSegs.join('/') });
-    }
-    // Every level is a folder name in its own right: "..", a separator or a
-    // reserved character in ANY of them would place the card outside the
-    // destination, not just in the wrong folder.
-    for (const seg of folderSegs) {
-      if (!isSafeFolderName(seg)) {
-        return abort('PF-E3', `The folder template produced "${seg}" as a folder level, which is not a usable folder name. Nothing was written.`, { card: source.name, seg });
-      }
-    }
-    if (folderSegs.length > MAX_FOLDER_DEPTH) {
-      return abort('PF-E4', `The folder template asks for ${folderSegs.length} levels of subfolders (limit ${MAX_FOLDER_DEPTH}). Nothing was written.`, { card: source.name, levels: folderSegs.length, limit: MAX_FOLDER_DEPTH });
-    }
-    // The counter identifies the CARD, so it belongs to the card's own folder.
-    // In a subfolder it would number a day or a camera instead, and the
-    // collision check, the counter scan and the report would all describe
-    // something other than the cards.
-    const tplSegs = templateSegments(options.folderTemplate);
-    if (tplSegs.slice(0, -1).some(t => t.includes('{counter}'))) {
-      return abort('PF-E5', 'The counter is in a subfolder level of the template. It must be part of the card\'s own folder, the last level, after the final "/". Nothing was written.', { card: source.name });
-    }
-  }
-
-  // 2. A destination equal to, or inside, the source card copies the card into
-  //    itself; the card is then flagged as ingested and offered for ejection.
-  //
-  // Checked against EVERY card of the batch, not only the one being copied. A
-  // destination that sits inside another card of the same batch used to pass
-  // here and be refused later by the source-card lock, in the middle of the
-  // copy, with a message about a card the operator was not copying. The answer
-  // belongs before the first byte.
-  const batchRoots = (Array.isArray(options.batchSources) && options.batchSources.length)
-    ? options.batchSources : [source.path];
-  for (const d of destinations) {
-    const dp = options.fixedDestPath || d.path;
-    const clash = batchRoots.find(sp => pathContains(sp, dp) || pathContains(dp, sp));
-    if (clash) {
-      return abort('PF-E6',
-        `Destination "${d.name || dp}" is the same as, or inside, a card of this ingest${clash === source.path ? '' : ` ("${path.basename(clash)}")`}. Nothing was written.`,
-        { card: source.name, dest: d.name || dp, destPath: dp });
-    }
-  }
-
-  // 3. File filter enabled with every format unchecked: the engine would skip
-  //    every single file and still report a successful, verified ingest.
-  if (options.fileFilter && options.fileFilter.extCat &&
-      Object.keys(options.fileFilter.extCat).length === 0) {
-    return abort('PF-E7', 'The file filter is enabled but no format is selected, so nothing would be copied. Nothing was written.', { card: source.name });
-  }
-
-  // 4. The destination must actually BE there. mkdirSync({recursive:true})
-  //    below happily recreates "/Volumes/BACKUP/001_A001" on the system disk
-  //    when the drive was unplugged between the check and the copy — the run
-  //    then succeeds, verifies against itself, and the real drive holds
-  //    nothing of it. A retry (fixedDestPath) points at a folder that a
-  //    previous run created: it must exist too, and it must never be recreated.
-  for (const d of destinations) {
-    const root = options.fixedDestPath || d.path;
-    let st = null; try { st = fs.statSync(root); } catch (_) {}
-    if (!st || !st.isDirectory()) {
-      return abort('PF-E8', `Destination "${d.name || root}" is not there any more (${root}). Nothing was written.`, { card: source.name, dest: d.name || root, destPath: root });
-    }
-  }
-
-  // 5. The card's folder must be NEW. This is the last line of defence against
-  //    overwriting footage, and it lives in the engine on purpose: every guard
-  //    above it (the counter scan, the collision check, the pre-flight) is an
-  //    interface heuristic that only recognises a NUMBER in a folder name. A
-  //    template without {counter}, two cards labelled "NO NAME", a folder that
-  //    is a symbolic link, a counter read wrong, two ingesto windows on one
-  //    drive — each of them landed a card on top of an earlier one, and every
-  //    file of the earlier card that had the same name was silently replaced.
-  //    ingesto never writes into an existing card folder. The one thing it
-  //    tolerates there is its own residue from an interrupted run
-  //    (*.ingesto-part), which the sweep below removes.
-  if (!options.fixedDestPath) {
-    for (const d of destinations) {
-      const cardDir = path.join(d.path, ...folderSegs);
-      let lst = null; try { lst = fs.lstatSync(cardDir); } catch (_) {}
-      if (!lst) continue;
-      if (lst.isSymbolicLink() || !lst.isDirectory() || holdsForeignContent(cardDir)) {
-        return abort('PF-E9', `The folder "${relFolder}" already exists on destination "${d.name || d.path}" and is not empty. Nothing was written.`, { card: source.name, dest: d.name || d.path, folder: relFolder, absPath: path.join(d.path, relFolder) });
-      }
-    }
-  }
-
-  // Per-destination state
-  const R = destinations.map((d, i) => ({
-    di: i,
-    name: d.name || '',
-    destPath: options.fixedDestPath || path.join(d.path, ...folderSegs),
-    relFolder,
-    active: true,
-    copiedFiles: 0, errors: 0, errorList: [], failedFiles: [], failedMap: {}, unstableFiles: [],
-    copied: [],               // { rel, src, dest, size, mtimeMs, srcHash, _writeOk }
-    copiedForSentinel: [], cksumEntries: [],
-    _tmps: new Set(),         // every *.ingesto-part THIS run opened — the only ones it may clean up
-  }));
-  // Said on the window (a remark) and in the report (a warning line): what an
-  // HDE copy can and cannot prove.
-  if (hdeSource) for (const r of R) {
-    // What is claimed follows the mode: FAST and SIZE CHECK verify nothing,
-    // and must not be credited with a check they did not make.
-    const verified = isPro || isSecure;
-    (r.notes || (r.notes = [])).push({ code: 'HDE',
-      text: verified ? 'Virtual volume: the copies were checked against what it delivered, not against the card.'
-                     : 'Virtual volume: its files are produced while they are read.',
-      detail: !verified ? 'HDE with CODEX Platform, for example. ingesto copied what it delivered; nothing was compared with the card itself.'
-        : hdeSkippedReread
-        ? 'Its files are produced while they are read (HDE with CODEX Platform, for example). The card re-read (PRO) was not run: it would only have produced them again.'
-        : 'Its files are produced while they are read (HDE with CODEX Platform, for example).' });
-    r.errorList.push({ file: '(card)', phase: 'warning',
-      error: (verified ? 'Virtual volume (HDE, for example): checked against what it delivered, not against the card.'
-                       : 'Virtual volume (HDE, for example): its files are produced while they are read.')
-             + (hdeSkippedReread ? ' Card re-read not run.' : '') });
-  }
-
-  // ── Scan the source ONCE ────────────────────────────────────────────────
-  const onlyRel = options.onlyRel ? new Set(options.onlyRel.map(p => p.replace(/\\/g,'/'))) : null;
-  // File filter (optional): { extCat: {ext:'VIDEO'|'AUDIO'|'PICTURES'|'OTHERS'},
-  //                           copyEmpty: bool, reorganize: bool }
-  const FF = options.fileFilter && options.fileFilter.extCat ? options.fileFilter : null;
-  const ffReorg = !!(FF && FF.reorganize);
-  const allFiles=[], allDirs=[], skippedRels=[];
-  // What the OS puts on a volume by itself is never footage. The same list as
-  // the card inspection (sentinel.js) and the destination guard
-  // (OS_LITTER_DIRS): until 2.9.1 this one lacked "System Volume Information"
-  // and "$RECYCLE.BIN", which Windows protects on NTFS, so reading them failed
-  // and an NTFS drive used as a source could never finish green.
-  const SKIP = new Set(['.DS_Store', ...OS_LITTER_DIRS]);
-  const skipKeys = new Set(options.skipKeys || []);
-  const SENTINEL_FILENAME = '.ingesto.json';
-  // Anything we cannot even READ on the card is an error, never a silent skip:
-  // a dying CFexpress that throws EIO on one folder used to produce a green
-  // "100 %, 0 error" ingest with a whole subtree missing.
-  const scanErrors = [];
-  // A scan failure is by definition a read of the CARD. Without `origin` the
-  // interface grouped it under "On the destination", which is the opposite
-  // conclusion: change the drive, versus stop using this card.
-  const scanFail = (p, e, what) => scanErrors.push({
-    file: (path.relative(source.path, p) || '.').replace(/\\/g,'/'),
-    error: `${what} could not be read on the source: ${e && e.message ? e.message : e}`,
-    phase: 'scan', origin: 'source',
-  });
-  // Asynchronous, with a deadline on every call (2.9.2): the synchronous scan
-  // froze the whole application on a card that stopped answering.
-  const scanStalled = (p, what) => {
-    sourceStalled = stallError(what);
-    scanErrors.push({ file: (path.relative(source.path, p) || '.').replace(/\\/g,'/'),
-      error: `${sourceStalled.message}. The rest of the card was not read.`, phase: 'scan', origin: 'source', stalled: true });
-  };
-  await (async function scan(dir) {
-    if (sourceStalled) return;
-    const rd = await settleWithin('readdir:' + dir, () => fs.promises.readdir(dir, { withFileTypes: true }), SOURCE_STALL_MS);
-    if (rd.timeout) { scanStalled(dir, 'a folder could not be listed'); return; }
-    if (rd.err) { scanFail(dir, rd.err, 'folder'); return; }
-    const entries = rd.v;
-    if (!entries.length) { allDirs.push(dir); return; }
-    for (const e of entries) {
-      if (sourceStalled) return;
-      if (SKIP.has(e.name) || isAppleDouble(e)) continue;
-      // Same rule as sentinel.listAllFiles: skip the tracking log AND its
-      // siblings (.unreadable / .tmp), so card bookkeeping is never ingested.
-      if ((e.name === SENTINEL_FILENAME || e.name.startsWith(SENTINEL_FILENAME + '.')) && dir === source.path) continue;
-      // The write-protect probe (.ingesto_wtest_<ms>) is unlinked right after
-      // it is created; one left behind by a yanked card or an antivirus lock
-      // was copied, counted and "verified" as footage.
-      if (e.name.startsWith('.ingesto_wtest_') && dir === source.path) continue;
-      const full = path.join(dir, e.name);
-      try {
-        if (e.isDirectory()) { allDirs.push(full); await scan(full); }
-        else {
-          const sr = await statWithin(full, SOURCE_STALL_MS);
-          if (sr.timeout) { scanStalled(full, 'a file could not be measured'); return; }
-          if (sr.err) throw sr.err;
-          const s = sr.v;
-          const rel = path.relative(source.path, full).replace(/\\/g, '/');
-          seenFiles++;
-          if (onlyRel && !onlyRel.has(rel)) continue;
-          if (skipKeys.size) {
-            const key = `${rel}|${s.size}|${Math.floor(s.mtimeMs/1000)}`;
-            // Kept, not just counted: a file that is being SKIPPED is a file
-            // this run is relying on already being on the drive. The pre-copy
-            // residue sweep must be told about it, or it deletes the very copy
-            // that justified the skip. See sweepPartFiles below.
-            if (skipKeys.has(key)) { skippedAlready++; skippedRels.push(rel); continue; }
-          }
-          let cat = null;
-          if (FF) {
-            const ext = path.extname(e.name).slice(1).toLowerCase();
-            // Own-property lookup only. A file literally named "CLIP.constructor"
-            // or "CLIP.__proto__" otherwise resolved through Object.prototype,
-            // came back truthy, and was copied even though no format matching it
-            // was enabled — and with Reorganize on, landed in a folder named
-            // "[object Object]". The card's contents decide this key, so it is
-            // untrusted input.
-            cat = Object.prototype.hasOwnProperty.call(FF.extCat, ext) ? FF.extCat[ext] : null;
-            if (!cat) continue;                       // format not enabled → skipped
-            if (ffReorg && cat === 'OTHERS') continue; // Others never reorganized
-          }
-          allFiles.push({src:full,size:s.size,mtimeMs:s.mtimeMs,rel,cat});
-          totalBytes+=s.size;
-        }
-      } catch(e) { scanFail(full, e, 'entry'); }
-    }
-  })(source.path);
-  totalFiles = allFiles.length;
-
-  // A retry is a CHECKLIST, not a filter: every file it was asked for must be
-  // accounted for. A requested file that the card no longer holds used to
-  // vanish from the run — "2 of 2 copied, Transfer Complete", the retry button
-  // gone, and the third clip unrecoverable from the interface.
-  if (onlyRel) {
-    const found = new Set(allFiles.map(f => f.rel));
-    for (const rel of onlyRel) {
-      if (found.has(rel)) continue;
-      for (const r of R) {
-        r.errors++;
-        r.errorList.push({ file: rel, error: 'this file is no longer on the card, so it could not be re-copied', phase: 'scan' });
-        r.failedFiles.push(rel);
-        if (options.destRelOverride && options.destRelOverride[rel]) r.failedMap[rel] = options.destRelOverride[rel];
-      }
-    }
-  }
-
-  { const why = emptyRunReason(seenFiles, skippedAlready, totalFiles);
-    // An empty card is a misunderstanding, not a failure: nothing was copied
-    // and nothing was lost. The interface needs to tell the two apart, and it
-    // also needs to know WHICH of the two ("no file on the card" and "the
-    // filter excluded all of them" call for opposite instructions).
-    if (why) for (const r of R) {
-      r.errors++;
-      r.emptyReason = seenFiles === 0 ? 'no-files' : 'filtered-out';
-      r.seenFiles = seenFiles;
-      r.errorList.push({ file:'(card)', error: why, phase:'scan' });
-    } }
-
-  // A card whose files were ALL legitimately skipped as already ingested does
-  // no work at all — and therefore used to emit no progress event whatsoever.
-  // The queue view marks a card it never heard from as an ERROR (that rule is
-  // what keeps a card the engine refused from being painted verified), so a
-  // perfectly healthy "nothing new on this card" run showed up in red while
-  // the summary called it a success. One event saying "seen, and complete" is
-  // all the view needs to tell those two silences apart.
-  if (totalFiles === 0 && skippedAlready > 0 && scanErrors.length === 0) {
-    try {
-      onProgress({ sourceName: source.name, sourcePath: source.path, currentFile: '',
-        phase: 'copy', destIndex: 0, copiedFiles: 0, totalFiles: 0, remainingFiles: 0,
-        copiedBytes: 0, totalBytes: 0, progress: 1, speed: 0, eta: 0, errors: 0 });
-    } catch (_) {}
-  }
-
-  // Surface the scan failures on every destination result: they must count as
-  // errors so the run can never come back success:true, and so the sentinel is
-  // not written on a card whose content was only partially seen.
-  if (scanErrors.length) {
-    for (const r of R) { r.errors += scanErrors.length; r.errorList.push(...scanErrors.map(e => ({...e}))); }
-  }
-
-  // Destination-relative path per file. Normally identical to the source rel;
-  // with "Reorganize files on destination" every kept file is flattened into
-  // /VIDEO, /AUDIO or /PICTURES, with an _2/_3… suffix on basename collisions.
-  // The suffixed name must itself be checked and reserved: a card holding
-  // 100/CLIP.MOV, 101/CLIP.MOV and 102/CLIP_2.MOV used to send two files to the
-  // same VIDEO/CLIP_2.MOV, and the second one overwrote the first.
-  const usedNames = new Set();
-  for (const f of allFiles) {
-    if (!ffReorg) { f.destRel = f.rel; continue; }
-    const base = path.basename(f.rel);
-    const ext  = path.extname(base);
-    const stem = base.slice(0, base.length - ext.length);
-    let candidate = f.cat + '/' + base;
-    let n = 1;
-    while (usedNames.has(candidate.toLowerCase())) {
-      n++;
-      candidate = f.cat + '/' + stem + '_' + n + ext;
-    }
-    usedNames.add(candidate.toLowerCase());
-    f.destRel = candidate;
-  }
-  // Retry runs pin each file to the destination path it FAILED at (recorded by
-  // the original run), so a reorganize retry overwrites the bad copy in place.
-  if (options.destRelOverride) {
-    for (const f of allFiles) {
-      const o = options.destRelOverride[f.rel];
-      if (typeof o === 'string' && o && !o.includes('..')) f.destRel = o;
-    }
-  }
-
-  // A card that carries BOTH "X.MOV" and "X.MOV.ingesto-part" cannot be copied
-  // safely: the temp name of the first file is the final name of the second.
-  // Whichever order they are handled in, one is destroyed, the temp open
-  // truncates the delivered file or the post-copy sweep deletes it, and in
-  // FAST the run still reported "2 copied" over a folder holding one file.
-  // This happens for real when a folder left by an interrupted ingest is
-  // re-ingested as a card. Refused before anything is written, rather than
-  // patched over: the operator has to decide which of the two is the footage.
-  // Checked on destRel, the name actually written, so Reorganize is covered.
-  {
-    const relSet = new Set(allFiles.map(f => f.destRel));
-    const clash = [];
-    for (const rel of relSet) {
-      for (const suffix of [PART_SUFFIX, FAILED_SUFFIX]) {
-        if (rel.endsWith(suffix) && relSet.has(rel.slice(0, -suffix.length))) clash.push(rel);
-      }
-    }
-    if (clash.length) {
-      return abort('PF-E10',
-        `This card holds ${clash.length} file${clash.length > 1 ? 's' : ''} whose name collides with the temporary name ingesto uses while copying (${clash.slice(0, 3).join(', ')}). Nothing was written.`,
-        { card: source.name, files: clash.slice(0, 20), count: clash.length });
-    }
-  }
-
-  // ── Destination roots, folder tree, note file ───────────────────────────
-  for (const r of R) {
-    try { fs.mkdirSync(r.destPath, {recursive:true}); }
-    catch (e) {
-      r.active = false; r.errors++;
-      r.errorList.push({ file:'(destination)', error:e.message, phase:'copy' });
-    }
-    // Residue of an interrupted run (the only content guard 5 tolerates) goes
-    // BEFORE anything is copied, so the sweep can never meet this run's files.
-    //
-    // Except the files it is SKIPPING. "Copy new files only" leaves a file
-    // alone because a good copy is already on this drive; if that copy is
-    // itself named "*.ingesto-part" (an interrupted ingest's folder that was
-    // later ingested as a card), the sweep deleted it a moment after the skip
-    // decision was taken, and the run ended green over a folder it had just
-    // emptied.
-    if (r.active && !options.fixedDestPath)
-      sweepPartFiles(r.destPath, new Set(skippedRels.map(rel => path.join(r.destPath, rel))));
-  }
-  // Full source tree is pre-created only when copying everything, or when the
-  // filter is on WITH "Copy empty folders". Filter without that option: folders
-  // are created on demand per file, so dirs left empty by filtering never appear.
-  // Reorganize ignores the source tree entirely (/VIDEO etc. created per file).
-  if (!onlyRel && !ffReorg && (!FF || FF.copyEmpty)) {
-    for (const d of allDirs) {
-      const rel = path.relative(source.path, d);
-      // The folder dates are a nicety: a card that does not answer is not
-      // asked (and the copy below reports it).
-      let st=null;
-      if (!sourceStalled) { const sr = await statWithin(d, SOURCE_STALL_MS); if (sr.timeout) sourceStalled = stallError('a folder could not be measured'); else st = sr.v || null; }
-      for (const r of R) {
-        if (!r.active) continue;
-        try {
-          const dd = path.join(r.destPath, rel);
-          fs.mkdirSync(dd,{recursive:true});
-          if (st) fs.utimesSync(dd,st.atime,st.mtime);
-        } catch(_){}
-      }
-    }
-  }
-
-  const spd=[], speedPush=(b,ms)=>{ if(ms>0){ spd.push(b/ms*1000); if(spd.length>12)spd.shift(); } };
-  const avgSpd=()=>spd.length?spd.reduce((a,b)=>a+b)/spd.length:0;
-
-  // ── PHASE 1 — read once, write to every destination (green bar) ─────────
-  tCopyStart = Date.now(); pausedAtCopyStart = pausedMs;
-  { let lastB=0, lastT=Date.now(), lastEmit=0;
-    // Every file not yet copied, once the card has gone silent: each one is
-    // reported (the retry needs the list), none of them is asked for.
-    const failRemaining = (from, act) => {
-      for (let j = from; j < allFiles.length; j++) for (const r of act) {
-        r.errors++;
-        r.errorList.push({ file: allFiles[j].rel, phase: 'copy', origin: 'source', stalled: true,
-          error: `not copied: ${sourceStalled.message}` });
-        r.failedFiles.push(allFiles[j].rel); r.failedMap[allFiles[j].rel] = allFiles[j].destRel;
-      }
-    };
-    for (let i=0; i<allFiles.length; i++) {
-      if (cancelCopy) break;
-      await pauseGate(mainWindow);
-      if (cancelCopy) break;
-      const act = R.filter(r=>r.active);
-      if (!act.length) break;
-      if (sourceStalled) { failRemaining(i, act); break; }
-      const file=allFiles[i], rel=file.rel;
-      const destFilesAbs = act.map(r => path.join(r.destPath, file.destRel));
-      // Write under a temporary name; promote to the final name only once the
-      // file is complete (and fsynced, in SECURE/PRO).
-      const destTmpAbs   = destFilesAbs.map(p => p + PART_SUFFIX);
-      act.forEach((r, k) => r._tmps.add(destTmpAbs[k]));   // what a post-copy clean-up may touch
-      let fileBytes = 0;                                   // read from the CARD for this file
-      // One message per 8 MB chunk, unthrottled, was a full repaint of the
-      // transfer view per chunk: on a card of small files, one file = one
-      // chunk = one repaint, tens of times a second, and the serialising is
-      // done by the very process that is copying. The verify phase has always
-      // throttled to 100 ms; the copy phase now does the same. The last event
-      // of a file is never dropped, so a bar always reaches its end.
-      const onB = (b, force) => {
-        copiedBytes+=b; fileBytes+=b;
-        const now=Date.now();
-        if (now-lastT>=150){ speedPush(copiedBytes-lastB,now-lastT); lastB=copiedBytes; lastT=now; }
-        if (!force && now-lastEmit < 100) return;
-        lastEmit = now;
-        const sp=avgSpd();
-        onProgress({ sourceName:source.name, sourcePath:source.path, currentFile:rel, phase:'copy',
-          destIndex:0, destName:destNames,
-          copiedFiles:R[0].copiedFiles, totalFiles, remainingFiles:totalFiles-i-1,
-          // Clamped: a file that GREW since the scan pushes copiedBytes past the
-          // total, and the bar then reported 103% and an ETA in the past.
-          // HDE: the sizes are only known once read, so the bar counts files
-          // and no time left is promised.
-          copiedBytes, totalBytes,
-          progress: hdeSource ? (totalFiles>0 ? Math.min(1, i/totalFiles) : 0) : (totalBytes>0?Math.min(1,copiedBytes/totalBytes):0),
-          speed:sp, eta: hdeSource ? 0 : (sp>0?Math.max(0,(totalBytes-copiedBytes)/sp):0),
-          errors:R.reduce((a,r)=>a+r.errors,0) });
-      };
-      try {
-        // On-demand parent dir: retry runs (onlyRel), filtered copies without
-        // "Copy empty folders", and reorganize (/VIDEO etc.) all skip the
-        // upfront tree creation, so make sure each file's parent exists.
-        if (onlyRel || ffReorg || options.destRelOverride || (FF && !FF.copyEmpty)) for (const df of destFilesAbs) { try { fs.mkdirSync(path.dirname(df),{recursive:true}); } catch(_){} }
-        // SECURE/PRO: evict this source file from the OS cache before reading
-        // it, so the copy reads what the card delivers NOW — not what a
-        // previous ingest of the same card left sitting in RAM (observed on
-        // Windows: re-ingesting a 75 MB/s card ran the copy at 300-600 MB/s
-        // from cache). The bytes were originally read from the card either
-        // way, but SECURE's promise is about the card as it is at THIS ingest.
-        // FAST/VERIFIED make no such claim and keep the free speed-up.
-        // The card is asked first, with a deadline: the cache purge below
-        // opens the file synchronously, and a card that does not answer
-        // would hold the whole application there.
-        { const pre = await statWithin(file.src, SOURCE_STALL_MS);
-          if (pre.timeout) { sourceStalled = stallError('a file could not be opened'); failRemaining(i, act); break; } }
-        if ((isPro || isSecure) && !hdeSource) {
-          let purged = false;
-          try { purged = nocache.purgeFileCache(file.src); } catch(_) {}
-          if (!purged) copyPurgeFails++;
-        }
-        const { digest, failed } = await copyFanOut(file.src, destTmpAbs, onB, hasher, SOURCE_STALL_MS);
-        onB(0, true);   // the end of a file always shows, whatever the throttle
-        const srcHash = digest == null ? null : String(digest);
-        let st=null;
-        { const post = await statWithin(file.src, SOURCE_STALL_MS);
-          if (post.timeout) sourceStalled = stallError('a file could not be measured');
-          else st = post.v || null; }
-
-        // ── The file changed on the card WHILE it was being copied ───────────
-        //
-        // A camera still finalising a clip, a card pulled and pushed back, a
-        // network source someone else is writing to. The copy then holds a
-        // prefix, a mixture, or a torn file. Nothing downstream noticed: the
-        // checksum is computed over what was read, so source and destination
-        // agree perfectly, the file is delivered, the manifest vouches for it,
-        // and the operator formats the card.
-        //
-        // Three independent readings of the same file, taken before and after
-        // the read. They must agree.
-        //
-        // With ONE exception, and it matters more than the check itself: when
-        // every destination has failed, the engine stops reading the card on
-        // purpose. The read is then short because the DRIVE died, not because
-        // the card moved, and blaming the card here both hid the real error
-        // (ENOSPC, EIO, the drive unplugged) and told the operator to throw
-        // away a healthy card and reader. When that happens the destination
-        // error below is the whole story, and this check says nothing.
-        const readWasCutShort = failed.every(Boolean);
-        // NOT guarded by `st`. The byte count needs nothing from the card, and
-        // the card failing to answer a stat is itself a reason to distrust
-        // what was just read: a short read plus a card that vanished used to
-        // fall through this whole check and deliver the truncated file under
-        // its real name, with the manifest vouching for it.
-        // HDE: the size announced by the volume is not the size of what it
-        // delivers, so the comparisons below would condemn every file. What
-        // was read IS the file: it becomes its size for the rest of the run
-        // (verify, manifests, report). A file the volume can no longer
-        // measure is still refused.
-        if (hdeSource && !cancelCopy && !readWasCutShort && st) {
-          totalBytes += fileBytes - (Number(file.size) || 0);
-          file.size = fileBytes;
-        }
-        if (!cancelCopy && !readWasCutShort) {
-          const scanSize = Number(file.size) || 0;
-          let why = null;
-          if (hdeSource) { if (!st) why = 'the card stopped answering as soon as it had been read'; }
-          else if (fileBytes !== scanSize)
-            why = `${fmtBytes(fileBytes)} of it could be read, not the ${fmtBytes(scanSize)} the card announced`;
-          else if (!st)
-            why = 'the card stopped answering as soon as it had been read';
-          else if (st.size !== scanSize)
-            why = `it was ${fmtBytes(scanSize)} when the card was scanned and is ${fmtBytes(st.size)} now`;
-          else if (file.mtimeMs && Math.abs(st.mtimeMs - file.mtimeMs) > 1)
-            why = 'it was written again while ingesto was reading it';
-          if (why) {
-            // Nothing has been promoted yet: the copies still carry the
-            // temporary name, so dropping them leaves no half-file behind.
-            for (const tmp of destTmpAbs) { try { safeUnlink(tmp); } catch(_) {} }
-            for (const r of act) {
-              r.errors++;
-              r.errorList.push({ file: rel, phase: 'copy', origin: 'source',
-                error: `this file changed on the card while it was being copied (${why}). The copy was not kept.` });
-              r.failedFiles.push(rel); r.failedMap[rel] = file.destRel;
-            }
-            continue;
-          }
-        }
-        for (let k=0; k<act.length; k++) {
-          const r = act[k], df = destFilesAbs[k], tmp = destTmpAbs[k], err = failed[k];
-          if (err) {
-            // Drop the partial write. It never carried the final name, so there
-            // is nothing on the destination that could pass for a good file.
-            try { safeUnlink(tmp); } catch(_) {}
-            // A user cancellation is not a copy error — don't inflate the count.
-            // `origin` says WHICH side failed. The engine has always known,
-            // and the interface has never been told: a drive that stopped
-            // answering and a card that cannot be read produced the same
-            // line, though the operator's next move is opposite (change the
-            // drive, or stop using the card).
-            if (!err.aborted) { r.errors++; r.errorList.push({file:rel,error:err.message,phase:'copy',origin:'destination'}); r.failedFiles.push(rel); r.failedMap[rel]=file.destRel; }
-            continue;
-          }
-          try {
-            // Order matters: flush BEFORE copying the source's permissions onto
-            // the file, or a read-only source makes every fsync fail (EACCES).
-            if (isPro || isSecure) {
-              const fres = await fsyncFile(tmp);
-              if (!fres.ok && fres.unsupported && !r._fsyncWarned) {
-                r._fsyncWarned = true;   // warn once per destination, not per file
-                r.errorList.push({ file: '(destination)', phase: 'warning',
-                  error: `this drive did not confirm when files were fully written (common on network drives, or while antivirus is scanning). The copy completed. For extra certainty, run Verify on this folder later.` });
-              }
-            }
-            safeRename(tmp, df);               // atomic promotion to the final name
-            if (st) { try { fs.chmodSync(df,st.mode); fs.utimesSync(df,st.atime,st.mtime); } catch(_){} }
-            r.copiedFiles++;
-            r.copied.push({rel,destRel:file.destRel,src:file.src,dest:df,size:file.size,mtimeMs:file.mtimeMs,srcHash});
-          } catch(e) {
-            // Flush or rename failed — the file is NOT on the destination under
-            // its final name, and that is now reported instead of swallowed.
-            try { safeUnlink(tmp); } catch(_) {}
-            r.errors++;
-            r.errorList.push({file:rel,error:`could not be committed to the destination: ${e.message}`,phase:'copy',origin:'destination'});
-            r.failedFiles.push(rel); r.failedMap[rel]=file.destRel;
-          }
-        }
-      } catch(e){
-        // Source read failure — the file failed for every active destination.
-        for (const tmp of destTmpAbs) { try { safeUnlink(tmp); } catch(_) {} }
-        for (const r of act) { r.errors++; r.errorList.push({file:rel,error:e.message,phase:'copy',origin:'source',...(e.stalled?{stalled:true}:{})}); r.failedFiles.push(rel); r.failedMap[rel]=file.destRel; }
-        // The card went silent in the middle of this file: the next ones are
-        // not asked for (see failRemaining at the top of the loop).
-        if (e && e.stalled) sourceStalled = e;
-      }
-    }
-  }
-  tCopyEnd = Date.now(); tV1End = tCopyEnd; tV2End = tCopyEnd;
-  pausedAtCopyEnd = pausedAtV1End = pausedAtV2End = pausedMs;
-
-  // The SECURE/PRO promise is about the card as it is at THIS ingest. If the
-  // cache eviction refused to run, the copy may have been answered from RAM by
-  // a previous ingest of the same card — the bytes are still the bytes we
-  // fingerprinted, so nothing is corrupt, but "we read your card just now" is
-  // no longer something we can claim. Say so instead of staying silent.
-  // nocache.available() first: on a machine with no cache-control capability at
-  // all (koffi missing), every purge "fails" by definition and this warning
-  // would fire on every single SECURE/PRO ingest. That case is already covered
-  // by coldVerify, which turns the "verify later" hint back on.
-  if (!cancelCopy && (isPro || isSecure) && copyPurgeFails > 0 && R.length && nocache.available()) {
-    R[0].errorList.push({ file: '(card read)', phase: 'warning',
-      error: `the computer kept part of this card in its memory, so the copy may not have re-read the card itself. If this card was already ingested on this machine, run Verify on the destination later to be sure.` });
-  }
-
-  const srcNote = source.note || options.note || '';
-  // Written AFTER the copy, not before: a run interrupted before its first
-  // file used to leave the note behind, and the folder — otherwise pure
-  // residue — was then refused for ever.
-  if (!cancelCopy && !options.fixedDestPath && srcNote && srcNote.trim()) {
-    // The counter comes from the interface. It names a FILE here, so it is
-    // reduced to what a name may hold: anything else (a separator, "..") would
-    // put the note outside the destination folder. Every other write of the
-    // engine already checks this; this one did not.
-    const counterSafe = String(source.counter || '001').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) || '001';
-    // Markdown since 2.8.0: the note is typed formatted or as markdown in the
-    // interface, and it is written as it was typed, under a header that any
-    // markdown viewer lays out.
-    const noteFileName = `${counterSafe}_note.md`;
-    const noteContent = [
-      '# ' + NOTE_HEADER, '',
-      // The first line (NOTE_HEADER) is how Verify recognises the note: it
-      // stays in English. The labels below are for a person.
-      // DD.MM.YYYY HH:MM, the format of the report and the history (2.9.1).
-      '- **' + i18n.t('Date:') + '** ' + mdEscapeText((() => { const d = new Date(), p = x => String(x).padStart(2, '0');
-        return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; })()),
-      '- **' + i18n.t('Counter:') + '** ' + mdEscapeText(source.counter || '001'),
-      '- **' + i18n.t('Card:') + '** ' + mdEscapeText(source.name),
-      '- **' + i18n.t('Operator:') + '** ' + mdEscapeText(source.cameraman || i18n.t('Unknown')),
-      '- **' + i18n.t('Camera:') + '** ' + mdEscapeText(source.camera || i18n.t('Unknown')),
-      '- **' + i18n.t('Profile:') + '** ' + mdEscapeText(source.pp || i18n.t('Unknown')),
-      '', '---', '', srcNote.trim().replace(/\r\n?/g, '\n'), ''
-    ].join('\n');
-    for (const r of R) {
-      if (!r.active) continue;
-      // Never over a file this run delivered. writeFileAtomic renames onto its
-      // target, so a card carrying "001_note.md" of its own had that file
-      // replaced by the note: silently in FAST, and in SECURE the NOTE was the
-      // one quarantined while the card's file was still missing from the
-      // folder. The note steps aside to "001-2_note.md" instead.
-      //
-      // The suffix goes BEFORE "_note.md", not at the end of the path: Verify
-      // recognises our own note by a name ending in "_note.md", so a note
-      // called "001_note.md-2" would be reported as a stranger for ever.
-      let notePath = path.join(r.destPath, noteFileName);
-      if (r.copied.some(c => c.dest === notePath)) {
-        const stem = counterSafe;
-        notePath = path.join(r.destPath, `${stem}-${Date.now()}_note.md`);
-        for (let i = 2; i < 1000; i++) {
-          const cand = path.join(r.destPath, `${stem}-${i}_note.md`);
-          if (!fs.existsSync(cand) && !r.copied.some(c => c.dest === cand)) { notePath = cand; break; }
-        }
-        (r.notes || (r.notes = [])).push({
-          code: 'CV-10',
-          text: `This card already held a file called ${noteFileName}.`,
-          detail: `Your shooting note was saved next to it as ${path.basename(notePath)}. The card's own file was not touched.` });
-      }
-      try { writeFileAtomic(notePath, noteContent); }
-      catch (e) {
-        // The operator believes they left a note for the editor. It is not on
-        // the drive. Silent until now.
-        console.error('Note file write failed:', e.message);
-        (r.notes || (r.notes = [])).push({
-          code: 'CV-9',
-          text: `The shooting notes were not saved to ${path.basename(r.destPath || '') || 'the destination'}.`,
-          detail: 'Your note is still in ingesto and in the ingest report.' });
-      }
-    }
-  }
-  // Clear the temp files THIS run opened and did not promote (a cancelled
-  // run). Never a walk of the folder: a walk deleted a delivered file whose
-  // name ends in ".ingesto-part" — on a retry, one that an earlier run had
-  // already verified.
-  // Each error path above already drops its own temp; this loop is the last
-  // resort for a file that left none of those paths.
-  //
-  // And never a path this run DELIVERED under its final name. The temp name of
-  // one file is the final name of another when a card carries both "X.MOV" and
-  // "X.MOV.ingesto-part": the sweep then deleted the delivered X.MOV.ingesto-part
-  // because the run had registered that exact path as its own temp. PF-E10 now
-  // refuses that card before a byte is written, so this line is a second lock
-  // on the same door: a delete driven by a NAME is never left unguarded.
-  for (const r of R) {
-    const delivered = new Set(r.copied.map(c => c.dest));
-    for (const tmp of r._tmps) {
-      if (delivered.has(tmp)) continue;
-      try { if (fs.existsSync(tmp)) safeUnlink(tmp); } catch (_) {}
-    }
-  }
-
-  // ── PHASE 2 — VERIFY each destination (blue), then optional source pass ─
-  if (!cancelCopy && (options.mode==='normal' || options.mode==='slow' || isPro)) {
-    spd.length=0;
-    // Unique source files copied OK to at least one destination (for the PRO
-    // double-read pass, which now reads the source ONCE — not once per dest).
-    const srcByRel = new Map();
-    for (const r of R) for (const c of r.copied) if (!srcByRel.has(c.rel)) srcByRel.set(c.rel, c);
-    const destPassTotal = R.reduce((a,r)=>a + r.copied.reduce((x,c)=>x+c.size,0), 0);
-    const srcPassTotal  = proDouble ? [...srcByRel.values()].reduce((a,c)=>a+c.size,0) : 0;
-    const verifyTotalBytes = destPassTotal + srcPassTotal;
-    const totalSteps = R.reduce((a,r)=>a+r.copied.length,0) + (proDouble ? srcByRel.size : 0);
-    let verifiedBytes=0, verifiedFiles=0, lastB=0, lastT=Date.now();
-    let passBytes=0, passTotal=destPassTotal;
-    const emit=(cur,pass,di,dn,extra)=>{
-      const now=Date.now();
-      if (now-lastT>=120){ speedPush(verifiedBytes-lastB,now-lastT); lastB=verifiedBytes; lastT=now; }
-      const sp=avgSpd();
-      onProgress({ sourceName:source.name, sourcePath:source.path, currentFile:cur, phase:'verify',
-        destIndex:di, destName:dn,
-        copiedFiles:verifiedFiles, totalFiles:totalSteps, remainingFiles:totalSteps-verifiedFiles,
-        copiedBytes:verifiedBytes, totalBytes:verifyTotalBytes||1,
-        progress:verifyTotalBytes>0?verifiedBytes/verifyTotalBytes:1,
-        passProgress: passTotal>0 ? passBytes/passTotal : 1,
-        speed:sp, eta:sp>0?(verifyTotalBytes-verifiedBytes)/sp:0,
-        errors:R.reduce((a,r)=>a+r.errors,0), pass, ...(extra||{}) });
-    };
-
-    // Per-destination progress and throughput. Until now the renderer received
-    // ONE cumulative figure for the whole pass and had to work out each
-    // destination's share by arithmetic — which was wrong twice already, and
-    // becomes meaningless once destinations are verified at the same time.
-    // Each destination now reports its own progress and its own speed.
-    for (const r of R) {
-      r._vTotal = r.copied.reduce((a,c)=>a+c.size, 0);
-      r._vBytes = 0; r._vSpd = []; r._sB = 0; r._sT = Date.now(); r._lastEmit = 0;
-    }
-    const destSpeed = (r) => {
-      const now = Date.now(), ms = now - r._sT;
-      if (ms >= 150) {
-        r._vSpd.push((r._vBytes - r._sB) / ms * 1000);
-        if (r._vSpd.length > 12) r._vSpd.shift();
-        r._sB = r._vBytes; r._sT = now;
-      }
-      return r._vSpd.length ? r._vSpd.reduce((a,b)=>a+b) / r._vSpd.length : 0;
-    };
-    const emitDest = (r, cur, force) => {
-      const now = Date.now();
-      // Several lanes reporting per file would flood the renderer; one update
-      // per destination per 100 ms is more than the eye can follow, and the
-      // last file of a destination always gets through.
-      if (!force && now - r._lastEmit < 100) return;
-      r._lastEmit = now;
-      emit(cur, 'dest', r.di, r.name, {
-        destProgress: r._vTotal > 0 ? Math.min(1, r._vBytes / r._vTotal) : 1,
-        destSpeed: destSpeed(r),
-      });
-    };
-
-    // 2a — verify every destination against the fingerprint taken during copy.
-    //
-    // Destinations are verified CONCURRENTLY, but only when they sit on
-    // different physical devices. Two folders on the same disk are read one
-    // after the other: making that disk seek between two streams is slower
-    // than reading them in turn. The grouping reads the machine's actual
-    // topology (the filesystem's device id) instead of guessing from paths.
-    //
-    // Worst case is "no gain", never a regression: the reads are asynchronous
-    // and the total amount of hashing is unchanged, so if the fingerprint
-    // calculation is what saturates, the lanes simply take turns on it.
-    const lanes = groupByDevice(R, r => r.destPath);
-    // ONE HASHER PER LANE. hashPro() calls hasher.init() then streams into it;
-    // two concurrent calls on the same instance would interleave their updates
-    // and produce a digest belonging to neither file — a silent false
-    // "checksum mismatch", the worst possible failure for this application.
-    const laneHashers = [];
-    for (let i = 0; i < lanes.length; i++) {
-      laneHashers.push(!hasher ? null
-        : (i === 0 ? hasher : await newProHasher(isPro ? proAlgo : 'xxh64')));
-    }
-
-    const runLane = async (group, laneHasher) => {
-      for (const r of group) {
-        if (!r.copied.length) continue;   // nothing was written here
-        for (const c of r.copied) {
-          if (cancelCopy) return;
-          await pauseGate(mainWindow);
-          if (cancelCopy) return;
-          let okv=false;
-          try {
-            if (isPro || isSecure) {
-              // Evict this destination file's cached pages first, so the
-              // read-back is forced to hit the disk. On macOS the uncached write
-              // already kept most pages out (APFS); this covers Windows/Linux —
-              // where the copy is fully cached and the read-back used to compare
-              // RAM with itself — and exFAT/NTFS destinations on macOS, whose
-              // drivers ignore F_NOCACHE. The RESULT is kept: a failed purge
-              // (antivirus holding the file, exotic filesystem) means this
-              // read-back may come from RAM, and coldVerify must say so.
-              try { if (!nocache.purgeFileCache(c.dest)) r._purgeFails = (r._purgeFails||0) + 1; }
-              catch(_) { r._purgeFails = (r._purgeFails||0) + 1; }
-              if (await hashPro(c.dest,laneHasher) !== c.srcHash) throw new Error(isPro?'checksum mismatch':'xxHash mismatch');
-            } else {
-              // Two reads, and they are not the same side. A source file that
-              // vanished mid-run must not be blamed on the drive.
-              let srcSize;
-              // HDE: the volume cannot give the size back (see the copy);
-              // the size compared is the number of bytes it delivered.
-              if (hdeSource) srcSize = c.size;
-              else {
-                if (sourceStalled) { const err = new Error(`not checked: ${sourceStalled.message}`); err._origin = 'source'; throw err; }
-                const sr = await statWithin(c.src, SOURCE_STALL_MS);
-                if (sr.timeout) sourceStalled = stallError('a file could not be measured');
-                if (sr.timeout || sr.err) { const err = new Error(sr.timeout ? sourceStalled.message : sr.err.message); err._origin = 'source'; throw err; }
-                srcSize = sr.v.size;
-              }
-              if (srcSize !== fs.statSync(c.dest).size) throw new Error('Size mismatch');
-            }
-            okv=true;
-          } catch(e){
-            // A verify mismatch is a DESTINATION failure: the card gave the
-            // same bytes, the drive gave back something else.
-            r.errors++; r.errorList.push({file:c.rel,error:e.message,phase:'verify',
-                                          origin: e._origin || 'destination'});
-            r.failedFiles.push(c.rel); r.failedMap[c.rel]=c.destRel;
-            // Quarantine the bad copy. Until now it kept its FINAL name while
-            // being left out of the checksum list, so if the operator never ran
-            // "Re-copy failed files" the folder held a corrupt clip under its
-            // real name — and a later Verify on that folder listed it merely as
-            // an "extra file" and still reported "Verification passed".
-            // The whole point of the .ingesto-part protocol is that a real name
-            // means a good file; this restores it for the verify phase too.
-            // Remember the EXACT name it was set aside under. A retry used to
-            // delete by name pattern ("<rel>.ingesto-failed" and every "-2…-N"),
-            // which erased a delivered, verified file that happened to carry
-            // that name on the card. Deletion is now driven by this list only.
-            try { const q = freeName(c.dest + FAILED_SUFFIX);
-                  safeRename(c.dest, q); c._quarantined = true;
-                  (r.quarantinedPaths || (r.quarantinedPaths = [])).push(q); }
-            catch(_) {
-              // The bad copy is still sitting there under its REAL name. Left
-              // silent, a later Verify listed it merely as an "extra file" and
-              // still reported "Verification passed". Say it explicitly.
-              r.errorList.push({ file:c.rel, phase:'verify', origin:'destination', notQuarantined:true,
-                destRel:c.destRel||c.rel,
-                error:'this file failed verification and could NOT be set aside. A bad copy is still in the destination under its real name. Delete it by hand or re-copy the card.' });
-            }
-          }
-          c._writeOk = okv;
-          if (okv && !proDouble) {
-            r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000), ...(c.destRel&&c.destRel!==c.rel?{d:c.destRel}:{}) });
-            if (isPro || isSecure) r.cksumEntries.push({ rel:c.destRel||c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
-          }
-          verifiedBytes+=c.size; passBytes+=c.size; verifiedFiles++;
-          r._vBytes += c.size;
-          emitDest(r, c.rel, r._vBytes >= r._vTotal);
-        }
-        // This destination is finished: say so even if the throttle just ate
-        // the last update, or its bar would sit at 97% for the rest of the run.
-        emitDest(r, '', true);
-      }
-    };
-    await Promise.all(lanes.map((g, i) => runLane(g, laneHashers[i])));
-    tV1End = Date.now(); tV2End = tV1End;
-    pausedAtV1End = pausedAtV2End = pausedMs;
-
-    // 2b — PRO double-read: re-read the SOURCE (once, whatever the number of
-    // destinations) to catch a failing/unstable card.
-    if (proDouble && !cancelCopy) {
-      passBytes=0; passTotal=srcPassTotal;
-      // Measure ONCE, before re-reading anything, whether cache eviction really
-      // works on this card in this machine. This is the guarantee the whole
-      // double read rests on, so it is tested rather than inferred.
-      var probe = { ok:false };
-      for (const c of srcByRel.values()) {
-        if (c.size >= 1024*1024) { probe = probeCacheEviction(c.src); break; }
-      }
-      // Which destinations hold a good write of each file, built ONCE. Looking
-      // it up with R.filter(...copied.some(...)) for every file cost the square
-      // of the file count: about 10 s of CPU on a 30,000-file stills card,
-      // billed to the second read.
-      const writtenOk = new Map();
-      for (const r of R) for (const x of r.copied) {
-        if (!x._writeOk) continue;
-        let list = writtenOk.get(x.rel);
-        if (!list) { list = []; writtenOk.set(x.rel, list); }
-        if (!list.includes(r)) list.push(r);
-      }
-      for (const c of srcByRel.values()) {
-        if (cancelCopy) break;
-        await pauseGate(mainWindow);
-        if (cancelCopy) break;
-        // Only meaningful if at least one destination wrote this file OK
-        const holders = R.filter(r => (writtenOk.get(c.rel) || []).includes(r));
-        if (holders.length) {
-          let stable=false;
-          // Evict this file's cached pages first, so the re-read is forced to
-          // hit the card. Without it the OS answers from RAM and this whole
-          // pass compares memory with itself (see purgeFileCache).
-          // A card that stopped answering is not "unstable": it gave no
-          // second answer at all. Said as such, and not asked again.
-          let silent = sourceStalled;
-          if (!silent) { const pre = await statWithin(c.src, SOURCE_STALL_MS); if (pre.timeout) silent = sourceStalled = stallError('a file could not be opened'); }
-          if (!silent) {
-            let purged = false;
-            try { purged = nocache.purgeFileCache(c.src); } catch(_) {}
-            if (!purged) dblPurgeFails++;
-            try { stable = (await hashPro(c.src, hasher, { stallMs: SOURCE_STALL_MS }) === c.srcHash); }
-            catch(e){ stable=false; if (e && e.stalled) silent = sourceStalled = e; }
-          }
-          for (const r of holders) {
-            if (silent) {
-              r.errors++;
-              // The copy itself was verified: it is not a failed file, and a
-              // re-copy would not help. Like an unstable file, it is left out
-              // of the manifest and the card log.
-              r.errorList.push({ file:c.rel, error:`not re-read: ${silent.message}`, phase:'source', origin:'source', stalled:true });
-            } else if (stable) {
-              r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000), ...(c.destRel&&c.destRel!==c.rel?{d:c.destRel}:{}) });
-              r.cksumEntries.push({ rel:c.destRel||c.rel, hash:c.srcHash, size:c.size, mtimeMs:c.mtimeMs });
-            } else {
-              r.errors++;
-              r.errorList.push({ file:c.rel, error:'source read unstable', phase:'source' });
-              r.unstableFiles.push(c.rel);
-            }
-          }
-        }
-        verifiedBytes+=c.size; passBytes+=c.size; verifiedFiles++;
-        emit(c.rel,'source',0,destNames);
-      }
-      tV2End = Date.now(); pausedAtV2End = pausedMs;
-
-      // ── Was the source actually re-read, or served from RAM? ─────────────
-      // The whole point of the PRO double read is to ask the CARD a second
-      // time. If the OS page cache answers instead, the pass compares memory
-      // with itself and always passes — worse than useless, because it looks
-      // like a guarantee.
-      //
-      // The verdict comes from the probe above (a measurement, see
-      // probeCacheEviction), not from comparing pass speeds. Two triggers, one
-      // remedy — the forced unmount/remount re-check:
-      //   • the probe showed the eviction does not work on this medium, or
-      //   • an eviction call outright failed during the pass.
-      // A probe that could not run (every file under 1 MB, timings too small to
-      // compare) says nothing and does NOT raise an alarm; dblPurgeFails still
-      // covers the case where the mechanism is plainly unavailable.
-      const copyMs = Math.max(1, tCopyEnd - tCopyStart);
-      const dblMs  = Math.max(1, tV2End - tV1End);
-      const copySpeed = copiedBytes / (copyMs / 1000);
-      const dblSpeed  = srcPassTotal / (dblMs / 1000);
-      const probeSaysCached = probe.ok && !probe.evicted;
-      if (srcPassTotal > 0 && (probeSaysCached || dblPurgeFails > 0)) {
-        for (const r of R) {
-          r.doubleReadCached = true;
-          r.doubleReadSpeed  = dblSpeed;
-          r.copySpeedMeasured = copySpeed;
-          // Only when the PROBE is what raised the alarm. When the trigger was
-          // a purge that failed mid-pass, showing a 50x separation under the
-          // words "too close to be a real read" contradicts the alarm itself.
-          r.probe = probeSaysCached ? { coldMs: probe.coldMs, warmMs: probe.warmMs } : null;
-          // Source-relative path + the hash read during the copy, so the user
-          // can ask for a real (unmount/remount) re-check afterwards.
-          r.recheckList = [...srcByRel.values()]
-            .filter(c => c.srcHash)
-            .map(c => ({ rel: c.rel, hash: String(c.srcHash) }));
-        }
-        // One entry, on one result only — the source pass happens once per
-        // card, and a 3-destination ingest used to list the same line thrice.
-        // Wording is aimed at non-technical operators: what happened, and that
-        // their footage is fine.
-        R[0].errorList.push({ file: '(card double-check)', phase: 'warning',
-          error: `skipped: the card could not be read a second time, the computer answered from its memory. All files are still fully verified (SECURE level).` });
-      }
-    }
-
-    // Fingerprint sidecars at each destination folder root (SECURE & PRO).
-    // A sidecar that could not be written used to go into errorList ONLY, never
-    // into r.errors: `ok` stayed true, the window said "Complete!", the tick was
-    // green and EJECT lit up over a drive holding no manifest at all. The whole
-    // point of PRO is that the manifest exists. `sidecarFailed` carries it out
-    // so the window can say it and the EJECT button can refuse.
-    for (const r of R) {
-      const wantCk = !cancelCopy && !options.fixedDestPath && options.writeChecksum !== false
-                     && (isPro || isSecure) && r.cksumEntries.length;
-      if (wantCk && options.cksumList !== false) {
-        const ckName = writeChecksumList(r.destPath, cksumAlgo, r.cksumEntries);
-        if (!ckName) { r.errorList.push({ file:'(checksum list)', error:'could not be written to destination', phase:'sidecar' });
-                         r.sidecarFailed = (r.sidecarFailed||[]).concat(['checksum list']); }
-      }
-      if (wantCk && isPro && options.cksumMhl === true && (proAlgo==='xxh64'||proAlgo==='md5')) {
-        const mhlName = writeMHL(r.destPath, proAlgo, r.cksumEntries, { startMs:t0 });
-        if (!mhlName) { r.errorList.push({ file:'(MHL manifest)', error:'could not be written to destination', phase:'sidecar' });
-                         r.sidecarFailed = (r.sidecarFailed||[]).concat(['MHL manifest']); }
-      }
-      // ASC MHL comes IN ADDITION to the classic manifest, and covers every
-      // algorithm ingesto can produce — not only the two the 2005 format knew.
-      if (wantCk && options.ascMhl === true) {
-        const ascName = await writeAscMhl(r.destPath, cksumAlgo, r.cksumEntries, { startMs:t0 });
-        if (!ascName) { r.errorList.push({ file:'(ASC MHL manifest)', error:'could not be written to destination', phase:'sidecar' });
-                         r.sidecarFailed = (r.sidecarFailed||[]).concat(['ASC MHL manifest']); }
-      }
-    }
-  } else if (!cancelCopy) {
-    // FAST mode — no verification; every copied file is recorded for the sentinel.
-    // A CANCELLED run must never land here: it used to fall through to this
-    // branch and declare every copied file good, which then fed the ingest
-    // report's "verified" file list.
-    for (const r of R) for (const c of r.copied)
-      r.copiedForSentinel.push({ p:c.rel.replace(/\\/g,'/'), s:c.size, m:Math.floor(c.mtimeMs/1000), ...(c.destRel&&c.destRel!==c.rel?{d:c.destRel}:{}) });
-  }
-
-  return R.map(r => ({
-    // Copying zero files out of a non-empty card is a failure, not a success.
-    success: !cancelCopy && !r.errors && !scanErrors.length
-             && !(totalFiles > 0 && r.copiedFiles === 0),
-    canceled: cancelCopy,
-    scanIncomplete: scanErrors.length > 0,
-    // True when read-back verification actually bypassed the OS cache (macOS).
-    // When false in SECURE/PRO, the UI suggests a later cold Verify.
-    // True only when the machine CAN defeat the cache AND no destination
-    // read-back purge failed. Capability alone is not enough: on a Windows
-    // box where an antivirus holds each fresh file open, every purge fails
-    // and the read-back comes from RAM — the "check again later" hint must
-    // then reappear instead of being silenced by a mechanism that exists but
-    // didn't work. (The PRO source pass has its own guard: the speed detector.)
-    coldVerify: (isPro || isSecure) ? (nocache.available() && !(r._purgeFails > 0)) : null,
-    // True when the PRO source re-read was demonstrably answered by the OS
-    // cache rather than the card — the pass proves nothing in that case.
-    doubleReadCached: !!r.doubleReadCached,
-    doubleReadSpeed: r.doubleReadSpeed || 0,   // bytes/s of the source re-read
-    // Probe timings (ms for an 8 MB block, cold vs warm) when the double read
-    // was judged cached — useful in a bug report, never shown as-is.
-    cacheProbe: r.probe || null,
-    copySpeed: r.copySpeedMeasured || 0,       // bytes/s sustained while copying
-    recheckList: r.recheckList || null,        // {rel,hash}[] for a forced re-check
-    proAlgoUsed: isPro ? proAlgo : null,
-    sourceName: source.name, sourcePath: source.path, destPath: r.destPath,
-    // Where the card landed, relative to the destination root — what the
-    // ingest report records, so the report never describes a structure that
-    // does not exist on the drive.
-    relFolder: r.relFolder || '',
-    totalFiles, copiedFiles: r.copiedFiles, totalBytes, copiedBytes,
-    // Files passed over because a verified copy already sits on this
-    // destination ("copy new files only"). Recorded so that "2 of 2 copied"
-    // can never pass for a whole card without saying what was left out.
-    skippedFiles: skippedAlready,
-    errors: r.errors, errorList: r.errorList,
-    // Remarks: things that did not happen, on a run where nothing failed. They
-    // go in an orange block under the destinations, on a window whose title
-    // stays green. Nothing failed; something was not done.
-    notes: r.notes || [],
-    // 'no-files' or 'filtered-out' when the card produced nothing to copy.
-    // The count of files WALKED on the card, always, not only on a card that
-    // produced nothing. It was set in one branch, so every successful run
-    // reported "0 files on the card" while also reporting files copied: a
-    // handoff document then said 0 on card and 5 copied, and refused itself.
-    emptyReason: r.emptyReason || null, seenFiles,
-    // Which sidecars this destination is missing. Empty on a normal run.
-    sidecarFailed: r.sidecarFailed || [],
-    // The exact paths this run set aside as *.ingesto-failed, so a retry can
-    // drop those and nothing else.
-    quarantinedPaths: r.quarantinedPaths || [],
-    failedFiles: r.failedFiles, failedMap: r.failedMap, unstableFiles: r.unstableFiles,
-    _cksumEntries: r.cksumEntries,
-    mode: options.mode, proAlgo: isPro ? proAlgo : null,
-    // Whether the card was read a second time. The summary shows it as an
-    // option of the mode ("PRO + DOUBLE READ"); inferring it from verify2Ms
-    // would call a pass that finished in under a millisecond a single read.
-    proDoubleRead: proDouble,
-    // Each phase minus the time the operator held it paused.
-    copyMs:    Math.max(0, (tCopyEnd-tCopyStart) - (pausedAtCopyEnd-pausedAtCopyStart)),
-    verify1Ms: Math.max(0, (tV1End-tCopyEnd)     - (pausedAtV1End-pausedAtCopyEnd)),
-    verify2Ms: Math.max(0, (tV2End-tV1End)       - (pausedAtV2End-pausedAtV1End)),
-    // Pause excluded here as well: the four summary tiles are COPY + V1 + V2
-    // against TOTAL, and leaving pause in only the total made them contradict
-    // each other on screen.
-    duration: Math.max(0, (Date.now()-t0) - pausedMs),
-    _copiedForSentinel: r.copiedForSentinel,
-  }));
-}
-
-
-// A destination folder name must be exactly one usable path segment. Anything
-// else (empty, ".", "..", a name containing a separator) means the template is
-// broken and the ingest would land somewhere the user did not choose.
-// CON, PRN, AUX, NUL, COM1-9, LPT1-9 are device names on Windows: mkdir fails.
-// Until now a Windows card was always called "D:", so no real label could ever
-// reach a folder name; reading the label properly made these reachable, and a
-// card labelled AUX would have failed in the MIDDLE of an ingest instead of
-// being refused before it started. Windows only — the name is perfectly legal
-// on macOS and Linux, and refusing it there would be a false refusal.
-const WIN_DEVICE_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i;
-function isSafeFolderName(name) {
-  if (typeof name !== 'string') return false;
-  const n = name.trim();
-  if (!n || n === '.' || n === '..') return false;
-  if (/[\/\\]/.test(n)) return false;
-  if (process.platform === 'win32' && WIN_DEVICE_NAME.test(n)) return false;
-  if (n.length > 200) return false;   // stay clear of ENAMETOOLONG
-  return true;
-}
-
-// True when `child` is `parent` itself or lives underneath it. Comparison is
-// case-insensitive on Windows/macOS, where the filesystem is too.
-// realpath of the deepest existing ancestor + the rest of the path unchanged.
-function realpathAsFarAsPossible(p) {
-  let head = p, tail = [];
-  for (let i = 0; i < 64; i++) {
-    try { return tail.length ? path.join(fs.realpathSync.native(head), ...tail) : fs.realpathSync.native(head); }
-    catch (_) {
-      const parent = path.dirname(head);
-      if (parent === head) return p;
-      tail.unshift(path.basename(head)); head = parent;
-    }
-  }
-  return p;
-}
-function pathContains(parent, child) {
-  try {
-    const norm = p => {
-      let r = path.resolve(String(p || ''));
-      // Resolve symbolic links, or a destination that is a link to the card
-      // slips past this guard: "/Volumes/BACKUP_LINK -> /Volumes/CARD" and the
-      // card is copied into itself, flagged as ingested, offered for ejection.
-      // A path that does not exist yet (the card folder about to be created)
-      // is resolved as far as it does exist.
-      r = realpathAsFarAsPossible(r);
-      if (process.platform !== 'linux') r = r.toLowerCase();
-      return r;
-    };
-    const p = norm(parent), c = norm(child);
-    if (!p || !c) return false;
-    if (p === c) return true;
-    return c.startsWith(p.endsWith(path.sep) ? p : p + path.sep);
-  } catch (_) { return false; }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// THE SOURCE-CARD LOCK
-// ═══════════════════════════════════════════════════════════════════════════
-// Non-negotiable rule: ingesto never deletes, renames or overwrites a file on a
-// source card. The rule used to hold because every call site was written with
-// care; it now holds because every destructive call in this file goes through
-// the four functions below, and scripts/test-source-lock.js fails the build if
-// a raw fs.unlinkSync / renameSync / rmSync / rmdirSync appears anywhere else.
-//
-// A card is locked for as long as a run that reads it is in progress: an
-// ingest, or a retry of failed files. Not for the whole life of the app: a
-// shuttle drive offloaded as a source in the morning is a legitimate
-// destination in the afternoon, and a session-long lock would have refused
-// every write to it. During a run, PF-E6 already refuses a destination that
-// overlaps the card, so the lock should never fire; it is the second key,
-// the one that holds even if a future change forgets the first.
-//
-// It fails closed: a refused operation throws, and the caller's own error
-// path takes over (a leftover temp file on a destination, never a lost file
-// on a card).
-const _lockedSources = new Map();   // resolved card root -> number of runs using it
-function lockSource(root) {
-  if (!root) return;
-  const k = path.resolve(String(root));
-  _lockedSources.set(k, (_lockedSources.get(k) || 0) + 1);
-}
-function unlockSource(root) {
-  if (!root) return;
-  const k = path.resolve(String(root));
-  const n = (_lockedSources.get(k) || 0) - 1;
-  if (n > 0) _lockedSources.set(k, n); else _lockedSources.delete(k);
-}
-function onLockedSource(p) {
-  for (const root of _lockedSources.keys()) if (pathContains(root, p)) return root;
-  return null;
-}
-function refuseOnSource(op, p) {
-  const root = onLockedSource(p);
-  if (!root) return;
-  const e = new Error(`${op} refused: "${p}" is on the source card "${root}". ingesto never touches a file on a card.`);
-  e.code = 'INGESTO_SOURCE_LOCK';
-  console.error('[source-lock] ' + e.message);
-  throw e;
-}
-function safeUnlink(p) { refuseOnSource('delete', p); fs.unlinkSync(p); }
-function safeRename(from, to) { refuseOnSource('rename', from); refuseOnSource('rename', to); fs.renameSync(from, to); }
-function safeRmTree(p) { refuseOnSource('delete', p); fs.rmSync(p, { recursive: true, force: true }); }
-// Opening a file for writing truncates it: on a card, that is a deletion too.
-function safeWriteTarget(p) { refuseOnSource('write', p); return p; }
-
-// Substitute the template's variables. No cleanup here: the caller cleans each
-// destination segment separately, because a "/" in the template now means "new
-// subfolder" and the two sides of it are two independent folder names.
-// `now` is passed in wherever the same template is resolved twice for one
-// card (the path and, separately, its last level): two calls a millisecond
-// apart could otherwise disagree on {SS}, and a guard would then validate a
-// name other than the one written.
-function resolveTemplateVars(tpl, src, now) {
-  const n=now||new Date(), p=x=>String(x).padStart(2,'0');
-  // A "/" creates a subfolder — but only when it is in the TEMPLATE, which the
-  // operator wrote. A separator arriving inside a VALUE (a card labelled
-  // "A/B", an operator typing "Jean/Marc") would silently add a level the
-  // template never asked for, and push the counter out of the card's own
-  // folder. Values are flattened before substitution.
-  // Folder-name rule, chosen by the interface with each card (2.9.0):
-  // 'ascii' (English, French) turns accents into plain letters and drops
-  // anything else that is not a letter, a digit, "_" or "-"; 'unicode'
-  // (Chinese, and any caller that says nothing) keeps the value as typed.
-  // Mirrored character for character in index.html resolveTplSegs().
-  const rule = src.nameRule === 'ascii' ? 'ascii' : 'unicode';
-  const fold = x => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[œŒæÆßøØđĐłŁþÞð]/g, c => ({'œ':'oe','Œ':'OE','æ':'ae','Æ':'AE','ß':'ss','ø':'o','Ø':'O','đ':'d','Đ':'D','ł':'l','Ł':'L','þ':'th','Þ':'TH','ð':'d'})[c])
-    .replace(/[^A-Za-z0-9_\-]/g, '');
-  const v = x => { const f = String(x == null ? '' : x).replace(/[\/\\]/g, '_'); return rule === 'ascii' ? fold(f) : f; };
-  // For optional fields (cameraman, camera, pp): replace with empty string if
-  // not set so we can clean up orphan separators after
-  const cameraman = v((src.cameraman||'').trim());
-  const camera    = v((src.camera   ||'').trim());
-  // The picture profile the camera was set to (SLOG3, DLOG2, CLOG, HLG...).
-  // Optional, flattened and allowed to resolve to nothing, like the camera
-  // model, plus one rule of its own: letters and digits only, in capitals.
-  // A profile is an acronym everybody spells differently, and two spellings
-  // mean two folders for one thing on the same shoot.
-  //
-  // The interface applies the same rule as the operator types, and again on the
-  // way here. It is applied a third time at this point because this is the last
-  // line before a folder is created: a value that reached the engine by another
-  // door does not get to put a lower-case folder on a drive. Mirrored character
-  // for character in index.html resolveTplSegs(), or the preview would show a
-  // folder other than the one created.
-  const pp        = v((src.pp       ||'').trim()).replace(/[^A-Za-z0-9]/g,'').toUpperCase();
-  return String(tpl == null ? '' : tpl)
-    .replaceAll('{counter}',   v(src.counter)       || '001')
-    .replaceAll('{cardname}',  v(src.name)          || 'CARD')
-    .replaceAll('{operator}',  cameraman)   // canonical name
-    .replaceAll('{cameraman}', cameraman)   // legacy alias — keeps old saved templates working
-    .replaceAll('{camera}',    camera)
-    .replaceAll('{pp}',        pp)
-    // {YYYY} is listed before {YY} for the reader only: "{YY}" is not a
-    // substring of "{YYYY}" — there is no closing brace after the second Y — so
-    // the two substitutions cannot interfere whatever their order.
-    // (A lone brace in a comment inside this function would also break the
-    // brace-matching the test suites use to extract it. Keep them paired.)
-    .replaceAll('{YYYY}', String(n.getFullYear()))
-    .replaceAll('{YY}',  String(n.getFullYear()).slice(-2))
-    .replaceAll('{MM}',  p(n.getMonth()+1))
-    .replaceAll('{DD}',  p(n.getDate()))
-    .replaceAll('{HH}',  p(n.getHours()))
-    .replaceAll('{MIN}', p(n.getMinutes()))
-    .replaceAll('{SS}',  p(n.getSeconds()));
-}
-
-// One destination segment: the cleanup that has always been applied to a
-// folder name. "/" is NOT mapped here — it is the separator, removed by the
-// split above this function.
-function cleanSegment(seg) {
-  return String(seg == null ? '' : seg)
-    // Clean up orphan separators left by empty variables:
-    // e.g. "001__card___260503" → "001_card_260503"
-    .replace(/[_\-]+/g, m => m[0]) // collapse repeated separators to one
-    .replace(/^[_\-]+|[_\-]+$/g, '') // trim leading/trailing separators
-    // Remove illegal filesystem chars
-    .replace(/[<>:"|?*\\]/g,'_')
-    // Windows drops trailing dots and spaces from a directory name, so a
-    // segment ending in one is not the folder we think we are creating.
-    .replace(/[. ]+$/, '');
-}
-
-// The destination path of a card, as a list of folders to create under the
-// destination root. A "/" in the template starts a subfolder:
-//   "DAY1/{camera}/{counter}_{operator}"  →  ["DAY1", "A_CAM", "001_noar"]
-// A segment that resolves to nothing (a card with no camera) creates NO folder
-// rather than an unnamed one — the level simply disappears for that card.
-function buildFolderSegments(tpl, src, now) {
-  return resolveTemplateVars(tpl, src, now).split('/').map(cleanSegment).filter(Boolean);
-}
-
-// The card's OWN folder — the last segment. This is what the counter names and
-// what "one folder per card" refers to.
-function buildFolderName(tpl, src, now) {
-  const segs = buildFolderSegments(tpl, src, now);
-  return segs.length ? segs[segs.length - 1] : '';
-}
-
-// The subfolder levels a template asks for, template-side (before variables are
-// resolved). Used by the guards: the counter must live in the card's folder.
-//
-// A "/" at either end names no level — "{counter}_{cardname}/" is the same
-// template as "{counter}_{cardname}". Without this trim the preview showed a
-// perfectly good path while the pre-flight refused the ingest with "the counter
-// is in a subfolder level", pointing at a level that does not exist.
-function templateSegments(tpl) {
-  const segs = String(tpl == null ? '' : tpl).split('/');
-  while (segs.length && segs[0] === '') segs.shift();
-  while (segs.length && segs[segs.length - 1] === '') segs.pop();
-  return segs.length ? segs : [''];
-}
-
-// The template of the card's OWN folder — the part after the last "/".
-function templateLeaf(tpl) {
-  const segs = templateSegments(tpl);
-  return segs[segs.length - 1];
-}
-const MAX_FOLDER_DEPTH = 4;
-
-// The variables whose value comes from the CLOCK. Each contributes a fixed
-// number of digits to a folder name, which is what lets a pattern know where the
-// counter starts — and, below, what makes a whole level predictable.
-// One list, used by both: a token added here and forgotten there is the failure
-// the round-trip test in scripts/test-template-parity.js exists to catch.
-const CLOCK_TOKENS = { '{YYYY}':'\\d{4}', '{YY}':'\\d{2}', '{MM}':'\\d{2}', '{DD}':'\\d{2}', '{HH}':'\\d{2}', '{MIN}':'\\d{2}', '{SS}':'\\d{2}' };
-
-// Build a matcher that extracts the counter from a folder name, given the SAME
-// template used to create the folders. Without this, the old code only saw a
-// counter when it was the FIRST thing in the name — so moving {counter} behind
-// the date (which the UI actively invites) made every scan return 001 and the
-// collision check blind, silently overwriting earlier reels.
-//
-// Returns { extract(name) -> number|null }. Falls back to "leading digits" when
-// no template (or no {counter} token) is available, matching the old behavior.
-function makeCounterMatcher(tpl) {
-  const leading = name => { const m = String(name).match(/^(\d{1,4})(?:[_\-]|$)/); return m ? parseInt(m[1],10) : null; };
-  // Only the LAST segment of the template names a card folder; the levels
-  // before it are subfolders (DAY1, A_CAM) and never carry a counter.
-  if (tpl && typeof tpl === 'string' && tpl.includes('/')) tpl = templateSegments(tpl).pop();
-  if (!tpl || typeof tpl !== 'string' || !tpl.includes('{counter}')) return { extract: leading };
-
-  // A date token contributes a FIXED number of digits to the folder name, so
-  // the pattern knows exactly where the counter starts. {YYYY} is four of
-  // them: without this entry it would fall through to the literal branch and
-  // the whole pattern would stop matching — the scan would then find no card
-  // at all, restart the counter at 001, and the folder guard would be the
-  // only thing left between an ingest and an existing reel.
-  const FIXED = CLOCK_TOKENS;
-  // {operator} is the canonical name; {cameraman} the legacy alias. BOTH must be
-  // here: a token missing from this set falls through to the literal branch and
-  // the counter scan then never matches any folder — reintroducing the
-  // counter-reset/overwrite bug this matcher exists to fix.
-  const VAR   = new Set(['{cardname}','{cameraman}','{operator}','{camera}','{pp}']);
-  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  // Tokenize the template into {token} pieces and literal runs, then rebuild it
-  // as a regex: {counter} → capture, date tokens → fixed digits, free-text
-  // tokens → non-greedy any, literals → escaped.
-  //
-  // CRITICAL: buildFolderName post-processes the substituted name — illegal
-  // filesystem chars become "_", separator runs collapse to one, and leading/
-  // trailing separators get trimmed (an empty {operator} does exactly that).
-  // The regex must mirror ALL of it: template "{counter}_{operator}" with an
-  // empty operator creates folder "001", and a pattern demanding the literal
-  // "_" would never match it — the scan would return next=001 forever and the
-  // overwrite bug this matcher exists to fix would come straight back. Literal
-  // separator runs therefore become "[_-]*" (flexible, absorbable), after the
-  // same illegal-char mapping the engine applies.
-  //
-  // The counter is anchored on a SEPARATOR BOUNDARY wherever the template puts
-  // one there. Without it the digits float: the pattern for
-  // "{counter}_{cardname}" read "1080p_proxies" as counter 1080 and "260902"
-  // (a {YY}{MM}{DD} subfolder level) as 2609 — and since 2.6.0 walks the
-  // subfolder levels too, the most natural template of all,
-  // "{YY}{MM}{DD}/{counter}_{cardname}", answered next=2610 on day two.
-  // The pattern for "{camera}_{counter}_{cardname}" was worse: the free-text
-  // ".*?" stopped inside the camera name, so "FX3_001_A001" read as counter 3
-  // — the counter froze and the collision check went blind.
-  // The anchor is added ONLY where the template itself has that boundary, so a
-  // template that glues the counter to something else ("{cardname}{counter}")
-  // keeps its old, looser pattern: over-reading a folder is annoying, MISSING a
-  // real card is what overwrites footage.
-  const isSep  = s => /^[_\-]+$/.test(String(s));
-  const endSep = s => /[_\-]$/.test(String(s));
-  const begSep = s => /^[_\-]/.test(String(s));
-  let re = '^';
-  const parts = tpl.split(/(\{[a-zA-Z]+\})/).filter(s => s !== '');
-  // cleanSegment drops the dots and spaces at the END of a folder name (a name
-  // Windows refuses, and the Finder hides). The pattern has to drop them too:
-  // a template written "{counter}_{cardname}." creates "001_A001" on the drive
-  // but was matched against "001_A001\.$", so the scan found no card at all,
-  // answered next=001 for ever, and every later ingest was refused by the
-  // "folder already exists" guard with nothing explaining why.
-  for (let k = parts.length - 1; k >= 0; k--) {
-    const last = parts[k];
-    if (last === '{counter}' || FIXED[last] || VAR.has(last)) break;   // a value can end in anything
-    const trimmed = String(last).replace(/[. ]+$/, '');
-    if (trimmed === last) break;
-    if (trimmed) { parts[k] = trimmed; break; }
-    parts.pop();                                                        // the whole run was dots and spaces
-  }
-  for (let i = 0; i < parts.length; i++) {
-    const p = parts[i];
-    if (p === '{counter}') {
-      const prev = parts[i - 1], next = parts[i + 1];
-      // "^|" keeps the empty-value case working: "{camera}_{counter}" with no
-      // camera creates the folder "001", where the separator is gone.
-      const before = (i === 0 || (prev !== undefined && !FIXED[prev] && !VAR.has(prev) && endSep(prev)))
-                     ? '(?:^|(?<=[_\\-]))' : '';
-      const after  = (i === parts.length - 1 || (next !== undefined && !FIXED[next] && !VAR.has(next) && begSep(next)))
-                     ? '(?=[_\\-]|$)' : '';
-      re += before + '(\\d{1,4})' + after;
-    }
-    else if (FIXED[p]) re += FIXED[p];
-    else if (VAR.has(p)) re += '.*?';
-    else re += esc(p.replace(/[<>:"|?*\/\\]/g, '_')).replace(/[_\-]+/g, '[_\\-]*');
-  }
-  re += '$';
-  let rx = null; try { rx = new RegExp(re); } catch(_) { rx = null; }
-  return { extract: name => {
-    if (rx) { const m = String(name).match(rx); if (m && m[1] != null) return parseInt(m[1],10); return null; }
-    return leading(name);
-  }};
-}
-
-// Walk a destination looking for CARD folders. Since a template can place
-// cards under subfolders (DAY1/A_CAM/001_...), reading only the root would
-// miss every card of every earlier day: the counter would restart at 001 and
-// the gap in the numbering — the operator's only signal that a card is missing
-// — would disappear. The counter stays GLOBAL to the destination, so the scan
-// is global too.
-//
-// EVERY folder is tested, and the walk NEVER stops descending because a name
-// happened to match. The matcher is deliberately permissive (an empty variable
-// collapses its separator, so literal separators are optional in the pattern),
-// which means a subfolder level can look like a card — "01_JOUR1" reads as
-// card 1. Treating that as a card and not descending hid every real card
-// underneath it: the scan then returned next=002 with 002 already on the disk,
-// and the ingest wrote into an existing card's folder. Counting a subfolder as
-// a card only pushes the counter FORWARD, which is safe and visible; missing a
-// card is not.
-//
-// Depth: a card can never be deeper than the number of levels the template
-// describes, so that is where the walk stops — one readdir for a template with
-// no "/", exactly as before, and never deeper than the template asks for.
-// `structural` is the list of patterns from structuralLevelPatterns(): a folder
-// whose name matches one of them is a level the template always creates, not a
-// card. Without it "{YYYY}/{counter}_{cardname}" read the year folder "2026" as
-// card 2026 and numbered the first ingest of the day 2027.
-function walkCardFolders(root, matcher, onCard, maxDepth, structural) {
-  const levels = Array.isArray(structural) ? structural : [];
-  let stopped = false;
-  (function walk(dir, depth, rel) {
-    if (stopped) return;
-    let entries;
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
-    for (const e of entries) {
-      if (stopped) return;
-      if (e.name.startsWith('.')) continue;
-      // A symbolic link to a folder IS a folder here: mkdir and rename follow
-      // it, so a linked card folder that this walk could not see was written
-      // through — onto the link's target.
-      let isDir = e.isDirectory();
-      if (!isDir && e.isSymbolicLink()) { try { isDir = fs.statSync(path.join(dir, e.name)).isDirectory(); } catch (_) {} }
-      if (!isDir) continue;
-      if (e.name === 'ascmhl') continue;          // our own manifest history
-      const childRel = rel ? rel + '/' + e.name : e.name;
-      if (!levels.some(rx => rx.test(e.name))) {
-        const n = matcher.extract(e.name);
-        if (n != null && onCard(n, childRel) === false) { stopped = true; return; }
-      }
-      if (depth < maxDepth) walk(path.join(dir, e.name), depth + 1, childRel);
-    }
-  })(root, 1, '');
-  return stopped;
-}
-// How deep the cards of THIS template sit. A level that resolves to nothing
-// for a given card makes it shallower, never deeper.
-function templateDepth(tpl) {
-  return Math.min(MAX_FOLDER_DEPTH, Math.max(1, templateSegments(tpl).length));
-}
-// A SUBFOLDER level built only from the clock, fixed text and separators is the
-// same folder for every card of that moment: it is structure, not a card. This
-// builds one pattern per such level, so the walk can recognise those folders by
-// NAME wherever they turn up.
-//
-// Why by name and not by depth: a level that resolves to nothing creates no
-// folder, so the card moves UP — and the levels that vanish are not necessarily
-// the ones nearest the card. "{camera}/{YYYY}{MM}{DD}/{counter}_{cardname}"
-// with no camera writes the card at "20260907/001_A001", two levels up from
-// where the template puts it. A depth floor got that wrong and stopped seeing
-// the card at all; a name does not move.
-//
-// The pattern is built exactly as makeCounterMatcher builds the card pattern, so
-// the two agree on what a level looks like. A level containing a variable the
-// OPERATOR fills in — {cardname}, {operator}, {camera} — gets no pattern at all:
-// it could be anything, and a pattern that matches anything would hide real
-// cards. Those levels keep the old, permissive behaviour, where a subfolder that
-// looks like a card only ever pushes the counter forward.
-//
-// The card's own level (the last one) never gets a pattern: that is the level we
-// are looking for.
-//
-// Known gap, in the safe direction only: a level ending in a dot or a space
-// ("{YYYY}." ) builds a pattern for the name with it, while cleanSegment strips
-// the character before creating the folder. The level is then not recognised and
-// is counted as a card — the old over-count, never a miss.
-function structuralLevelPatterns(tpl) {
-  const segs = templateSegments(tpl);
-  const esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const out = [];
-  for (let i = 0; i < segs.length - 1; i++) {
-    const parts = String(segs[i]).split(/(\{[a-zA-Z]+\})/).filter(x => x !== '');
-    if (!parts.length) continue;
-    let re = '^', clockOnly = true;
-    for (const p of parts) {
-      if (CLOCK_TOKENS[p]) { re += CLOCK_TOKENS[p]; continue; }
-      if (/^\{[a-zA-Z]+\}$/.test(p)) { clockOnly = false; break; }   // an operator-filled variable
-      re += esc(p.replace(/[<>:"|?*\/\\]/g, '_')).replace(/[_\-]+/g, '[_\\-]*');
-    }
-    if (!clockOnly) continue;
-    try { out.push(new RegExp(re + '$')); } catch (_) {}
-  }
-  return out;
-}
-// Walk one destination, EXACTLY as deep as the template describes — no deeper.
-//
-// A first version retried the walk at full depth when the template's own depth
-// yielded nothing, so that a tree built by another template would still be
-// seen. It cost far more than it gave: on an ordinary post drive holding
-// PROJECT_X/{01_DOC,02_RUSHES,03_EDIT}, a flat template scanned two levels
-// down, read "01_DOC" as card 1, and answered next=004 — refusing counters 1,
-// 2 and 3 with "already exists in the destination". Same on a destination
-// whose cards were ingested without a counter: DCIM/100MSDCF, 101MSDCF read as
-// cards, next=102. 2.5.5 read the root only and answered 001 in both cases.
-//
-// What the retry actually covered — cards sitting DEEPER than the current
-// template — is rare (it needs the template's depth to have changed) and is
-// not dangerous: the ingest then lands somewhere else in the tree and nothing
-// is overwritten. Inventing a counter out of a project folder, on the other
-// hand, happens on the first real drive.
-function walkDestination(destPath, matcher, tpl, onCard) {
-  walkCardFolders(destPath, matcher, onCard, templateDepth(tpl), structuralLevelPatterns(tpl));
-}
-
 // ─── IPC: Check if a counter already exists in any destination ──────────────
 // `counter` is a number OR a list of numbers: a whole batch of cards is checked
-// in ONE walk of the tree, rather than one walk per card (which, on a network
-// destination, froze the interface for seconds before every ingest).
+  // in ONE walk of the tree, rather than one walk per card (which, on a network
+// destination, freezes the interface for seconds before every ingest).
 // Returns { counter, folder } for the first collision found, or null.
 ipcMain.handle('check-counter-collision', async (_, destPaths, counter, template) => {
   const wanted = new Set((Array.isArray(counter) ? counter : [counter])
@@ -3785,8 +709,8 @@ ipcMain.handle('check-counter-collision', async (_, destPaths, counter, template
   for (const destPath of (Array.isArray(destPaths) ? destPaths : [])) {
     walkDestination(destPath, matcher, template, (n, rel) => {
       // The refusal window names the drive and opens the folder, so the answer
-      // carries both: `folder` alone left the operator with a relative path and
-      // no way to look at what is in it.
+      // carries both: `folder` alone would leave the operator with a relative
+      // path and no way to look at what is in it.
       if (wanted.has(n)) {
         hit = { counter: n, folder: rel, dest: path.basename(destPath) || destPath,
                 destPath, absPath: path.join(destPath, rel) };
@@ -3797,27 +721,10 @@ ipcMain.handle('check-counter-collision', async (_, destPaths, counter, template
   }
   return null; // no collision
 });
-
-// ─── IPC: Scan destinations — returns { max, next } ─────────────────────────
-function scanCounterInDests(destPaths, template) {
-  const matcher = makeCounterMatcher(template);
-  let maxNum = 0;
-  for (const destPath of (Array.isArray(destPaths) ? destPaths : [])) {
-    walkDestination(destPath, matcher, template, (n) => { if (n > maxNum) maxNum = n; });
-  }
-  return { max: maxNum, next: Math.max(maxNum + 1, 1) };
-}
-
-// Legacy — kept for compatibility
-ipcMain.handle('scan-dest-counter', async (_, destPaths, template) => {
-  return scanCounterInDests(destPaths, template).next;
-});
-
-// New — returns both max found and next to use
+// Returns both the max found and the next to use
 ipcMain.handle('scan-dest-counter-full', async (_, destPaths, template) => {
   return scanCounterInDests(destPaths, template);
 });
-
 ipcMain.handle('open-external', async (_, url) => {
   // SECURITY: only ever hand http(s) URLs to the OS. Without this, a value
   // arriving from the update check (a remote version.json) could be a file://
@@ -3854,9 +761,10 @@ ipcMain.handle('ntfy-send', async (_, opts) => {
       }
       // ntfy takes a priority as 1..5 OR as one of its five words. The
       // interface sends the words ("high", "urgent"), and parseInt('high') is
-      // NaN, so the header was dropped and EVERY alert (failure, cancel,
-      // suspect card) was delivered at the same level as "transfer complete".
-      // Silent, and exactly the notifications meant to wake a phone.
+      // NaN: parsed as a number only, the header would be dropped and EVERY
+      // alert (failure, cancel, suspect card) delivered at the same level as
+      // "transfer complete". Silent, and exactly the notifications meant to
+      // wake a phone. Hence the word table below.
       if (opts.priority) {
         const NAMED = { min:1, low:2, default:3, high:4, urgent:5, max:5 };
         const raw = String(opts.priority).trim().toLowerCase();
@@ -3875,7 +783,7 @@ ipcMain.handle('ntfy-send', async (_, opts) => {
 });
 ipcMain.handle('is-removable', async (_, p) => {
   try {
-    // Asynchronous (2.9.1): asked while an ingest may be running, it must not
+    // Asynchronous: asked while an ingest may be running, it must not
     // stop the copy while the system answers.
     if (process.platform === 'darwin') {
       const out = await tryExecFile('diskutil', ['info', String(p)], 5000);
@@ -3911,8 +819,8 @@ ipcMain.handle('is-removable', async (_, p) => {
 });
 ipcMain.handle('report-write-named', async (_, destPath, name, content, appendIfExists) => {
   // SECURITY: `name` must be a plain file name inside destPath. A crafted name
-  // like "../../../../etc/cron.d/x" used to let the renderer write anywhere the
-  // user could — silent persistence. Reject any name with a path separator or
+  // like "../../../../etc/cron.d/x" would let the renderer write anywhere the
+  // user can (silent persistence). Reject any name with a path separator or
   // "..", and confirm the resolved path really sits inside destPath.
   try {
     const base = String(name || '');
@@ -3927,7 +835,7 @@ ipcMain.handle('report-write-named', async (_, destPath, name, content, appendIf
     // A CSV cannot be read back (only the HTML/JSON carry the history), so when
     // it is the ONLY report on the drive the caller asks for an APPEND: the
     // rows of this run go under the existing ones, header skipped. Rewriting
-    // it from today's cards erased the whole ingest history of the drive.
+    // it from today's cards would erase the whole ingest history of the drive.
     if (appendIfExists) {
       const text = String(content);
       const nl = text.indexOf('\n');
@@ -3956,14 +864,15 @@ ipcMain.handle('report-write-named', async (_, destPath, name, content, appendIf
     return true;
   } catch (_) { return false; }
 });
-// ─── Commands typed in Settings: asked once, by the main process (2.9.1) ────
+// ─── Commands typed in Settings: asked once, by the main process ───────────
 // The post-ingest command and the card handoff run a program on this computer.
 // The interface hands them over, so a script injected into the interface
-// (through a card label, a report read from a shared drive...) could have run
-// anything. Now the FIRST time a given command is about to run, the main
-// process shows a system dialog with the exact command, and runs it only if
-// the operator says so. The answer is remembered for that exact command, in a
-// file the interface cannot write. Nothing can answer the dialog but a person.
+// (through a card label, a report read from a shared drive...) could run
+// anything if the main process obeyed blindly. So the FIRST time a given
+// command is about to run, the main process shows a system dialog with the
+// exact command, and runs it only if the operator says so. The answer is
+// remembered for that exact command, in a file the interface cannot write.
+// Nothing can answer the dialog but a person.
 const TRUSTED_PATH = path.join(app.getPath('userData'), 'ingesto-trusted-commands.json');
 function loadTrustedCommands() {
   try { const a = JSON.parse(fs.readFileSync(TRUSTED_PATH, 'utf8')); return Array.isArray(a) ? a.filter(x => typeof x === 'string') : []; }
@@ -4007,14 +916,13 @@ function argvMatchesTemplate(argv, tpl) {
   }
   return true;
 }
-
 ipcMain.handle('run-hook', async (_, argv, tpl) => {
-  // SECURITY: the post-ingest hook now runs WITHOUT a shell. The renderer sends
+  // SECURITY: the post-ingest hook runs WITHOUT a shell. The renderer sends
   // an argument array [program, ...args]; each argument is passed verbatim to
-  // the OS, never concatenated into a command line. A hostile card name — or a
-  // path with spaces — can therefore no longer inject anything or split into
-  // extra arguments. (The former exec(command) ran the whole string through a
-  // shell, which was a command-injection surface.)
+  // the OS, never concatenated into a command line. A hostile card name, or a
+  // path with spaces, therefore cannot inject anything or split into extra
+  // arguments. (Running the whole string through a shell, as exec(command)
+  // does, would be a command-injection surface.)
   try {
     if (!Array.isArray(argv) || !argv.length || typeof argv[0] !== 'string' || !argv[0].trim()) {
       return { ok: false, error: 'empty or malformed hook command' };
@@ -4041,7 +949,7 @@ ipcMain.handle('run-hook', async (_, argv, tpl) => {
     });
   } catch (e) { return { ok: false, error: e.message }; }
 });
-// ─── The handoff (issue #10) ────────────────────────────────────────────────
+// ─── The handoff ────────────────────────────────────────────────────────────
 // Writes one card's document to a scratch file, runs the operator's command
 // with that path as its LAST argument, and removes the file when the command
 // returns. The path is appended, never substituted into the command: there is
@@ -4059,7 +967,7 @@ ipcMain.handle('handoff', async (_, payload, argv, keep) => {
       return { ok: false, error: 'empty or malformed handoff command' };
     if (!payload || typeof payload !== 'object')
       return { ok: false, error: 'no document to hand over' };
-    // Asked once per command, by the system, not by the interface (2.9.1).
+    // Asked once per command, by the system, not by the interface.
     if (!(await approveCommand('handoff', argv)))
       return { ok: false, error: 'not run: the command was not approved' };
 
@@ -4123,26 +1031,6 @@ ipcMain.handle('handoff', async (_, payload, argv, keep) => {
     } catch (_) {} }
   }
 });
-
-// What the OS knows about the volume a card is mounted on. macOS only for the
-// identifier: elsewhere there is no cheap equivalent, and a script that needs
-// one on Windows can read it itself.
-function volumeIdentity(p) {
-  const out = { uuid: null, removable: null, mounted: false };
-  if (!p) return out;
-  try { out.mounted = fs.statSync(p).isDirectory(); } catch (_) { return out; }
-  if (process.platform !== 'darwin') return out;
-  try {
-    const txt = execFileSync('diskutil', ['info', p],
-      { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] });
-    const m = txt.match(/Volume UUID:\s*([0-9A-Fa-f-]+)/);
-    if (m) out.uuid = m[1];
-    const r = txt.match(/Removable Media:\s*(\w+)/);
-    if (r) out.removable = /removable|yes/i.test(r[1]);
-  } catch (_) {}
-  return out;
-}
-
 ipcMain.handle('report-read', async (_, destPath) => {
   // Prefer the HTML's embedded data; fall back to the JSON sidecar when HTML isn't written.
   // `tooBig` separates "this file is not one we are willing to read" from "we
@@ -4160,7 +1048,7 @@ ipcMain.handle('report-read', async (_, destPath) => {
     htmlExists = true;
     if (rst.size > REPORT_MAX_BYTES) { tooBig = true; throw new Error('report too large'); }
     const html = fs.readFileSync(fp, 'utf8');
-    // Reports written from 2.4.7 carry a gzip+base64 data block; older ones
+    // Reports carry a gzip+base64 data block; those written by earlier versions
     // carry plain JSON. Both must be readable, or updating an existing report
     // would silently start it over from scratch and lose its history.
     const mz = html.match(/<script id="ingesto-report-data" type="application\/gzip\+base64">([\s\S]*?)<\/script>/);
@@ -4189,9 +1077,9 @@ ipcMain.handle('report-read', async (_, destPath) => {
     if (j && Array.isArray(j.records)) return { created: j.created, records: j.records };
   } catch (_) {}
   // A report file that EXISTS but cannot be read is not the same as no report.
-  // Returning null there made the next ingest rewrite the destination's report
-  // with only today's cards — the client-facing history gone, silently. Say so
-  // instead, so the caller can preserve the old file and warn.
+  // Returning null there would make the next ingest rewrite the destination's
+  // report with only today's cards: the client-facing history gone, silently.
+  // Say so instead, so the caller can preserve the old file and warn.
   if (htmlExists) return { unreadable: true, blockFound, tooBig, records: [] };
   return null;
 });
@@ -4221,74 +1109,10 @@ ipcMain.handle('disk-free', async (_, p) => {
   try { const s = fs.statfsSync(p); return { free: s.bavail * s.bsize, total: s.blocks * s.bsize }; }
   catch (_) { return null; }
 });
-// ─── Are these volumes still there? ────────────────────────────────────────
-// A card or a destination drive can be unplugged, ejected or dropped off the
-// network between the moment it is loaded and the moment Start is pressed.
-// Nothing noticed: the ingest began and failed file by file.
-//
-// Existence alone is not enough. On Linux an unmounted volume often leaves its
-// empty mount point behind, and on any system a second card can be mounted at
-// the path the first one had. So the device id recorded when the volume was
-// loaded is compared with the one it has now: a different device is a different
-// volume, whatever the path says.
-// Is this volume still there, and still the SAME volume? Split out of the IPC
-// handler so the rules can be exercised against a real filesystem in the tests.
-function checkOnePath(e) {
-    const p = e && e.path;
-    const out = { path: p, ok: false, reason: 'missing', dev: null, isMount: null, total: null };
-    if (!p) return out;
-    let st;
-    try { st = fs.statSync(p); }
-    catch (err) {
-      out.reason = (err && err.code === 'ENOENT') ? 'missing' : 'unreachable';
-      return out;
-    }
-    if (!st.isDirectory()) { out.reason = 'notdir'; return out; }
-    out.dev = st.dev;
-
-    // Is this path a mount point AT THIS INSTANT? Compared with its own parent,
-    // never with a value remembered from earlier — which is the whole point:
-    // a volume that is unplugged and plugged back in gets a NEW device number
-    // on macOS, so comparing device numbers across time rejected the very
-    // recovery the error message asks the operator to perform.
-    try {
-      const up = path.dirname(p);
-      out.isMount = (up === p) ? true : (fs.statSync(up).dev !== st.dev);
-    } catch (_) { out.isMount = null; }
-
-    // Capacity of the filesystem behind this path. Stable for a given volume
-    // across mounts, and different for a different card — which makes it a
-    // usable identity check where the device number is not.
-    try { const sf = fs.statfsSync(p); out.total = sf.blocks * sf.bsize; }
-    catch (_) { out.total = null; }
-
-    try { fs.accessSync(p, fs.constants.R_OK); }
-    catch (_) { out.reason = 'unreachable'; return out; }
-    // A network share can vanish while its mount point survives: the stat
-    // succeeds but reading the directory does not.
-    try { fs.readdirSync(p); }
-    catch (_) { out.reason = 'unreachable'; return out; }
-
-    // It was a mount point when it was loaded and it is not one any more: the
-    // volume is gone and only its empty mount folder is left. Linux leaves one
-    // behind routinely, and there the path alone proves nothing.
-    if (e.isMount === true && out.isMount === false) { out.reason = 'unmounted'; return out; }
-
-    // A different volume at the same path. One percent of tolerance because an
-    // APFS volume shares its container and its reported size can drift a little
-    // between mounts — a real swap changes the capacity by far more than that.
-    if (e.total > 0 && out.total > 0) {
-      const diff = Math.abs(out.total - e.total) / e.total;
-      if (diff > 0.01) { out.reason = 'replaced'; return out; }
-    }
-
-    out.ok = true; out.reason = null;
-    return out;
-}
 ipcMain.handle('check-paths', async (_, entries) => {
   const list = Array.isArray(entries) ? entries : [];
-  // Read once for the whole list: which of these paths are produced on read
-  // (2.9.2). The window warns about those when they are loaded.
+  // Read once for the whole list: which of these paths are produced on read.
+  // The window warns about those when they are loaded.
   let table = [];
   if (process.platform !== 'win32') { try { table = await readMountTable(); } catch (_) {} }
   const virtualOf = (p) => { try { const m = p ? mountOfPath(path.resolve(p), table) : null; return !!(m && isVirtualMountType(m.type)); } catch (_) { return false; } };
@@ -4327,7 +1151,15 @@ ipcMain.handle('redo-double-read', async (event, { sourcePath, algo, files }) =>
   if (!Array.isArray(files) || !files.length) return { ok:false, error:'nothing to re-check' };
   // Never while an ingest runs: unmounting a card that is being read would
   // break that ingest.
-  if (activeCopyCount > 0) return { ok:false, error:'an ingest is running' };
+  if (ctl.activeCopyCount > 0) return { ok:false, error:'an ingest is running' };
+  // Counted as a running ingest from here on, before the first await: START
+  // is refused, and quitting asks first, as long as the card is unmounted or
+  // being read.
+  ctl.activeCopyCount++;
+  try { return await redoDoubleRead(event, sourcePath, algo, files); }
+  finally { ctl.activeCopyCount--; }
+});
+async function redoDoubleRead(event, sourcePath, algo, files) {
   // A volume produced on read (HDE) has no card behind it to re-read.
   if (isHdeSource(sourcePath) || await isVirtualSource(sourcePath)) return { ok:false, error:'virtual volume: there is no card to re-read' };
 
@@ -4335,8 +1167,8 @@ ipcMain.handle('redo-double-read', async (event, { sourcePath, algo, files }) =>
   // the source sits on that volume. The source can be a folder INSIDE the card
   // (/Volumes/CARD/PRIVATE/M4ROOT): the file list is relative to that folder,
   // so after the remount the same folder is looked up under the new mount
-  // point. 2.9.0 and earlier looked from the volume root, found nothing, and
-  // reported every file as unreadable.
+  // point. Looking from the volume root would find nothing and report every
+  // file as unreadable.
   let device = '', oldMount = '';
   try {
     const info = await tryExecFile('diskutil', ['info', sourcePath], 5000);
@@ -4350,14 +1182,16 @@ ipcMain.handle('redo-double-read', async (event, { sourcePath, algo, files }) =>
     if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) sub = rel;
   }
 
-  try { execFileSync('diskutil', ['unmount', sourcePath], { timeout: 20000, stdio:['ignore','pipe','ignore'] }); }
+  // diskutil runs asynchronously: the window stays responsive while macOS
+  // unmounts and mounts the card, which can take several seconds.
+  try { await execFileP('diskutil', ['unmount', sourcePath], { timeout: 20000, windowsHide: true }); }
   catch (e) { return { ok:false, error:'the card could not be unmounted, another application is using it' }; }
 
   // Remount and find where it landed (usually the same path, but macOS can
   // append a suffix if a stale mount point lingers).
   let mounted = '';
   try {
-    execFileSync('diskutil', ['mount', device], { timeout: 20000, stdio:['ignore','pipe','ignore'] });
+    await execFileP('diskutil', ['mount', device], { timeout: 20000, windowsHide: true });
     const info2 = await tryExecFile('diskutil', ['info', device], 5000);
     mounted = (info2.match(/Mount Point:\s+(.+)/i) || [])[1]?.trim() || '';
   } catch (_) {}
@@ -4390,40 +1224,42 @@ ipcMain.handle('redo-double-read', async (event, { sourcePath, algo, files }) =>
   const secs = Math.max(0.001, (Date.now() - t0) / 1000);
   return { ok:true, mountPoint:mounted, checked, unstable, errors,
            speed: bytes / secs, durationMs: Date.now() - t0 };
-});
-
+}
+// Asynchronous: an eject can take up to 15 s (a drive still flushing, a
+// Finder window open on it), and a synchronous call would freeze the window
+// and every other request to the main process for that long.
 ipcMain.handle('eject-volume', async (_, volPath) => {
+  const run = (cmd, args, timeout) => execFileP(cmd, args, { encoding: 'utf8', timeout, windowsHide: true });
   try {
     if (process.platform === 'darwin') {
-      execFileSync('diskutil', ['eject', volPath], { timeout: 15000, stdio:['ignore','pipe','ignore'] });
+      await run('diskutil', ['eject', volPath], 15000);
       return { ok: true };
     }
     if (process.platform === 'win32') {
       const m = String(volPath).match(/^([A-Za-z]):/);
       if (!m) return { ok: false, error: 'no drive letter' };
       // Best-effort on Windows — may fail silently depending on config
-      execSync(`powershell -NoProfile -Command "(New-Object -comObject Shell.Application).Namespace(17).ParseName('${m[1]}:').InvokeVerb('Eject')"`, { timeout: 15000 });
+      await run('powershell', ['-NoProfile', '-Command',
+        `(New-Object -comObject Shell.Application).Namespace(17).ParseName('${m[1]}:').InvokeVerb('Eject')`], 15000);
       return { ok: true };
     }
     if (process.platform === 'linux') {
       // Resolve the block device behind the mountpoint, then let udisks2
       // unmount it — polkit grants this to the desktop session without sudo,
       // exactly like the file manager's own eject button.
-      const dev = execFileSync('findmnt', ['-n', '-o', 'SOURCE', volPath],
-        { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+      const dev = String((await run('findmnt', ['-n', '-o', 'SOURCE', volPath], 5000)).stdout || '').trim();
       if (!dev) return { ok: false, error: 'device not found' };
-      execFileSync('udisksctl', ['unmount', '--block-device', dev],
-        { timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'] });
+      await run('udisksctl', ['unmount', '--block-device', dev], 15000);
       return { ok: true };
     }
     return { ok: false, error: 'unsupported platform' };
   } catch (e) { return { ok: false, error: e.message }; }
 });
-// Reveal, and only reveal. This used to be shell.openPath(), which does not
-// show a file: it OPENS it, with whatever application owns its extension. The
-// path can come from a record read back out of a report that lives on a shared
-// destination, so a stranger with write access to that drive could have made
-// the reveal button launch a file of their choosing. showItemInFolder opens the
+// Reveal, and only reveal. Not shell.openPath(), which does not show a file:
+// it OPENS it, with whatever application owns its extension. The path can come
+// from a record read back out of a report that lives on a shared destination,
+// so a stranger with write access to that drive could make the reveal button
+// launch a file of their choosing. showItemInFolder opens the
 // enclosing folder and selects the item: nothing is executed.
 //
 // The path is checked as well: it has to exist, and it has to be a real path,
@@ -4437,7 +1273,6 @@ ipcMain.handle('reveal-path', async (_, p) => {
   } catch (_) { return false; }
 });
 ipcMain.handle('get-version',   async ()    => app.getVersion());
-
 // ─── Camera auto-detection ───────────────────────────────────────────────
 ipcMain.handle('detect-camera', async (_, rootPath) => {
   // Not on an HDE volume: detectCamera reads synchronously, and that volume
@@ -4446,7 +1281,6 @@ ipcMain.handle('detect-camera', async (_, rootPath) => {
   try { return detectCamera(rootPath) || null; }
   catch (_) { return null; }
 });
-
 // ─── Sentinel inspection (unformatted-card detection) ────────────────────
 ipcMain.handle('inspect-card', async (_, rootPath, probeWrite = false, destRoots = null) => {
   // Never on an HDE volume: no write probe, no card log on a view that is

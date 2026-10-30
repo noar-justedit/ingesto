@@ -2,6 +2,101 @@
 
 All notable changes to ingesto. Versions before 2.5.5 are not listed here.
 
+## 2.11.0 (2026-10-29)
+Fixes found by the code review, and the end of the clean-up.
+
+Fixed
+- An empty card (or a card whose files are all excluded by the file filter)
+  no longer creates its folder on the destinations. The empty folder took a
+  counter number and read as an ingested card.
+- The end-of-ingest sounds play again. The window's security policy, added in
+  2.9.1, refused them without a word.
+- "Check the card for real" (PRO, macOS) counts as a running ingest: START is
+  refused and quitting asks first while the card is unmounted and re-read.
+- Ejecting a card, and the unmount and remount of that check, no longer freeze
+  the application while macOS works (up to 15 to 20 seconds).
+- Cancel during a Verify stops that Verify only: a Verify started right after
+  is no longer cancelled too, and a Verify started at the same moment no
+  longer clears the Cancel.
+- Settings: a value that is missing or unusable in the preferences file or in
+  an imported settings file takes the default of ingesto, the same way in
+  both. Before, an imported file without the report switch turned the report
+  off, and an imported file with an unknown copy mode kept the current one.
+
+Changed, nothing visible
+- The window holds no code in its markup any more: every button is wired in
+  `src/renderer/scripts/bindings.js`, and the window refuses inline script
+  (`script-src 'self'`). A name or text that reached the page by mistake can
+  never run.
+- One table of settings (`src/renderer/scripts/preferences.js`) for saving,
+  loading, exporting and importing.
+- Every result of the engine has the same fields, refused or not.
+- The verification is split in three steps (destinations, card re-read,
+  manifests). The fixed parts of the HTML report (stylesheet and viewer) are
+  in `src/renderer/scripts/report-template.js`; the reports written are
+  identical.
+- The window's listeners are removed one by one (`preload.js`): removing one
+  no longer removes the others on the same channel.
+
+## 2.10.2 (2026-10-29)
+Clean-up, steps 2 to 6. Nothing changes for the user: every screen, every
+ingest and every file written are the same as in 2.10.1.
+- `src/shared/`: the rules the engine and the interface must apply alike exist
+  once: the folder template and safe folder names (`folder-names.js`), the HDE
+  rule (`sources.js`), the copy modes (`modes.js`). The interface no longer
+  keeps its own copies.
+- Copy modes are named in the code (`MODE.FAST`, `MODE.SIZE_CHECK`,
+  `MODE.SECURE`, `MODE.PRO`). Their values ('fast', 'normal', 'slow', 'pro')
+  are unchanged, so preferences, card logs and reports read as before.
+- The main process is split into modules: `engine.js`, `copy-io.js`,
+  `source-lock.js`, `manifests.js`, `hashing.js`, `io-deadline.js`,
+  `mounts.js`, `volumes.js`, `counter-scan.js`, `run-control.js`, `util.js`.
+  `main.js` keeps the window, the menus and the IPC handlers.
+- The copy engine (`performCopyMulti`) runs in named phases around one `run`
+  object instead of one function of 1,100 lines.
+- The interface is split: `index.html` (markup), `styles.css`, and
+  `src/renderer/scripts/` (one file per part of the window). Every field of the
+  window state `S` is declared in `scripts/state.js`.
+- Comments describe the current rule and its reason; the history stays here.
+- Removed: the unused `scan-dest-counter` channel.
+- Tests read the code through `scripts/lib/source.js`, and three new checks
+  guard the result: one list of modes, no mode compared by its raw value, every
+  field of `S` declared. The card-lock test now scans every engine file and
+  refuses a renamed `fs`.
+
+## 2.10.1 (2026-10-29)
+Clean-up, step 1: the tests. The application is unchanged from 2.9.2.
+- The eight tests that load the real engine now share `scripts/lib/harness.js`
+  instead of each carrying its own stand-in for Electron.
+- `test-engine-guards.js` rewritten as real ingests: the reveal action, the
+  cleaned counter in the note's name, the card journal refusal and its 64 MB
+  cap, the counter read back after a template ending in a dot, the batch
+  refusal (PF-E6), the journal recording what the engine really did. Only the
+  flush-before-rename rule is still read in the code: no test can observe a
+  power cut.
+- `test-source-stall.js`: the engine scenarios (a card that stops answering,
+  a volume produced on read) now run as real ingests through named pipes, in
+  a child process with the deadline shortened to 400 ms and a time limit, so
+  a regression that hangs is a failure rather than a frozen test.
+- For that, the engine reads `INGESTO_STALL_MS` from the environment; unset
+  (always, in the application) the deadline stays 60 s.
+
+## 2.10.0 (2026-10-29)
+First step of the code clean-up (rule 8 of AGENTS.md). The application is
+unchanged from 2.9.2; nothing is visible to the user.
+- Regression bench: `scripts/test-regression.js` runs 14 real ingests through
+  the real engine (every mode, two destinations, card log and "copy new files
+  only", a refusal, subfolders and a note, the file filter, a batch of two
+  cards, an empty card, Verify) and compares results and files, byte for byte,
+  with the recorded reference `scripts/fixtures/regression.json`. Every later
+  clean-up step must leave it green without touching the reference.
+- `scripts/lib/harness.js`: the real engine loaded outside Electron, with
+  temporary folders and deterministic test cards, shared by the tests.
+- Publishing: the publishing scripts (`scripts/push_github.*`) leave GitHub
+  with this version, like the other private files (rule 7).
+- `AGENTS.md` carries the rules as of 29.10.2026 (rule 8 added, rules 5 and 7
+  rewritten).
+
 ## 2.9.3 (2026-10-27)
 Publishing script fix. The application itself is unchanged from 2.9.2.
 - `push_github.command`, double-clicked from Finder, worked from the

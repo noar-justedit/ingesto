@@ -24,8 +24,13 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const MAIN = fs.readFileSync(path.join(ROOT, 'src', 'main', 'main.js'), 'utf8');
-const REND = fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'index.html'), 'utf8');
+const MAIN = require('./lib/source').ENGINE;
+const REND = require('./lib/source').RENDERER;
+// Folder names and source kinds live in src/shared since 2.10.2 (one copy for
+// the engine and the window).
+const SHARED = ['folder-names.js', 'sources.js']
+  .map(f => fs.readFileSync(path.join(__dirname, '..', 'src', 'shared', f), 'utf8')).join('\n');
+const SHARED_API = Object.assign({}, require('../src/shared/folder-names'), require('../src/shared/sources'));
 
 function extractConst(src, name, where) {
   const m = src.match(new RegExp(`^const ${name} = .*;$`, 'm'));
@@ -50,14 +55,15 @@ const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fai
 // ── The engine ──────────────────────────────────────────────────────────────
 const eng = vm.createContext({ console });
 vm.runInContext([
-  extractConst(MAIN, 'CLOCK_TOKENS',      'main.js'),
-  extractFn(MAIN, 'resolveTemplateVars', 'main.js'),
-  extractFn(MAIN, 'cleanSegment',        'main.js'),
-  extractFn(MAIN, 'buildFolderSegments', 'main.js'),
-  extractFn(MAIN, 'buildFolderName',     'main.js'),
-  extractFn(MAIN, 'templateSegments',    'main.js'),
-  extractFn(MAIN, 'makeCounterMatcher',  'main.js'),
-  extractFn(MAIN, 'structuralLevelPatterns', 'main.js'),
+  extractConst(SHARED, 'CLOCK_TOKENS',      'src/shared'),
+  extractFn(SHARED, 'asciiFold', 'src/shared'),
+  extractFn(SHARED, 'resolveTemplateVars', 'src/shared'),
+  extractFn(SHARED, 'cleanSegment',        'src/shared'),
+  extractFn(SHARED, 'buildFolderSegments', 'src/shared'),
+  extractFn(SHARED, 'buildFolderName',     'src/shared'),
+  extractFn(SHARED, 'templateSegments',    'src/shared'),
+  extractFn(SHARED, 'makeCounterMatcher',  'src/shared'),
+  extractFn(SHARED, 'structuralLevelPatterns', 'src/shared'),
 ].join('\n'), eng);
 
 // ── The interface ───────────────────────────────────────────────────────────
@@ -68,6 +74,7 @@ const ren = vm.createContext({
   S: { counter: 7, counterWidth: 3 },
   COUNTER_WIDTHS: [2, 3, 4],
   document: { getElementById: () => null },
+  window: { IngestoShared: SHARED_API },
 });
 vm.runInContext(extractFn(REND, 'padCounter',     'index.html'), ren);
 vm.runInContext(extractFn(REND, 'resolveTplSegs', 'index.html'), ren);
@@ -251,11 +258,10 @@ console.log('\nthe profile is in the shooting note');
   // The note is the one artefact that stays with the footage and is read by a
   // human months later. A profile typed at ingest and missing from it would
   // have to be guessed from the picture.
-  // lastIndexOf, not indexOf: the first occurrence is the NOTE_HEADER constant
-  // Verify uses to recognise our own note, not the block that writes it.
-  // Since 2.8.0 the note is markdown and its header a list of bold labels.
-  // lastIndexOf: the first one is in isShootingNote(), which only reads it.
-  const noteAt = MAIN.lastIndexOf("'# ' + NOTE_HEADER");
+  // The note is markdown and its header a list of bold labels. The block that
+  // writes it is the one where the title is followed by a blank line;
+  // isShootingNote() also names '# ' + NOTE_HEADER, but only to read it.
+  const noteAt = MAIN.indexOf("'# ' + NOTE_HEADER, ''");
   const note = MAIN.slice(noteAt, noteAt + 1300);
   ok(noteAt > 0, 'the markdown note block was found');
   // Since 2.9.0 the labels go through the main process's dictionary
@@ -379,9 +385,8 @@ console.log('\nthe profile is in the report, all three formats');
 
 console.log('\nthe profile is in the handoff document');
 {
-  const ctx = vm.createContext({ console, Set, Map, Math, Date, Array, String, Number, JSON,
+  const ctx = vm.createContext({ ...require('../src/shared/modes'), console, Set, Map, Math, Date, Array, String, Number, JSON,
                                  S: { appVersion: 'test' } });
-  vm.runInContext(extractFn(REND, 'modeVerifiesContents', 'index.html'), ctx);
   vm.runInContext(extractFn(REND, 'buildHandoff', 'index.html'), ctx);
   const RUN = { dests: [{ path: '/Volumes/SHUTTLE_1', name: 'SHUTTLE_1' }],
                 runId: 'r1', cksum: true, cksumList: true, cksumMhl: false, ascMhl: false,
@@ -458,7 +463,7 @@ console.log('\nthe dry run shows the fields, and still answers no');
             handoffCommand: '/bin/echo', appVersion: 'test' };
   vm.runInContext(extractFn(REND, 'tokenizeCommand',      'index.html'), ctx);
   vm.runInContext(extractFn(REND, 'padCounter',           'index.html'), ctx);
-  vm.runInContext(extractFn(REND, 'modeVerifiesContents', 'index.html'), ctx);
+  Object.assign(ctx, require('../src/shared/modes'));
   vm.runInContext(extractFn(REND, 'buildHandoff',         'index.html'), ctx);
   vm.runInContext(extractFn(REND, 'handoffDryRun',        'index.html'), ctx);
   return vm.runInContext('handoffDryRun()', ctx).then(() => {
@@ -479,17 +484,20 @@ console.log('\nthe interface offers the field, everywhere a card is described');
 {
   ok(/id="meta-pp"/.test(REND), 'the main panel has a Picture profile field');
   ok(/id="k-pp"/.test(REND), 'and so does the kiosk screen');
-  ok(/updateSrcField\(\$\{i\},'pp'/.test(REND), 'each loaded card has its own');
+  ok(/updateSrcField\(i, 'pp', this\.value\)/.test(REND), 'each loaded card has its own');
   ok(/(?:addTok|insPick)\('var','pp'\)/.test(REND), 'and the Insert menu offers the variable');
   // The same sanitiser as the operator and the camera: what goes in a folder
   // name is letters and digits, decided in one place rather than three.
   const PP_LBL = '<div class="sif-label">PROFILE</div>';
   const perCard = REND.slice(REND.indexOf(PP_LBL), REND.indexOf(PP_LBL) + 380);
-  ok(/sanitizePP\(this\);updateSrcField/.test(perCard), 'the per-card field is normalised as it is typed');
+  // The handlers are bound by the code (source-cards.js, bindings.js), not
+  // written in the markup.
+  ok(/\[data-js="pp"\]'\)\.oninput = function\(\)\{ sanitizePP\(this\); updateSrcField\(i, 'pp'/.test(REND),
+     'the per-card field is normalised as it is typed');
   const global = REND.slice(REND.indexOf('id="meta-pp"'), REND.indexOf('id="meta-pp"') + 200);
-  ok(/sanitizePP\(this\)/.test(global), 'so is the global one');
+  ok(/on\('#meta-pp', 'input', function \(event\) \{ sanitizePP\(this\);/.test(REND), 'so is the global one');
   const kiosk = REND.slice(REND.indexOf('id="k-pp"'), REND.indexOf('id="k-pp"') + 220);
-  ok(/sanitizePP\(this\)/.test(kiosk), 'and so is the kiosk one');
+  ok(/on\('#k-pp', 'input', function \(event\) \{ sanitizePP\(this\);/.test(REND), 'and so is the kiosk one');
   // 2.8.0: the three fields are shown as a button opening the Profile menu.
   ok(/data-pp\b/.test(global) && /data-pp\b/.test(kiosk) && /data-pp\b/.test(perCard),
      'and all three open the Profile menu');

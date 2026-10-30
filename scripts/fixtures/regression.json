@@ -1,0 +1,2111 @@
+{
+ "fast, two destinations": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-fast-1/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "fast",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-fast",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   },
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-fast-2/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "fast",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-fast",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   },
+   {
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   }
+  ],
+  "cardAfter": {
+   ".DS_Store": {
+    "size": 6,
+    "mtime": "card",
+    "hash": "ff4a41f6aa62a1c9"
+   },
+   "AUDIO/take 1.wav": {
+    "size": 70000,
+    "mtime": "card",
+    "hash": "1b6c9be36afeefda"
+   },
+   "DCIM/._DSC00001.JPG": {
+    "size": 12,
+    "mtime": "card",
+    "hash": "281a430b70fdb990"
+   },
+   "DCIM/100MSDCF/DSC00001.JPG": {
+    "size": 51200,
+    "mtime": "card",
+    "hash": "0eeded90f8632095"
+   },
+   "DCIM/100MSDCF/DSC00002.JPG": {
+    "size": 0,
+    "mtime": "card",
+    "hash": "e3b0c44298fc1c14"
+   },
+   "DCIM/100MSDCF/Été_01.JPG": {
+    "size": 1200,
+    "mtime": "card",
+    "hash": "9ac7f71d0bafb978"
+   },
+   "EMPTY/": {
+    "dir": true
+   },
+   "PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+    "size": 3145851,
+    "mtime": "card",
+    "hash": "93618291f9f086db"
+   },
+   "PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+    "size": 4096,
+    "mtime": "card",
+    "hash": "28415d11b5cfc44f"
+   },
+   "PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+    "size": 1048576,
+    "mtime": "card",
+    "hash": "edaeeaf228981a33"
+   },
+   "PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+    "size": 4100,
+    "mtime": "card",
+    "hash": "521e341508160beb"
+   },
+   "PRIVATE/M4ROOT/MEDIAPRO.XML": {
+    "size": 900,
+    "mtime": "card",
+    "hash": "981291ce12ca3c6c"
+   }
+  }
+ },
+ "size check": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-size/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "normal",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-size",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   }
+  ]
+ },
+ "secure, two destinations": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-sec-1/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "slow",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-sec",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   },
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-sec-2/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "slow",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-sec",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/001_A001.xxh": {
+     "size": 414,
+     "mtime": "run",
+     "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
+    },
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   },
+   {
+    "001_A001/001_A001.xxh": {
+     "size": 414,
+     "mtime": "run",
+     "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
+    },
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   }
+  ]
+ },
+ "pro xxh64": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-pro/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "pro",
+    "notes": [],
+    "proAlgo": "xxh64",
+    "proAlgoUsed": "xxh64",
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-pro",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/001_A001.mhl": {
+     "size": 2532,
+     "mtime": "run",
+     "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<hashlist version=\"1.0\">\n  <creatorinfo>\n    <username><x></username>\n    <hostname><x></hostname>\n    <tool>INGESTO <v></tool>\n    <startdate><date></startdate>\n    <finishdate><date></finishdate>\n  </creatorinfo>\n  <hash>\n    <file>AUDIO/take 1.wav</file>\n    <size>70000</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>cd45c733045700c1</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/DSC00001.JPG</file>\n    <size>51200</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>ce872513639bdf24</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/DSC00002.JPG</file>\n    <size>0</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>ef46db3751d8e999</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/Été_01.JPG</file>\n    <size>1200</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>cfebef36a898d303</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0001.MP4</file>\n    <size>3145851</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>14002eb6bc11578c</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0001M01.XML</file>\n    <size>4096</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>2be1812165cdbf67</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0002.MP4</file>\n    <size>1048576</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>afcf35a936571c43</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0002M01.XML</file>\n    <size>4100</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>cee743b0a86bf31a</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/MEDIAPRO.XML</file>\n    <size>900</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>5b8e3d66dee275ee</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n</hashlist>\n"
+    },
+    "001_A001/001_A001.xxh": {
+     "size": 414,
+     "mtime": "run",
+     "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
+    },
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   }
+  ]
+ },
+ "pro xxh128 with card re-read": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-pro2/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "pro",
+    "notes": [],
+    "proAlgo": "xxh128",
+    "proAlgoUsed": "xxh128",
+    "proDoubleRead": true,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-pro2",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/001_A001.xxh3": {
+     "size": 558,
+     "mtime": "run",
+     "hash": "1a66b2aac4d5a5dc"
+    },
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   }
+  ]
+ },
+ "pro md5": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-md5/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "pro",
+    "notes": [],
+    "proAlgo": "md5",
+    "proAlgoUsed": "md5",
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-md5",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/001_A001.md5": {
+     "size": 558,
+     "mtime": "run",
+     "text": "4425ef12863c4fc0f1349f4d771b621c *AUDIO/take 1.wav\n0c05a1c33a21a721898dc885dbf83ea5 *DCIM/100MSDCF/DSC00001.JPG\nd41d8cd98f00b204e9800998ecf8427e *DCIM/100MSDCF/DSC00002.JPG\n3337a1614a980ee054ec570c9c1f0d49 *DCIM/100MSDCF/Été_01.JPG\nb5422a580e48b6d140eac5df0a100b54 *PRIVATE/M4ROOT/CLIP/C0001.MP4\n5451f838f7d1dbf8eedcb76325211edf *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nba3280b3adede3c7e2bf8d269e176a41 *PRIVATE/M4ROOT/CLIP/C0002.MP4\nfe6169d2d9aa3e1e1f54a6abc35e2398 *PRIVATE/M4ROOT/CLIP/C0002M01.XML\nadf80a1b18b062f9d51377f0ff8835ba *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
+    },
+    "001_A001/001_A001.mhl": {
+     "size": 2550,
+     "mtime": "run",
+     "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<hashlist version=\"1.0\">\n  <creatorinfo>\n    <username><x></username>\n    <hostname><x></hostname>\n    <tool>INGESTO <v></tool>\n    <startdate><date></startdate>\n    <finishdate><date></finishdate>\n  </creatorinfo>\n  <hash>\n    <file>AUDIO/take 1.wav</file>\n    <size>70000</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>4425ef12863c4fc0f1349f4d771b621c</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/DSC00001.JPG</file>\n    <size>51200</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>0c05a1c33a21a721898dc885dbf83ea5</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/DSC00002.JPG</file>\n    <size>0</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>d41d8cd98f00b204e9800998ecf8427e</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/Été_01.JPG</file>\n    <size>1200</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>3337a1614a980ee054ec570c9c1f0d49</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0001.MP4</file>\n    <size>3145851</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>b5422a580e48b6d140eac5df0a100b54</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0001M01.XML</file>\n    <size>4096</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>5451f838f7d1dbf8eedcb76325211edf</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0002.MP4</file>\n    <size>1048576</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>ba3280b3adede3c7e2bf8d269e176a41</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0002M01.XML</file>\n    <size>4100</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>fe6169d2d9aa3e1e1f54a6abc35e2398</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/MEDIAPRO.XML</file>\n    <size>900</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>adf80a1b18b062f9d51377f0ff8835ba</md5>\n    <hashdate><date></hashdate>\n  </hash>\n</hashlist>\n"
+    },
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   }
+  ]
+ },
+ "card log, then only the new file": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-log/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "slow",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-log",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   },
+   {
+    "canceled": false,
+    "copiedBytes": 2048,
+    "copiedFiles": 1,
+    "destPath": "<tmp>/d-log/002_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0003.MP4",
+      "size": 2048,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "slow",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "002_A001",
+    "scanIncomplete": false,
+    "seenFiles": 10,
+    "sidecarFailed": [],
+    "skippedFiles": 9,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-log",
+    "success": true,
+    "totalBytes": 2048,
+    "totalFiles": 1,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/001_A001.xxh": {
+     "size": 414,
+     "mtime": "run",
+     "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
+    },
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    },
+    "002_A001/002_A001.xxh": {
+     "size": 48,
+     "mtime": "run",
+     "text": "449cafc5a5d37456 *PRIVATE/M4ROOT/CLIP/C0003.MP4\n"
+    },
+    "002_A001/AUDIO/": {
+     "dir": true
+    },
+    "002_A001/DCIM/100MSDCF/": {
+     "dir": true
+    },
+    "002_A001/EMPTY/": {
+     "dir": true
+    },
+    "002_A001/PRIVATE/M4ROOT/CLIP/C0003.MP4": {
+     "size": 2048,
+     "mtime": "card",
+     "hash": "5efcdb1f4c0166bb"
+    }
+   }
+  ],
+  "cardAfter": {
+   ".DS_Store": {
+    "size": 6,
+    "mtime": "card",
+    "hash": "ff4a41f6aa62a1c9"
+   },
+   ".ingesto.json": {
+    "size": 1789,
+    "mtime": "run",
+    "text": "{\n  \"ingesto_version\": \"<v>\",\n  \"ingests\": [\n    {\n      \"date\": \"<x>\",\n      \"destination\": \"<tmp>/d-log/001_A001\",\n      \"destinations\": [\n        \"<tmp>/d-log/001_A001\"\n      ],\n      \"mode\": \"slow\",\n      \"verified\": true,\n      \"files_count\": 9,\n      \"files\": [\n        {\n          \"p\": \"AUDIO/take 1.wav\",\n          \"s\": 70000,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"DCIM/100MSDCF/DSC00001.JPG\",\n          \"s\": 51200,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"DCIM/100MSDCF/DSC00002.JPG\",\n          \"s\": 0,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"DCIM/100MSDCF/Été_01.JPG\",\n          \"s\": 1200,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0001.MP4\",\n          \"s\": 3145851,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0001M01.XML\",\n          \"s\": 4096,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0002.MP4\",\n          \"s\": 1048576,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0002M01.XML\",\n          \"s\": 4100,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/MEDIAPRO.XML\",\n          \"s\": 900,\n          \"m\": 1768471200\n        }\n      ]\n    },\n    {\n      \"date\": \"<x>\",\n      \"destination\": \"<tmp>/d-log/002_A001\",\n      \"destinations\": [\n        \"<tmp>/d-log/002_A001\"\n      ],\n      \"mode\": \"slow\",\n      \"verified\": true,\n      \"files_count\": 1,\n      \"files\": [\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0003.MP4\",\n          \"s\": 2048,\n          \"m\": 1768471200\n        }\n      ]\n    }\n  ]\n}"
+   },
+   "AUDIO/take 1.wav": {
+    "size": 70000,
+    "mtime": "card",
+    "hash": "1b6c9be36afeefda"
+   },
+   "DCIM/._DSC00001.JPG": {
+    "size": 12,
+    "mtime": "card",
+    "hash": "281a430b70fdb990"
+   },
+   "DCIM/100MSDCF/DSC00001.JPG": {
+    "size": 51200,
+    "mtime": "card",
+    "hash": "0eeded90f8632095"
+   },
+   "DCIM/100MSDCF/DSC00002.JPG": {
+    "size": 0,
+    "mtime": "card",
+    "hash": "e3b0c44298fc1c14"
+   },
+   "DCIM/100MSDCF/Été_01.JPG": {
+    "size": 1200,
+    "mtime": "card",
+    "hash": "9ac7f71d0bafb978"
+   },
+   "EMPTY/": {
+    "dir": true
+   },
+   "PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+    "size": 3145851,
+    "mtime": "card",
+    "hash": "93618291f9f086db"
+   },
+   "PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+    "size": 4096,
+    "mtime": "card",
+    "hash": "28415d11b5cfc44f"
+   },
+   "PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+    "size": 1048576,
+    "mtime": "card",
+    "hash": "edaeeaf228981a33"
+   },
+   "PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+    "size": 4100,
+    "mtime": "card",
+    "hash": "521e341508160beb"
+   },
+   "PRIVATE/M4ROOT/CLIP/C0003.MP4": {
+    "size": 2048,
+    "mtime": "card",
+    "hash": "5efcdb1f4c0166bb"
+   },
+   "PRIVATE/M4ROOT/MEDIAPRO.XML": {
+    "size": 900,
+    "mtime": "card",
+    "hash": "981291ce12ca3c6c"
+   }
+  },
+  "inspect": {
+   "counts": {
+    "total": 10,
+    "alreadyIngested": 9,
+    "skippable": 9,
+    "newFiles": 1
+   },
+   "hasSentinel": true
+  }
+ },
+ "refused: the folder already exists": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 0,
+    "copiedFiles": 0,
+    "destPath": "<tmp>/d-ref/001_A001",
+    "emptyReason": null,
+    "errorList": [
+     {
+      "file": "(pre-flight)",
+      "error": "The folder \"001_A001\" already exists on destination \"D1\" and is not empty. Nothing was written.",
+      "phase": "setup",
+      "refused": true
+     }
+    ],
+    "errors": 1,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [],
+    "mode": "fast",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": "PF-E9",
+    "refusalData": {
+     "card": "A001",
+     "dest": "D1",
+     "folder": "001_A001",
+     "absPath": "<tmp>/d-ref/001_A001"
+    },
+    "refused": true,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 0,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-ref",
+    "success": false,
+    "totalBytes": 0,
+    "totalFiles": 0,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/CLIP.MOV": {
+     "size": 15,
+     "mtime": "card",
+     "hash": "158d80d638e693d2"
+    }
+   }
+  ]
+ },
+ "subfolders and a note": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-sub/DAY01/001_A001_noar",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "slow",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "DAY01/001_A001_noar",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-sub",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "DAY01/001_A001_noar/001_A001_noar.xxh": {
+     "size": 414,
+     "mtime": "run",
+     "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
+    },
+    "DAY01/001_A001_noar/001_note.md": {
+     "size": 195,
+     "mtime": "run",
+     "text": "# ingesto - Shooting Note\n\n- **Date:** <date>\n- **Counter:** 001\n- **Card:** A001\n- **Operator:** noar\n- **Camera:** FX6\n- **Profile:** SLOG3\n\n---\n\n**take 4** is the one\n\n- [x] checked\n"
+    },
+    "DAY01/001_A001_noar/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "DAY01/001_A001_noar/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "DAY01/001_A001_noar/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "DAY01/001_A001_noar/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "DAY01/001_A001_noar/EMPTY/": {
+     "dir": true
+    },
+    "DAY01/001_A001_noar/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "DAY01/001_A001_noar/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "DAY01/001_A001_noar/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "DAY01/001_A001_noar/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "DAY01/001_A001_noar/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   }
+  ]
+ },
+ "file filter, reorganised": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4316827,
+    "copiedFiles": 6,
+    "destPath": "<tmp>/d-ff/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PICTURES/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PICTURES/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PICTURES/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "VIDEO/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "VIDEO/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "slow",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-ff",
+    "success": true,
+    "totalBytes": 4316827,
+    "totalFiles": 6,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/001_A001.xxh": {
+     "size": 223,
+     "mtime": "run",
+     "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *PICTURES/DSC00001.JPG\nef46db3751d8e999 *PICTURES/DSC00002.JPG\ncfebef36a898d303 *PICTURES/Été_01.JPG\n14002eb6bc11578c *VIDEO/C0001.MP4\nafcf35a936571c43 *VIDEO/C0002.MP4\n"
+    },
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/PICTURES/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/PICTURES/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/PICTURES/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/VIDEO/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/VIDEO/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    }
+   }
+  ]
+ },
+ "file filter, folders kept": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4203523,
+    "copiedFiles": 5,
+    "destPath": "<tmp>/d-ff2/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "fast",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-ff2",
+    "success": true,
+    "totalBytes": 4203523,
+    "totalFiles": 5,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/AUDIO/": {
+     "dir": true
+    },
+    "001_A001/DCIM/100MSDCF/": {
+     "dir": true
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    }
+   }
+  ]
+ },
+ "two cards in one batch": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 4325923,
+    "copiedFiles": 9,
+    "destPath": "<tmp>/d-batch/001_A001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "AUDIO/take 1.wav",
+      "size": 70000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00001.JPG",
+      "size": 51200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/DSC00002.JPG",
+      "size": 0,
+      "mtime": 1768471200
+     },
+     {
+      "path": "DCIM/100MSDCF/Été_01.JPG",
+      "size": 1200,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001.MP4",
+      "size": 3145851,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0001M01.XML",
+      "size": 4096,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002.MP4",
+      "size": 1048576,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/CLIP/C0002M01.XML",
+      "size": 4100,
+      "mtime": 1768471200
+     },
+     {
+      "path": "PRIVATE/M4ROOT/MEDIAPRO.XML",
+      "size": 900,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "slow",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 9,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-b1",
+    "success": true,
+    "totalBytes": 4325923,
+    "totalFiles": 9,
+    "unstableFiles": []
+   },
+   {
+    "canceled": false,
+    "copiedBytes": 5200,
+    "copiedFiles": 2,
+    "destPath": "<tmp>/d-batch/002_B001",
+    "emptyReason": null,
+    "errorList": [],
+    "errors": 0,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [
+     {
+      "path": "CLIP/B.MOV",
+      "size": 5000,
+      "mtime": 1768471200
+     },
+     {
+      "path": "CLIP/B.XML",
+      "size": 200,
+      "mtime": 1768471200
+     }
+    ],
+    "mode": "slow",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "002_B001",
+    "scanIncomplete": false,
+    "seenFiles": 2,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "B001",
+    "sourcePath": "<tmp>/c-b2",
+    "success": true,
+    "totalBytes": 5200,
+    "totalFiles": 2,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {
+    "001_A001/001_A001.xxh": {
+     "size": 414,
+     "mtime": "run",
+     "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
+    },
+    "001_A001/AUDIO/take 1.wav": {
+     "size": 70000,
+     "mtime": "card",
+     "hash": "1b6c9be36afeefda"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00001.JPG": {
+     "size": 51200,
+     "mtime": "card",
+     "hash": "0eeded90f8632095"
+    },
+    "001_A001/DCIM/100MSDCF/DSC00002.JPG": {
+     "size": 0,
+     "mtime": "card",
+     "hash": "e3b0c44298fc1c14"
+    },
+    "001_A001/DCIM/100MSDCF/Été_01.JPG": {
+     "size": 1200,
+     "mtime": "card",
+     "hash": "9ac7f71d0bafb978"
+    },
+    "001_A001/EMPTY/": {
+     "dir": true
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001.MP4": {
+     "size": 3145851,
+     "mtime": "card",
+     "hash": "93618291f9f086db"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0001M01.XML": {
+     "size": 4096,
+     "mtime": "card",
+     "hash": "28415d11b5cfc44f"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002.MP4": {
+     "size": 1048576,
+     "mtime": "card",
+     "hash": "edaeeaf228981a33"
+    },
+    "001_A001/PRIVATE/M4ROOT/CLIP/C0002M01.XML": {
+     "size": 4100,
+     "mtime": "card",
+     "hash": "521e341508160beb"
+    },
+    "001_A001/PRIVATE/M4ROOT/MEDIAPRO.XML": {
+     "size": 900,
+     "mtime": "card",
+     "hash": "981291ce12ca3c6c"
+    },
+    "002_B001/002_B001.xxh": {
+     "size": 58,
+     "mtime": "run",
+     "text": "bbda9f7aa90d30c3 *CLIP/B.MOV\n791484c02f57c4a2 *CLIP/B.XML\n"
+    },
+    "002_B001/CLIP/B.MOV": {
+     "size": 5000,
+     "mtime": "card",
+     "hash": "9125db7964026d90"
+    },
+    "002_B001/CLIP/B.XML": {
+     "size": 200,
+     "mtime": "card",
+     "hash": "da1592bb73b082a7"
+    }
+   }
+  ]
+ },
+ "empty card": {
+  "results": [
+   {
+    "canceled": false,
+    "copiedBytes": 0,
+    "copiedFiles": 0,
+    "destPath": "<tmp>/d-empty/001_A001",
+    "emptyReason": "no-files",
+    "errorList": [
+     {
+      "file": "(card)",
+      "error": "no file was found on this card. Check that you selected the card itself and not an empty folder inside it",
+      "phase": "scan"
+     }
+    ],
+    "errors": 1,
+    "failedFiles": [],
+    "failedMap": {},
+    "fileList": [],
+    "mode": "slow",
+    "notes": [],
+    "proAlgo": null,
+    "proAlgoUsed": null,
+    "proDoubleRead": false,
+    "quarantinedPaths": [],
+    "refusalCode": null,
+    "refusalData": null,
+    "refused": false,
+    "relFolder": "001_A001",
+    "scanIncomplete": false,
+    "seenFiles": 0,
+    "sidecarFailed": [],
+    "skippedFiles": 0,
+    "sourceName": "A001",
+    "sourcePath": "<tmp>/c-empty",
+    "success": false,
+    "totalBytes": 0,
+    "totalFiles": 0,
+    "unstableFiles": []
+   }
+  ],
+  "trees": [
+   {}
+  ]
+ },
+ "verify a delivered folder": {
+  "verify": {
+   "clean": {
+    "ok": true,
+    "canceled": false,
+    "algo": "xxh64",
+    "manifestFile": "001_A001.xxh",
+    "total": 9,
+    "matched": 9,
+    "corrupted": [],
+    "missing": [],
+    "extra": [],
+    "quarantined": []
+   },
+   "bad": {
+    "ok": true,
+    "canceled": false,
+    "algo": "xxh64",
+    "manifestFile": "001_A001.xxh",
+    "total": 9,
+    "matched": 8,
+    "corrupted": [
+     "PRIVATE/M4ROOT/CLIP/C0002.MP4"
+    ],
+    "missing": [],
+    "extra": [],
+    "quarantined": []
+   }
+  }
+ }
+}

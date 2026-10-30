@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(src, name) {
   let start = src.indexOf(`async function ${name}(`);
@@ -40,7 +40,7 @@ console.log('\ncancelling the PRO warning leaves the mode where it was');
 {
   // FAST, click PRO out of curiosity, click outside the dialog. The mode used
   // to become SECURE, and be persisted, with nothing said.
-  const ctx = vm.createContext({
+  const ctx = vm.createContext({ ...require('../src/shared/modes'),
     S: { mode: 'fast', proWarnDismissed: false, _modeBeforeProWarn: null },
     setMode(m) { this.S.mode = m; },
     document: { getElementById: () => ({ checked: false, classList: { add() {}, remove() {} } }) },
@@ -70,7 +70,7 @@ console.log('\ncancelling the PRO warning leaves the mode where it was');
 // ── 2. The mode printed in the written report ───────────────────────────────
 console.log('\nthe report never paints an unverified mode as verified');
 {
-  const ctx = vm.createContext({});
+  const ctx = vm.createContext({ ...require('../src/shared/modes') });
   vm.runInContext(extractFn(REND, 'reportModeClass'), ctx);
   vm.runInContext(extractFn(REND, 'reportModeLabel'), ctx);
 
@@ -104,9 +104,12 @@ console.log('\nkiosk fields are cleaned like the standard window');
   // window would have written JeanMarc.
   const kop = tagOf(REND, 'k-op');
   const kcam = tagOf(REND, 'k-cam');
-  ok(/oninput="[^"]*sanitizeMeta\(this\)/.test(kop), 'the kiosk Operator field is sanitized as you type');
-  ok(/oninput="[^"]*kioskUpdateStart\(\)/.test(kop), 'and still enables the Start button');
-  ok(/oninput="[^"]*sanitizeMeta\(this\)/.test(kcam), 'the kiosk Camera field is sanitized as you type');
+  // The handlers of the markup are in scripts/bindings.js.
+  const kopIn = (REND.match(/on\('#k-op', 'input', function \(event\) \{ ([^}]*) \}\);/) || [])[1] || '';
+  const kcamIn = (REND.match(/on\('#k-cam', 'input', function \(event\) \{ ([^}]*) \}\);/) || [])[1] || '';
+  ok(kop && /sanitizeMeta\(this\)/.test(kopIn), 'the kiosk Operator field is sanitized as you type');
+  ok(/kioskUpdateStart\(\)/.test(kopIn), 'and still enables the Start button');
+  ok(kcam && /sanitizeMeta\(this\)/.test(kcamIn), 'the kiosk Camera field is sanitized as you type');
 
   // And again when Start is pressed, for a value that never went through an
   // input event: restored, pasted by a script, set programmatically.
@@ -197,18 +200,22 @@ console.log('\nthe Insert menu replaces the fifteen chips');
   ok(!/class="tpl-chips"/.test(REND), 'the chip row is gone');
   ok(/function toggleInsertMenu\(/.test(REND) && /function insPick\(/.test(REND), 'the menu is there');
   const mStart = REND.indexOf('<div class="ins-menu"');
-  const menu = REND.slice(mStart, REND.indexOf('<button class="tpl-slash"', mStart));
+  const mEnd = REND.indexOf('class="tpl-slash"', mStart);
+  // What each entry does is in scripts/bindings.js, by its data-js name.
+  const does = (name) => (REND.match(new RegExp(`on\\('\\[data-js="${name}"\\]', 'click', function \\(event\\) \\{ ([^}]*) \\}\\);`)) || [])[1] || '';
+  const entry = (menuText, name, call) => menuText.includes(`data-js="${name}"`) && does(name).includes(call);
+  const menu = mStart > 0 && mEnd > mStart ? REND.slice(mStart, mEnd) : '';
   for (const g of ['THE CARD', 'THE DATE', 'TYPED BY YOU', 'SEPARATORS'])
     ok(menu.includes(g), `the menu groups "${g}"`);
   ok(menu.indexOf('SEPARATORS') > menu.indexOf('TYPED BY YOU'),
      'the separators are their own group, after the custom text');
-  ok(/insPick\('sep','_'\)/.test(menu) && /insPick\('sep','-'\)/.test(menu),
+  ok(entry(menu, 'ins-pick-sep-underscore', "insPick('sep','_')") && entry(menu, 'ins-pick-sep-hyphen', "insPick('sep','-')"),
      'underscore and hyphen are two entries, not one line');
-  ok(/insPick\('txt'\)/.test(menu), 'custom text is an entry of the same menu');
+  ok(entry(menu, 'ins-pick-txt', "insPick('txt')"), 'custom text is an entry of the same menu');
   const tog = extractFn(REND, 'toggleInsertMenu');
   ok(/removeEventListener/.test(tog), 'its click-away listener is removed when it closes');
   ok(/Escape/.test(tog), 'and Escape closes it');
-  ok(/ondblclick="showRawTemplate\(\)"/.test(REND), 'a double-click on the strip switches to typing the template');
+  ok(/on\('#tpl-box', 'dblclick', function \(event\) \{ showRawTemplate\(\); \}\);/.test(REND), 'a double-click on the strip switches to typing the template');
   ok(/function showRawTemplate\(/.test(REND) && /function hideRawTemplate\(/.test(REND),
      'and back again when the field loses focus');
 }
@@ -362,7 +369,7 @@ console.log('\nthe kiosk says where the camera came from, like the standard wind
   ok(el.innerHTML === '(M)' && kc._typed === true, 'typed over: (M), and remembered');
   ctx.kioskCamMark('');
   ok(el.innerHTML === '' && kc._typed === false, 'the next shooter starts clean');
-  ok(/oninput="sanitizeMeta\(this\);kioskCamTyped\(\)"/.test(REND), 'and typing in the field is what turns it grey');
+  ok(/on\('#k-cam', 'input', function \(event\) \{ sanitizeMeta\(this\);kioskCamTyped\(\); \}\);/.test(REND), 'and typing in the field is what turns it grey');
 }
 
 console.log('\nthe settings are written once per pause, and never lost');
@@ -392,14 +399,16 @@ console.log('\nthe settings are written once per pause, and never lost');
 // ── 8ter. 2.7.1, issue #11 ──────────────────────────────────────────────────
 console.log('\nInsert > Text, said the way it is looked for');
 {
-  ok(/onclick="insPick\('txt'\)">Custom text…<span>/.test(REND), 'the entry is called Custom text…');
+  ok(/data-js="ins-pick-txt" class="ins-it ins-txt" role="menuitem">Custom text…<span>/.test(REND) &&
+     /on\('\[data-js="ins-pick-txt"\]', 'click', function \(event\) \{ insPick\('txt'\); \}\);/.test(REND),
+     'the entry is called Custom text…');
   // 2.7.2: the menu was one column of 486 px cut at 340. Custom text and the
   // separators sat under the edge, and macOS hides the scroll bar on a
   // trackpad, so nothing said there was more.
   const menu = REND.slice(REND.indexOf('<div class="ins-menu" id="ins-menu"'), REND.indexOf('<span class="tipwrap">', REND.indexOf('<div class="ins-menu" id="ins-menu"')));
   const cols = menu.split('<div class="ins-col">').slice(1);
   ok(cols.length === 2, 'two columns');
-  ok(/THE CARD/.test(cols[0]) && /insPick\('txt'\)/.test(cols[0]) && /SEPARATORS/.test(cols[0]), 'Custom text and the separators in the first one');
+  ok(/THE CARD/.test(cols[0]) && /data-js="ins-pick-txt"/.test(cols[0]) && /SEPARATORS/.test(cols[0]), 'Custom text and the separators in the first one');
   ok(/THE DATE/.test(cols[1]) && !/insPick\('txt'\)/.test(cols[1]), 'the date in the second');
   ok((menu.match(/class="ins-it/g) || []).length === 14, 'all fourteen entries still there');
   const fx = REND.slice(REND.indexOf('Reparations, mesurees dans l app qui tourne'));
@@ -472,7 +481,7 @@ console.log('\nCopy Info is kept from one card to the next, and a broom clears i
   ok(saved === 1 && /cleared/.test(toast), 'saved, and said');
   ctx2.S.copying = true; el['meta-cam'].value = 'kept'; ctx2.clearCopyInfo();
   ok(el['meta-cam'].value === 'kept', 'never during an ingest');
-  const brooms = REND.match(/onclick="clearCopyInfo\(\)"/g) || [];
+  const brooms = REND.match(/on\('[^']*', 'click', function \(event\) \{ clearCopyInfo\(\); \}\);/g) || [];
   ok(brooms.length === 2, 'beside Copy Info, and beside Loaded Cards when cards are in (' + brooms.length + ')');
 }
 
@@ -624,12 +633,7 @@ console.log('\nthe ingest history can be cleared, and nothing on a drive is eras
   ctx3.clearIngestHistory(); await settle();
   ok(ctx3.S.historyHidden.length === 0 && before === 3, 'declining the confirmation hides nothing');
 
-  // What comes back from the preferences file is checked: it can be edited by
-  // hand, or arrive in an imported settings file.
-  const load = REND.slice(REND.indexOf('S.historyHidden = Array.isArray(prefs.historyHidden)'),
-                          REND.indexOf('S.historyHidden = Array.isArray(prefs.historyHidden)') + 220);
-  ok(/typeof k === 'string'/.test(load) && /slice\(-5000\)/.test(load),
-     'only strings are read back from the preferences, and at most 5000');
+  // What comes back from the preferences file is checked: test-settings.js.
 }
 
 console.log('\nthe history says VERIFIED only when the copy was read back (2.9.1)');
@@ -638,7 +642,7 @@ console.log('\nthe history says VERIFIED only when the copy was read back (2.9.1
   const c = vm.createContext({ S: { historyHidden: [] }, _sessOpen: new Set(), historyKey: r => r.n,
     esc: x => String(x == null ? '' : x).replace(/[&<>"]/g, ''), fmtSize: () => '1 GB', sessDetails: () => '',
     SESS_ICON: { 'r-ok': '', 'r-err': '', 'r-suspect': '' }, Number, String, Array, Set, Math,
-    document: { getElementById: (id) => (c.__els[id] = c.__els[id] || { innerHTML: '', textContent: '', disabled: false, querySelectorAll: () => [] }) },
+    document: { getElementById: (id) => (c.__els[id] = c.__els[id] || { innerHTML: '', textContent: '', disabled: false, querySelector: () => null, querySelectorAll: () => [] }) },
     __els: {} });
   vm.runInContext(extractFn(REND, 'renderSessionLog'), c);
   const row = (n, modeClass, rclass) => ({ rec: { n, card: 'A' + n, modeClass, rclass: rclass || 'r-ok' }, drives: ['D'] });
@@ -672,6 +676,73 @@ console.log('\nleaving kiosk mode redraws the main window (2.9.1)');
   const start = extractFn(REND, 'onStartBtn');
   ok(/if\(!S\.sources\.length \|\| !S\.dests\.length\)\{ updateBtn\(\); return; \}/.test(start),
      'and START with no card or no destination does nothing');
+}
+
+console.log('\nthe modes: one list, shared by the engine and the window');
+{
+  // The window loads the shared file as a plain script, as Electron does.
+  const win = { };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'src', 'shared', 'modes.js'), 'utf8'), { window: win });
+  const M = win.IngestoShared && win.IngestoShared.MODE;
+  ok(M && M.FAST === 'fast' && M.SIZE_CHECK === 'normal' && M.SECURE === 'slow' && M.PRO === 'pro',
+     'the window gets the four modes, with the values every earlier file records');
+  ok(win.IngestoShared.MODES.join() === 'fast,normal,slow,pro', 'and the list of modes, in order');
+  ok(win.IngestoShared.modeVerifiesContents('slow') && win.IngestoShared.modeVerifiesContents('pro') &&
+     !win.IngestoShared.modeVerifiesContents('fast') && !win.IngestoShared.modeVerifiesContents('normal'),
+     'SECURE and PRO verify the contents, FAST and SIZE CHECK do not');
+  const tag = REND.indexOf('<script src="../shared/modes.js"></script>');
+  const use = REND.indexOf('= window.IngestoShared;');
+  ok(tag > 0 && use > tag, 'index.html loads the shared file before it reads it');
+  ok(!/function modeVerifiesContents\(/.test(REND), 'and has no copy of the rule of its own');
+  const code = REND.split('\n').filter(l => !/^\s*(\/\/|\/\*|\*)/.test(l)).join('\n');
+  const literal = code.match(/[=!]==\s*'(fast|normal|slow|pro)'/g);
+  ok(!literal, 'no mode is compared by its raw value in the window' + (literal ? ' : ' + literal.join(', ') : ''));
+}
+
+console.log('\nthe state of the window is declared in one place');
+{
+  // Every field of S the code reads or writes is declared, with its starting
+  // value and what it holds, in the S literal of state.js. A field that only
+  // appears where it is first set cannot be found by someone reading state.js.
+  const st = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'scripts', 'state.js'), 'utf8');
+  const lit = st.slice(st.indexOf('const S = {'), st.indexOf('\n};', st.indexOf('const S = {')));
+  const declared = new Set([...lit.matchAll(/(?:^|[,{])\s*([A-Za-z_$][\w$]*)\s*:/gm)].map(m => m[1]));
+  const used = new Set([...REND.matchAll(/\bS\.([A-Za-z_$][\w$]*)/g)].map(m => m[1]));
+  const missing = [...used].filter(k => !declared.has(k));
+  ok(declared.size > 40 && missing.length === 0,
+     `every field of S is declared in state.js (${declared.size})` + (missing.length ? ' : ' + missing.join(', ') : ''));
+}
+
+console.log('\nno code in the markup, and the window refuses inline script');
+{
+  const HTML = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+  const markup = HTML.replace(/<!--[\s\S]*?-->/g, '');
+  const inMarkup = markup.match(/<[a-zA-Z][^<>]*\son[a-z]+\s*=[^<>]*>/g) || [];
+  ok(inMarkup.length === 0, 'index.html holds no onclick="..." or other handler attribute' + (inMarkup.length ? ' : ' + inMarkup[0].slice(0, 80) : ''));
+  // The HTML the window's code draws. The ingest report is a page of its own,
+  // written to the destination (reports.js, report-template.js): not this window.
+  const dir = path.join(__dirname, '..', 'src', 'renderer', 'scripts');
+  const drawn = fs.readdirSync(dir).filter(f => !/^report/.test(f)).flatMap(f =>
+    (fs.readFileSync(path.join(dir, f), 'utf8').match(/<[a-zA-Z][^<>`]*\son[a-z]+=\\?["'][^<>]*>/g) || []).map(m => f + ': ' + m.slice(0, 70)));
+  ok(drawn.length === 0, 'and neither does the HTML its code draws' + (drawn.length ? ' : ' + drawn[0] : ''));
+  const csp = (HTML.match(/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/) || [])[1] || '';
+  const scriptSrc = (csp.match(/script-src ([^;]+)/) || [])[1] || '';
+  ok(scriptSrc.trim() === "'self'", `the policy runs only the scripts of its own files (script-src ${scriptSrc.trim()})`);
+  // The end-of-ingest sounds are files of the app: the policy must let them
+  // play (with default-src 'none' alone, media would be refused in silence).
+  const sounds = [...(REND.match(/new Audio\(([^)]*)\)/) || [''])[0].matchAll(/sounds\/[a-z]+\.wav/g)].map(m => m[0]);
+  ok(sounds.length === 2 && sounds.every(f => fs.existsSync(path.join(__dirname, '..', 'src', 'renderer', f))) &&
+     /(^|;)\s*media-src 'self'\s*(;|$)/.test(csp), 'and lets its own sounds play (media-src \'self\')');
+  // Every control bindings.js names is in the markup: a handler bound to
+  // nothing is a button that does nothing.
+  const B = fs.readFileSync(path.join(dir, 'bindings.js'), 'utf8');
+  const sels = [...B.matchAll(/^on\('([^']+)', '([a-z]+)'/gm)].map(m => m[1]);
+  const ids = new Set([...markup.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
+  const hooks = new Set([...markup.matchAll(/\sdata-js="([^"]+)"/g)].map(m => m[1]));
+  const lost = sels.filter(x => x.startsWith('#') ? !ids.has(x.slice(1)) : !hooks.has((x.match(/data-js="([^"]+)"/) || [])[1]));
+  ok(sels.length >= 140 && lost.length === 0, `every one of the ${sels.length} bindings finds its control` + (lost.length ? ' : ' + lost.join(', ') : ''));
+  const unbound = [...hooks].filter(h => !B.includes(`[data-js="${h}"]`));
+  ok(unbound.length === 0, 'and every data-js name of the markup is bound' + (unbound.length ? ' : ' + unbound.join(', ') : ''));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

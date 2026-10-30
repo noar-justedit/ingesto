@@ -77,7 +77,7 @@ function badTemplates(src) {
   return hits;
 }
 
-const REND = fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 console.log('\nthe interface');
 {

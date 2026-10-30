@@ -19,7 +19,9 @@ const fs   = require('fs');
 const path = require('path');
 const vm   = require('vm');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+// The whole engine as one text (see scripts/lib/source.js).
+const SRC = require('./lib/source').ENGINE;
+const SHARED_API = Object.assign({}, require('../src/shared/folder-names'), require('../src/shared/sources'));
 function extractFn(name) {
   let start = SRC.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`function ${name} not found in main.js`);
@@ -180,7 +182,7 @@ console.log('\nEVERY route that loads a card asks for the label');
   // others — a drag from Explorer, the Browse button, and kiosk mode, where
   // Browse is the ONLY way to load a card. All three built the name from the
   // path, so "D:\\" became the card name "D:" and the folder "001_D__noar".
-  const HTML = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+  const HTML = require('./lib/source').RENDERER;
   const grab = (name) => {
     const i = HTML.indexOf('function ' + name + '(');
     if (i < 0) return '';
@@ -226,7 +228,7 @@ console.log('\nEVERY route that loads a card asks for the label');
 
 console.log('\nthe renderer asks for the label, and falls back');
 {
-  const HTML = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+  const HTML = require('./lib/source').RENDERER;
   const fn = HTML.match(/function volCardName\(v\)\{[^}]*\}/);
   ok(!!fn, 'volCardName exists');
   const volCardName = new Function('return ' + fn[0] + '; volCardName')();
@@ -243,10 +245,12 @@ console.log('\nWindows device names, refused before the ingest starts');
   // them. They only became reachable the day a card's real label started
   // arriving — before that every Windows card was called "D:". A card labelled
   // AUX must be refused up front, not fail in the middle of a copy.
-  const DEV = SRC.match(/const WIN_DEVICE_NAME = .*;/)[0];
+  // The engine asks the shared rule with its own platform; the window asks
+  // the same rule with the platform the main process reported. Both are run.
+  const MAIN = require('./lib/source').ENGINE;
   const make = (platform) => {
-    const c = vm.createContext({ process: { platform }, String, console });
-    vm.runInContext(DEV + '\n' + extractFn('isSafeFolderName'), c);
+    const c = vm.createContext({ process: { platform }, folderNames: SHARED_API, console });
+    vm.runInContext(MAIN.match(/^function isSafeFolderName\(name\) \{.*\}$/m)[0], c);
     return c.isSafeFolderName;
   };
   const win = make('win32'), mac = make('darwin');
@@ -258,12 +262,11 @@ console.log('\nWindows device names, refused before the ingest starts');
      'macOS is not punished for a Windows limitation — no false refusal there');
 
   // The renderer's pre-flight must agree, or it approves what the engine refuses.
-  const HTML = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
-  const rDev = HTML.match(/const WIN_DEVICE_NAME=.*;/)[0];
-  const rFn  = HTML.match(/function isSafeFolderName\(n\)\{[\s\S]*?\n\}/)[0];
+  const HTML = require('./lib/source').RENDERER;
+  const rFn  = HTML.match(/function isSafeFolderName\(n\)\{.*\}/)[0];
   const mk = (platform) => {
-    const c = vm.createContext({ window: { ingesto: { platform } }, String, console });
-    vm.runInContext(rDev + '\n' + rFn, c);
+    const c = vm.createContext({ window: { ingesto: { platform }, IngestoShared: SHARED_API }, console });
+    vm.runInContext(rFn, c);
     return c.isSafeFolderName;
   };
   const rwin = mk('win32'), rmac = mk('darwin');

@@ -19,7 +19,7 @@ const os   = require('os');
 const vm   = require('vm');
 const { Readable } = require('stream');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+const SRC = require('./lib/source').ENGINE;
 
 function extractFn(name) {
   let start = SRC.indexOf(`function ${name}(`);
@@ -62,7 +62,8 @@ const fakeFs = Object.assign({}, fs, {
 
 const ctx = vm.createContext({
   fs: fakeFs, path, console, Buffer, Promise, setTimeout, clearTimeout, setInterval, clearInterval,
-  cancelCopy: false,
+  process: { env: {} },          // the real deadline, not a shortened one
+  ctl: { cancelCopy: false },
   safeWriteTarget: (p) => p,
   nocache: { createReadStream: (p, o) => fakeFs.createReadStream(p, o), createWriteStream: fs.createWriteStream },
 });
@@ -80,6 +81,91 @@ vm.runInContext([
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ingesto-stall-'));
 const fakeHasher = () => ({ init(){}, update(){}, digest(){ return 'h'; } });
+
+// ── Real ingests on named pipes, in a child process ───────────────────────
+// A pipe announces 0 bytes and delivers what its writer sends, or nothing at
+// all: a card that stops answering, or a volume produced on read, without
+// FUSE. The engine runs in a child with INGESTO_STALL_MS=400 and a time
+// limit, so a regression that hangs is a failure, not a frozen test.
+const { spawnSync, spawn } = require('child_process');
+function runChild(scenario) {
+  if (process.platform === 'win32') return { skipped: 'named pipes are not available on Windows: the engine scenarios run on macOS and Linux' };
+  const r = spawnSync(process.execPath, [__filename, '--child', scenario], {
+    env: Object.assign({}, process.env, { INGESTO_STALL_MS: '400' }), encoding: 'utf8', timeout: 20000 });
+  if (r.status !== 0) return { results: [], error: 'the child ended with status ' + r.status + (r.signal ? ' (' + r.signal + ')' : '') + '\n' + (r.stderr || '').slice(-800) };
+  const line = (r.stdout || '').split('\n').filter(l => l.startsWith('{')).pop();
+  try { return JSON.parse(line); } catch (_) { return { results: [], error: 'no JSON from the child: ' + (r.stdout || '').slice(-400) } };
+}
+async function childMain(scenario) {
+  const H = require('./lib/harness');
+  const { call } = H.loadMain({ version: 'test' });
+  const writers = [];
+  const fifo = (p, feed) => {
+    spawnSync('mkfifo', [p]);
+    // `sh -c` keeps the pipe's writer alive for the whole feed: cat for a
+    // file, printf + sleep for a pipe that gives one byte and goes silent.
+    // Its own process group, so that the whole feed (sh and its sleep) can
+    // be killed at the end: a writer left alive keeps the pipe open, and a
+    // read blocked on it keeps this process from exiting.
+    writers.push(spawn('sh', ['-c', '(' + feed + ') > ' + JSON.stringify(p)], { stdio: 'ignore', detached: true }));
+  };
+  const src = (dir, name, extra) => Object.assign({ name, path: dir, counter: '001', cameraman: 'n', camera: '', pp: '', note: '' }, extra);
+  const ingest = (c, name, d, o) => call('start-copy', { sources: [src(c, name)], destinations: [{ name: 'D1', path: d }],
+    options: Object.assign({ mode: 'fast', proAlgo: 'xxh64', proDoubleRead: false, folderTemplate: '{cardname}',
+      writeSentinel: false, writeChecksum: true, cksumList: true, cksumMhl: true, ascMhl: false, fileFilter: null }, o) });
+  let out = {};
+  try {
+    if (scenario === 'copy-stall') {
+      const c = H.fresh('stall-card'), d = H.fresh('stall-dest');
+      fs.writeFileSync(path.join(c, 'A.txt'), 'one');
+      fifo(path.join(c, 'B.mxf'), 'printf x; sleep 30');
+      fs.writeFileSync(path.join(c, 'C.txt'), 'three');
+      const t0 = Date.now();
+      const results = await ingest(c, 'STALL', d, { mode: 'fast' });
+      out = { ms: Date.now() - t0, results: results.map(r => ({ success: r.success, copiedFiles: r.copiedFiles, errorList: r.errorList, failedFiles: r.failedFiles })),
+              destFiles: fs.existsSync(path.join(d, 'STALL')) ? fs.readdirSync(path.join(d, 'STALL')).sort() : [] };
+    } else if (scenario === 'hde') {
+      const feed = H.fresh('hde-feed');
+      fs.writeFileSync(path.join(feed, 'C001.mxf'), H.bytes('C001', 300000));
+      fs.writeFileSync(path.join(feed, 'C002.mxf'), H.bytes('C002', 120000));
+      const slim = (r) => ({ success: r.success, errors: r.errors, copiedFiles: r.copiedFiles, proDoubleRead: r.proDoubleRead,
+                             verify2Ms: r.verify2Ms, notes: r.notes, errorList: r.errorList });
+      for (const m of ['fast', 'normal', 'slow', 'pro']) {
+        // The volume's own name ends in "_hde", as CODEX Platform names it.
+        const c = path.join(H.fresh('hde-' + m), 'A003_hde'), d = H.fresh('hde-dest-' + m);
+        fs.mkdirSync(c);
+        fifo(path.join(c, 'C001.mxf'), 'cat ' + JSON.stringify(path.join(feed, 'C001.mxf')));
+        fifo(path.join(c, 'C002.mxf'), 'cat ' + JSON.stringify(path.join(feed, 'C002.mxf')));
+        const r = (await ingest(c, 'A003_hde', d, { mode: m, proDoubleRead: m === 'pro', writeSentinel: true }))[0];
+        out[m] = slim(r);
+        const dd = path.join(d, 'A003_hde');
+        out[m].delivered = fs.existsSync(path.join(dd, 'C001.mxf')) && fs.statSync(path.join(dd, 'C001.mxf')).size === 300000
+          && fs.readFileSync(path.join(dd, 'C002.mxf')).equals(H.bytes('C002', 120000));
+        if (m === 'pro') {
+          const mhl = fs.readdirSync(dd).find(f => f.endsWith('.mhl'));
+          out.manifestSizes = !!mhl && /<size>300000<\/size>/.test(fs.readFileSync(path.join(dd, mhl), 'utf8'));
+          out.sentinelWritten = fs.existsSync(path.join(c, '.ingesto.json'));
+          out.inspect = await call('inspect-card', c, true, [d]);
+          out.camera = await call('detect-camera', c);
+          // The unmount-and-re-read check exists on macOS only: run it as on
+          // a Mac, so that what it says about this volume is what is checked.
+          const realPlatform = process.platform;
+          Object.defineProperty(process, 'platform', { value: 'darwin' });
+          try { out.redo = await call('redo-double-read', { sourcePath: c, algo: 'xxh64', files: [{ rel: 'C001.mxf', hash: 'x' }] }); }
+          finally { Object.defineProperty(process, 'platform', { value: realPlatform }); }
+        }
+      }
+    }
+  } finally {
+    for (const w of writers) { try { process.kill(-w.pid, 'SIGKILL'); } catch (_) {} }
+    H.cleanup();
+  }
+  console.log(JSON.stringify(out));
+}
+if (process.argv[2] === '--child') {
+  childMain(process.argv[3]).then(() => process.exit(0), e => { console.error(e); process.exit(1); });
+  return;
+}
 
 // The engine's timers do not keep the process alive (unref), and neither do
 // the calls that never come back: this one does, for the test's duration.
@@ -161,35 +247,69 @@ const keepAlive = setInterval(() => {}, 1000);
     ok(watched, 'only when asked to: the destination read-back passes no deadline');
   }
 
-  console.log('\nthe engine goes through them');
+  console.log('\nthe engine, on a card that stops answering (real ingest, deadline shortened)');
   {
-    const eng = extractFn('performCopyMulti');
-    const scanStart = eng.indexOf('async function scan(dir)');
-    const scanBody = eng.slice(scanStart, eng.indexOf('totalFiles = allFiles.length', scanStart));
-    ok(scanStart > 0 && !/readdirSync|statSync/.test(scanBody),
-       'the scan of the card makes no synchronous call');
-    ok(/settleWithin\('readdir:'/.test(scanBody) && /statWithin\(full, SOURCE_STALL_MS\)/.test(scanBody),
-       'it lists and measures with a deadline');
-    const copyStart = eng.indexOf('PHASE 1');
-    const copy = eng.slice(copyStart, eng.indexOf('tCopyEnd = Date.now()', copyStart));
-    ok(/if \(sourceStalled\) \{ failRemaining\(i, act\); break; \}/.test(copy),
-       'once the card is silent, the files left are reported and not asked for');
-    const pre = copy.indexOf('statWithin(file.src, SOURCE_STALL_MS)'), purge = copy.indexOf('purgeFileCache(file.src)');
-    ok(pre > 0 && purge > pre, 'the card is asked, with a deadline, before the purge opens the file synchronously');
-    ok(/copyFanOut\(file\.src, destTmpAbs, onB, hasher, SOURCE_STALL_MS\)/.test(copy), 'the copy itself is watched');
-    ok(!/statSync\(file\.src\)/.test(copy), 'no synchronous measure of the card after the copy');
-    ok(/if \(e && e\.stalled\) sourceStalled = e;/.test(copy), 'a silence in the middle of a file stops the run asking');
-    ok(!/statSync\(c\.src\)/.test(eng), 'SIZE CHECK measures the card with a deadline too');
-    ok(/hashPro\(c\.src, hasher, \{ stallMs: SOURCE_STALL_MS \}\)/.test(eng) && /not re-read: \$\{silent\.message\}/.test(eng),
-       'the card re-read is watched, and a silent card is not called "unstable"');
+    // Run in a child process with the deadline set to 400 ms and a time
+    // limit: a regression that waits for ever shows up as a failure here, not
+    // as a hung test. Needs named pipes (mkfifo): skipped on Windows.
+    const r = runChild('copy-stall');
+    if (r.skipped) { console.log('  --   ' + r.skipped); }
+    else if (r.error) { ok(false, 'the scenario did not finish (a hang is a regression): ' + r.error.split('\n')[0]); }
+    else {
+      const res = r.results && r.results[0];
+      ok(!!res && res.success === false, `the ingest ends, and not green (${r.ms} ms)`);
+      ok(r.ms < 5000, 'without waiting for the 60 s the application gives a card');
+      const errs = (res && res.errorList) || [];
+      const stalled = errs.find(e => e.file === 'B.mxf');
+      ok(!!stalled && stalled.stalled === true && /stopped answering/.test(stalled.error),
+         'the file the card went silent on says "the card stopped answering"');
+      const after = errs.find(e => e.file === 'C.txt');
+      ok(!!after && after.stalled === true && /not copied/.test(after.error),
+         'the file after it is listed as not copied, without being asked for');
+      ok(res && res.copiedFiles === 1 && (res.failedFiles || []).join() === 'B.mxf,C.txt',
+         'the file before it was copied; the two others are in the retry list');
+      ok(r.destFiles.join() === 'A.txt', 'and only that one is on the drive (no partial file)');
+    }
+  }
+
+  console.log('\nthe engine, on a volume produced on read (real ingest through named pipes)');
+  {
+    // Files that announce 0 bytes and deliver their content when read, in a
+    // folder named "_hde": what CODEX Platform does for HDE. Every mode must
+    // end green with the delivered bytes on the drive.
+    const r = runChild('hde');
+    if (r.skipped) { console.log('  --   ' + r.skipped); }
+    else if (r.error) { ok(false, 'the scenario did not finish (a hang is a regression): ' + r.error.split('\n')[0]); }
+    else {
+      for (const m of ['fast', 'normal', 'slow', 'pro']) {
+        const x = r[m];
+        ok(x && x.success === true && x.errors === 0 && x.copiedFiles === 2,
+           `${m}: green, both files copied (${x && JSON.stringify((x.errorList || []).map(e => e.error.slice(0, 60)))})`);
+        ok(x && x.delivered === true, `${m}: the drive holds the delivered bytes, not the 0 bytes announced`);
+      }
+      ok(r.pro.proDoubleRead === false && r.pro.verify2Ms === 0, 'PRO: the card re-read is off (it would only produce the files again)');
+      ok((r.pro.notes || []).some(n => n.code === 'HDE') && (r.pro.errorList || []).some(e => e.phase === 'warning' && /Virtual volume/.test(e.error)),
+         'the window and the report say what such a copy proves');
+      ok(/checked against what it delivered/.test(r.pro.errorList.map(e => e.error).join(' ')) &&
+         !/checked against/.test(r.fast.errorList.map(e => e.error).join(' ')),
+         'and FAST is not credited with a check it did not make');
+      ok(r.manifestSizes === true, 'PRO: the manifest records the delivered sizes');
+      ok(r.sentinelWritten === false, 'no card log is written on such a volume, even with Card Tracking on');
+      ok(r.inspect === null && r.camera === null, 'neither the card inspection (write probe) nor the camera detection touch it');
+      ok(r.redo && r.redo.ok === false && /virtual/.test(r.redo.error || ''), 'the unmount-and-re-read check refuses it (there is no card behind it)');
+    }
+    const REND = require('./lib/source').RENDERER;
+    ok(/if \(isHdeSource\(entry\.path\)\) warnHdeSource\(entry\);/.test(REND) &&
+       /if\(z==='src' && r && r\[0\] && r\[0\]\.virtual === true\)\{ entry\._virtual = true; warnHdeSource\(entry\); \}/.test(REND),
+       'the window warns when such a card is loaded, by name or when the system says so (read in the page; its own test comes with the renderer modules)');
   }
 
   console.log('\nthe volume list (macOS): a volume that does not answer no longer freezes it');
   {
     const asked = [];
     const vctx = vm.createContext({
-      console, Promise, setTimeout, clearTimeout, String, Array, Set, Map, parseInt,
-      process: { platform: 'darwin' },
+      console, Promise, setTimeout, clearTimeout, String, Array, Set, Map, parseInt, Number,
+      process: { platform: 'darwin', env: {} }, isHdeSource: require('../src/shared/sources').isHdeSource,
       tryExecFile: async (cmd, args) => {
         asked.push(cmd + ' ' + args.join(' '));
         if (cmd === 'mount') return [
@@ -213,7 +333,7 @@ const keepAlive = setInterval(() => {}, 1000);
       extractConst('SOURCE_STALL_MS'), extractConst('_ioInFlight'),
       // The real deadline is 3 s; the test does not wait that long.
       'const VOLUME_PROBE_MS = 200;',
-      extractFn('settleWithin'), extractFn('statWithin'), extractFn('isHdeSource'), extractFn('isVirtualMountType'), extractFn('getMountedVolumes'),
+      extractFn('settleWithin'), extractFn('statWithin'), extractFn('isVirtualMountType'), extractFn('getMountedVolumes'),
     ].join('\n'), vctx);
     const t0 = Date.now();
     const vols = await orHang(vctx.getMountedVolumes(), 3000).catch(e => { console.log('    ' + e.message); return []; });
@@ -232,50 +352,20 @@ const keepAlive = setInterval(() => {}, 1000);
        'Windows: the drive letters are polled with a deadline, no synchronous call every 2 s');
   }
 
-  console.log('\nthe HDE rule is the same on both sides');
+  console.log('\nthe HDE rule: one copy, used by the engine and the window');
   {
-    const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
-    const m = REND.match(/function isHdeSource\(p\) \{[\s\S]*?\n\}/);
-    const c2 = vm.createContext({ String });
-    vm.runInContext(extractFn('isHdeSource') + '\nthis.main = isHdeSource;', ctx);
-    if (m) vm.runInContext(m[0] + '\nthis.rend = isHdeSource;', c2);
-    const cases = ['/Volumes/A003_hde', '/Volumes/A003_HDE/A003C001', 'E:\\A003_hde\\x', '/Volumes/A003',
-                   '/Volumes/hde', '/Volumes/my_hdee', 'A003_hde', '', null];
-    ok(!!m && cases.every(x => ctx.main(x) === c2.rend(x)),
-       'main.js and index.html agree on every case');
-    ok(ctx.main('/Volumes/A003_hde') && ctx.main('/Volumes/A003_hde/sub') && ctx.main('E:\\A003_hde') &&
-       !ctx.main('/Volumes/A003') && !ctx.main('/Volumes/hde') && !ctx.main('/Volumes/my_hdee'),
+    const REND = require('./lib/source').RENDERER;
+    const { isHdeSource } = require('../src/shared/sources');
+    const mainFiles = require('./lib/source').files('main');
+    ok(mainFiles.some(f => /require\('\.\.\/shared\/sources'\)/.test(f.text)) &&
+       !mainFiles.some(f => /^\s*function isHdeSource\(/m.test(f.text)),
+       'the engine requires the shared rule and has no copy of its own');
+    ok(/<script src="\.\.\/shared\/sources\.js"><\/script>/.test(REND) && !/function isHdeSource\(/.test(REND),
+       'the window loads the same file and has no copy either');
+    ok(isHdeSource('/Volumes/A003_hde') && isHdeSource('/Volumes/A003_HDE/A003C001') && isHdeSource('E:\\A003_hde\\x') &&
+       isHdeSource('A003_hde') && !isHdeSource('/Volumes/A003') && !isHdeSource('/Volumes/hde') &&
+       !isHdeSource('/Volumes/my_hdee') && !isHdeSource('') && !isHdeSource(null),
        'a volume or a folder inside it is HDE; a name that only contains "hde" is not');
-  }
-
-  console.log('\nan HDE card in the engine');
-  {
-    const eng = extractFn('performCopyMulti');
-    ok(/const hdeSource = isHdeSource\(source\.path\) \|\| await isVirtualSource\(source\.path\);/.test(eng) &&
-       /const proDouble = isPro && options\.proDoubleRead === true && !hdeSource;/.test(eng),
-       'the card re-read is off on an HDE volume');
-    ok(/if \(\(isPro \|\| isSecure\) && !hdeSource\) \{\s*let purged = false;\s*try \{ purged = nocache\.purgeFileCache\(file\.src\)/.test(eng),
-       'its files are not purged from the cache (they are produced on demand, and a failed purge would raise a false warning)');
-    ok(/if \(hdeSource\) \{ if \(!st\) why = /.test(eng) && /file\.size = fileBytes;/.test(eng),
-       'the announced size is not compared: what was read becomes the size of the file');
-    ok(/if \(hdeSource\) srcSize = c\.size;/.test(eng), 'SIZE CHECK compares with what was delivered');
-    ok(/if \(hdeSource\) for \(const r of R\) \{[\s\S]{0,400}code: 'HDE'/.test(eng) && /phase: 'warning'/.test(eng),
-       'the window and the report say what an HDE copy proves');
-    ok(/const verified = isPro \|\| isSecure;/.test(eng) && /verified \? 'Virtual volume: the copies were checked/.test(eng),
-       'and FAST or SIZE CHECK is not credited with a check it did not make');
-    ok(/options\.writeSentinel === true && common\.length && !isHdeSource\(source\.path\) && !\(await isVirtualSource\(source\.path\)\)/.test(SRC),
-       'no card log is written on an HDE volume');
-    ok(/ipcMain\.handle\('detect-camera'[\s\S]{0,250}if \(isHdeSource\(rootPath\) \|\| await isVirtualSource\(rootPath\)\) return null;/.test(SRC) &&
-       /ipcMain\.handle\('inspect-card'[\s\S]{0,250}if \(isHdeSource\(rootPath\) \|\| await isVirtualSource\(rootPath\)\) return null;/.test(SRC),
-       'neither the camera detection nor the card inspection (and its write probe) touch it');
-    const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
-    ok(/if \(isHdeSource\(entry\.path\)\) warnHdeSource\(entry\);/.test(REND) && /async function onSourceAdded\(entry\) \{\s*\/\/[^\n]*\n[^\n]*\n\s*if \(isHdeSource\(entry\.path\)\) return;/.test(REND),
-       'the window warns when an HDE card is loaded, and does not inspect it');
-    ok(/if\(z==='src' && r && r\[0\] && r\[0\]\.virtual === true\)\{ entry\._virtual = true; warnHdeSource\(entry\); \}/.test(REND) &&
-       /if \(entry\._virtualWarned\) return; entry\._virtualWarned = true;/.test(REND),
-       'and when the system says the volume is virtual, whatever its name, once per card');
-    ok(/ipcMain\.handle\('redo-double-read'[\s\S]{0,900}if \(isHdeSource\(sourcePath\) \|\| await isVirtualSource\(sourcePath\)\) return \{ ok:false/.test(SRC),
-       'the unmount-and-re-read check refuses a virtual volume (there is no card behind it)');
   }
 
   console.log('\nwhich volume is virtual: the mount table, not the name');

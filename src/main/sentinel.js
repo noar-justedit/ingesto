@@ -46,9 +46,9 @@ const SENTINEL_NAME = '.ingesto.json';
 // ──────────────────────────────────────────────────────────────────────────
 // Write-protect detection, WITHOUT writing anything.
 //
-// It used to create a test file at the root of the card and delete it right
-// away. That is a deletion on a card, and the rule is that there is none. The
-// question is now asked of the system instead: a card with its lock switch on
+// Creating a test file at the root of the card and deleting it right away
+// would be a deletion on a card, and the rule is that there is none. The
+// question is asked of the system instead: a card with its lock switch on
 // is mounted read-only, and access() answers EROFS for it on macOS and Linux.
 //
 // Windows does not report a read-only volume through access() on a folder, so
@@ -115,8 +115,9 @@ function readSentinel(root) {
 
 // True when a sentinel file EXISTS but could not be understood (truncated by an
 // unplug, hand-edited, or written by a future version that changed the format).
-// This must not be treated as "no sentinel": doing so silently dropped the whole
-// ingest history of the card AND made the "already ingested" warning disappear.
+// This must not be treated as "no sentinel": doing so would silently drop the
+// whole ingest history of the card AND make the "already ingested" warning
+// disappear.
 function sentinelIsDamaged(root) {
   const sentPath = path.join(root, SENTINEL_NAME);
   if (!fs.existsSync(sentPath)) return false;
@@ -141,7 +142,7 @@ function listAllFiles(root, currentVersion) {
       // The tracking log and anything derived from it (.unreadable backup, the
       // .tmp of an interrupted write) are OUR bookkeeping, never footage. They
       // must not show up as "new files" and must never be copied to a client
-      // destination — which is what happened once .unreadable started existing.
+      // destination.
       if (rel === SENTINEL_NAME || rel.startsWith(SENTINEL_NAME + '.')) continue;
       if (/^\.ingesto_wtest_/.test(name)) continue;
       if (name === 'System Volume Information') continue;
@@ -195,8 +196,8 @@ function ingestFolderUnder(ing, root) {
   return null;
 }
 
-// Was this recorded ingest a VERIFIED one? Recorded as such from 2.6.1 on;
-// for a record written by an earlier version that did not say, ingesto's own
+// Was this recorded ingest a VERIFIED one? The record says so; for a record
+// written by an earlier version that did not say, ingesto's own
 // checksum list or ASC MHL history in the folder is the proof (only SECURE
 // and PRO wrote them). Any other file — someone else's .md5 — is not.
 function ingestVerified(ing, folder) {
@@ -277,8 +278,8 @@ function inspectCard(root, probeWrite = false, destRoots = null, manifestHas = n
   // A sentinel that exists but cannot be read means "this card HAS a history we
   // can no longer see" — very different from a fresh card. The caller must be
   // able to tell the operator instead of quietly declaring every file new.
-  // Read once, not twice: sentinelIsDamaged() re-read and re-parsed the same
-  // file, and that file can be several megabytes on a card that has been
+  // Read once, not twice: sentinelIsDamaged() would re-read and re-parse the
+  // same file, and that file can be several megabytes on a card that has been
   // through a dozen ingests. "Damaged" is exactly "the file is there and we
   // could not read it", which the line above already answers.
   result.sentinelDamaged = result.sentinel === null && fs.existsSync(path.join(root, SENTINEL_NAME));
@@ -291,8 +292,9 @@ function inspectCard(root, probeWrite = false, destRoots = null, manifestHas = n
     // the destinations selected now (the only ones a copy may be skipped for).
     // A file may be skipped only when EVERY selected destination holds a
     // verified copy of it: what one root can vouch for is intersected across
-    // roots. With one drive proven and a new one added, the new one used to
-    // receive only today's clips — green tick, eject button, whole day missing.
+    // roots. Otherwise, with one drive proven and a new one added, the new one
+    // would receive only today's clips: green tick, eject button, whole day
+    // missing.
     const ingestedKeys = new Set();
     for (const ing of result.sentinel.ingests) for (const f of (ing.files || [])) ingestedKeys.add(`${f.p}|${f.s}|${f.m}`);
     let usableKeys = new Set();
@@ -342,8 +344,8 @@ async function appendIngest(root, destination, filesIngested, ingestoVersion, me
     // Never overwrite a file we could not read: keep it beside the new one so
     // the card's history is recoverable instead of destroyed.
     if (fs.existsSync(sentPath)) {
-      // A fixed name was overwritten by the NEXT rescue, destroying the very
-      // history the rescue exists to keep. One backup per rescue.
+      // A fixed name would be overwritten by the NEXT rescue, destroying the
+      // very history the rescue exists to keep. One backup per rescue.
       try {
         let bak = sentPath + '.unreadable';
         if (fs.existsSync(bak)) bak = `${bak}-${Date.now()}`;
@@ -365,8 +367,9 @@ async function appendIngest(root, destination, filesIngested, ingestoVersion, me
   });
   try {
     // Same discipline as the media files: write a temp file, then rename over
-    // the target. writeFileSync truncates first, so a card pulled mid-write
-    // used to leave a zero-length sentinel — i.e. no history at all.
+    // the target. writeFileSync truncates first, so writing in place, a card
+    // pulled mid-write would leave a zero-length sentinel, i.e. no history at
+    // all.
     //
     // A write that fails leaves its .tmp where it is rather than deleting it:
     // nothing is ever deleted on a card. The next journal write overwrites

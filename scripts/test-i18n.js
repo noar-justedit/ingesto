@@ -11,7 +11,8 @@ const path = require('path');
 const vm   = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const REND = fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
+const HTML = fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'index.html'), 'utf8');   // the tags as written
 const ENGINE = fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'i18n.js'), 'utf8');
 const LANG_DIR = path.join(ROOT, 'src', 'renderer', 'lang');
 let pass = 0, fail = 0;
@@ -28,10 +29,10 @@ console.log('\nthe engine');
   ok(parsed, 'i18n.js parses');
   const files = fs.readdirSync(LANG_DIR).filter(f => f.endsWith('.js'));
   for (const f of files) {
-    const at = REND.indexOf(`<script src="lang/${f}"></script>`);
-    ok(at > 0 && at < REND.indexOf('<script src="i18n.js"></script>'), `lang/${f} is loaded, before i18n.js`);
+    const at = HTML.indexOf(`<script src="lang/${f}"></script>`);
+    ok(at > 0 && at < HTML.indexOf('<script src="i18n.js"></script>'), `lang/${f} is loaded, before i18n.js`);
   }
-  ok(REND.indexOf('<script src="i18n.js"></script>') < REND.indexOf('</head>'), 'i18n.js is loaded in <head>, before the page is drawn');
+  ok(HTML.indexOf('<script src="i18n.js"></script>') < HTML.indexOf('</head>'), 'i18n.js is loaded in <head>, before the page is drawn');
   ok(/id="set-language"[^>]*data-i18n-skip/.test(REND), 'Settings has the language menu, and its language names are never translated');
   ok(/language:\(window\.INGESTO_I18N && window\.INGESTO_I18N\.getLanguage\(\)\) \|\| 'en'/.test(REND), 'the language is saved with the preferences');
   ok(/prefs\.language && window\.INGESTO_I18N && prefs\.language!==window\.INGESTO_I18N\.getLanguage\(\)/.test(REND), 'and restored from them at launch');
@@ -123,7 +124,7 @@ for (const f of fs.readdirSync(LANG_DIR).filter(f => f.endsWith('.js'))) {
 // the code passes them to tr(), trf() or i18n.t(). Every such text must be
 // in every dictionary, or it silently stays in English.
 console.log('\ntexts translated by the code');
-const MAIN = fs.readFileSync(path.join(ROOT, 'src', 'main', 'main.js'), 'utf8');
+const MAIN = require('./lib/source').ENGINE;
 function calledWith(src, fnRe) {
   const out = new Set();
   const re = new RegExp(fnRe + '\\(', 'g');

@@ -17,6 +17,14 @@
 
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
+// Subscribes `listener` to a channel and returns the function that removes
+// that listener, and only that one: another part of the window listening on
+// the same channel keeps its subscription.
+function subscribe(channel, listener) {
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+}
+
 const ingestoAPI = {
   getVolumes:           ()              => ipcRenderer.invoke('get-volumes'),
   browseFolder:         ()              => ipcRenderer.invoke('browse-folder'),
@@ -25,8 +33,7 @@ const ingestoAPI = {
   pauseCopy:            ()              => ipcRenderer.invoke('pause-copy'),
   resumeCopy:           ()              => ipcRenderer.invoke('resume-copy'),
   onPauseHeld: (cb) => {
-    ipcRenderer.on('pause-held', () => cb());
-    return () => ipcRenderer.removeAllListeners('pause-held');
+    return subscribe('pause-held', () => cb());
   },
   exportSettings:       (data)          => ipcRenderer.invoke('export-settings', data),
   importSettings:       ()              => ipcRenderer.invoke('import-settings'),
@@ -53,7 +60,6 @@ const ingestoAPI = {
   getVersion:           ()              => ipcRenderer.invoke('get-version'),
   loadPrefs:            ()              => ipcRenderer.invoke('load-prefs'),
   savePrefs:            (p)             => ipcRenderer.invoke('save-prefs', p),
-  scanDestCounter:      (paths, tpl)    => ipcRenderer.invoke('scan-dest-counter', paths, tpl),
   scanDestCounterFull:  (paths, tpl)    => ipcRenderer.invoke('scan-dest-counter-full', paths, tpl),
   checkCounterCollision:(paths, counter, tpl)=> ipcRenderer.invoke('check-counter-collision', paths, counter, tpl),
   detectCamera:         (p)             => ipcRenderer.invoke('detect-camera', p),
@@ -61,34 +67,27 @@ const ingestoAPI = {
   verifyFolder:         (p)             => ipcRenderer.invoke('verify-folder', p),
   cancelVerify:         ()              => ipcRenderer.invoke('cancel-verify'),
   onVerifyProgress: (cb) => {
-    ipcRenderer.on('verify-progress', (_, d) => cb(d));
-    return () => ipcRenderer.removeAllListeners('verify-progress');
+    return subscribe('verify-progress', (_, d) => cb(d));
   },
   onCopyProgress: (cb) => {
-    ipcRenderer.on('copy-progress', (_, d) => cb(d));
-    return () => ipcRenderer.removeAllListeners('copy-progress');
+    return subscribe('copy-progress', (_, d) => cb(d));
   },
   onCopyComplete: (cb) => {
-    ipcRenderer.on('copy-complete', (_, d) => cb(d));
-    return () => ipcRenderer.removeAllListeners('copy-complete');
+    return subscribe('copy-complete', (_, d) => cb(d));
   },
   onFinderDrop: (cb) => {
-    ipcRenderer.on('finder-drop', (_, p, clientX) => cb(p, clientX));
-    return () => ipcRenderer.removeAllListeners('finder-drop');
+    return subscribe('finder-drop', (_, p, clientX) => cb(p, clientX));
   },
   onVolumesChanged: (cb) => {
-    ipcRenderer.on('volumes-changed', () => cb());
-    return () => ipcRenderer.removeAllListeners('volumes-changed');
+    return subscribe('volumes-changed', () => cb());
   },
   onUpdateAvailable: (cb) => {
-    ipcRenderer.on('update-available', (_, d) => cb(d));
-    return () => ipcRenderer.removeAllListeners('update-available');
+    return subscribe('update-available', (_, d) => cb(d));
   },
   // A second launch is refused so two windows cannot give two cards the same
-  // counter. It used to disappear without a word.
+  // counter. The window says so, rather than letting it vanish without a word.
   onSecondInstance: (cb) => {
-    ipcRenderer.on('second-instance-blocked', () => cb());
-    return () => ipcRenderer.removeAllListeners('second-instance-blocked');
+    return subscribe('second-instance-blocked', () => cb());
   },
   platform: process.platform,
   getPathForFile: (file) => {
@@ -99,21 +98,19 @@ const ingestoAPI = {
   winMaximize:  () => ipcRenderer.send('win-maximize'),
   winClose:     () => ipcRenderer.send('win-close'),
   onMaximizeChange: (cb) => {
-    ipcRenderer.on('win-maximized',   () => cb(true));
-    ipcRenderer.on('win-unmaximized', () => cb(false));
-    return () => {
-      ipcRenderer.removeAllListeners('win-maximized');
-      ipcRenderer.removeAllListeners('win-unmaximized');
-    };
+    const offMax   = subscribe('win-maximized',   () => cb(true));
+    const offUnmax = subscribe('win-unmaximized', () => cb(false));
+    return () => { offMax(); offUnmax(); };
   }
 };
 
-// With contextIsolation:false (Windows), contextBridge still works
-// but we also expose directly on window as fallback
+// main.js always creates the window with contextIsolation: true, so the API
+// goes through contextBridge. The other branch is a fallback for a window
+// created without isolation, where contextBridge is not available.
 if (process.contextIsolated) {
   contextBridge.exposeInMainWorld('ingesto', ingestoAPI);
 } else {
-  // contextIsolation:false — expose directly on window
+  // Without isolation: exposed directly on window.
   window.ingesto = ingestoAPI;
 }
 

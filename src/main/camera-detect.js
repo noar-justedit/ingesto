@@ -324,7 +324,7 @@ function detectSonyXAVCS(root) {
 function detectSonyAVCHD(root) {
   if (!has(root, 'PRIVATE/AVCHD')) return null;
   // AVCHD metadata is in BDMV/INDEX.BDM (binary, harder to parse)
-  // For now just return brand
+  // Only the brand is returned
   return { brand: 'Sony', model: 'Sony' };
 }
 
@@ -387,7 +387,7 @@ function detectARRI(root) {
     const arriDirs = files.filter(f => /\.ARRI$/i.test(f));
     if (!arriDirs.length) return null;
   }
-  // Could read MXF header for exact model, but skip for V1
+  // The MXF header could give the exact model; it is not read
   // Default to AlexaMini (most common) as a best-effort fallback
   return { brand: 'Arri', model: 'Arri' };
 }
@@ -679,7 +679,7 @@ function detectApple(root) {
 }
 
 // ----- Nikon / Fuji / ZCAM / Phantom -------------------------------------
-// These are heavy on EXIF reading; for V1 we provide basic detection.
+// These are heavy on EXIF reading; only basic detection is provided.
 function detectGenericDCIM(root) {
   // Generic DCIM fallback — try EXIF Make tag in first JPEG/MOV/MP4
   if (!has(root, 'DCIM')) return null;

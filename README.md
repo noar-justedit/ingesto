@@ -424,6 +424,7 @@ Node 20.19 or newer.
 npm ci               # exactly the versions pinned in package-lock.json
 npm start            # run from source
 npm test             # engine test suite
+node scripts/test-regression.js --update   # re-record the reference after an INTENDED change of behaviour
 npm run build        # macOS (Apple Silicon)
 npm run build:win    # Windows installer, cross-built from a Mac
 npm run build:linux  # Linux (run on Linux)
@@ -441,15 +442,33 @@ dependency on purpose, and commit the updated `package-lock.json` with it.
 ```
 ingesto/
 ├── src/
-│   ├── main/
-│   │   ├── main.js            — Electron main process (copy engine, volumes, IPC…)
+│   ├── main/                  — Electron main process
+│   │   ├── main.js            — Window, menus, IPC handlers (what the interface can ask)
+│   │   ├── engine.js          — The copy engine: one card to every destination, in phases
+│   │   ├── copy-io.js         — Reading once and writing to every destination, temp files
+│   │   ├── source-lock.js     — The lock that keeps every write and delete off the card
+│   │   ├── manifests.js       — Checksum lists, MHL, ASC MHL, the shooting note
+│   │   ├── hashing.js         — xxHash / MD5 fingerprints
+│   │   ├── io-deadline.js     — Deadline on every read of a card that may stop answering
+│   │   ├── mounts.js          — Mount table: volumes produced on read (HDE...)
+│   │   ├── volumes.js         — Drives and cards, on every system
+│   │   ├── counter-scan.js    — Reading the counter back from the destinations
+│   │   ├── run-control.js     — Pause and cancel, shared by the running ingest
+│   │   ├── util.js            — Small helpers
 │   │   ├── camera-detect.js   — Camera brand/model detection from card structure
 │   │   ├── sentinel.js        — Card tracking (.ingesto.json), off by default
 │   │   ├── nocache.js         — Uncached read-back verification (macOS/Windows/Linux)
 │   │   ├── lang.js            — Texts of the main process in the chosen language
 │   │   └── preload.js         — Secure bridge between main and renderer
-│   └── renderer/
-│       ├── index.html         — Full user interface (HTML+CSS+JS), in English
+│   ├── shared/                — Rules used by both the engine and the interface
+│   │   ├── folder-names.js    — The folder template: variables, subfolders, safe names
+│   │   ├── modes.js           — The four copy modes
+│   │   └── sources.js         — What kind of source a path is (HDE)
+│   └── renderer/              — The interface, in English
+│       ├── index.html         — The markup of the window
+│       ├── styles.css         — Its styles
+│       ├── scripts/           — Its code, one file per part of the window
+│       │                        (loaded in the order index.html lists them)
 │       ├── i18n.js            — Shows the interface in the chosen language
 │       └── lang/fr.js         — French dictionary (one file per language)
 ├── build-resources/
@@ -462,7 +481,11 @@ ingesto/
 │   ├── build_win_from_mac.command — Build the Windows installer from a Mac
 │   ├── build-linux.sh         — Build the app for Linux
 │   ├── dev.sh                 — Run in dev mode, without building
-│   └── test-*.js              — Engine test suites (run by `npm test`)
+│   ├── test-*.js              — Engine test suites (run by `npm test`)
+│   ├── test-regression.js     — Real ingests compared with a recorded reference
+│   ├── lib/harness.js         — The real engine loaded outside Electron, for the tests
+│   ├── lib/source.js          — The source text of the engine and the window, for the tests
+│   └── fixtures/              — The recorded reference of test-regression.js
 ├── package.json                — Project configuration
 ├── LICENSE                     — Full text of the GPL v3 license
 └── README.md                   — This file
@@ -525,7 +548,7 @@ be considered.
 
 ### Translating ingesto
 
-The interface stays in English in `index.html`; `src/renderer/i18n.js` shows it
+The interface stays in English in its code; `src/renderer/i18n.js` shows it
 in another language from a dictionary in `src/renderer/lang/`. A text missing
 from the dictionary simply stays in English, so a translation can be added a
 little at a time.

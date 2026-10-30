@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Regression tests for the parallel destination verification added in 2.5.1.
-// Pulls the real functions out of src/main/main.js — no Electron needed — and
+// Pulls the real functions out of src/main — no Electron needed — and
 // runs them against real files in a temp directory.
 //
 //   node scripts/test-parallel-verify.js
@@ -12,7 +12,7 @@ const vm   = require('vm');
 const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
-const SRC  = fs.readFileSync(path.join(ROOT, 'src', 'main', 'main.js'), 'utf8');
+const SRC  = require('./lib/source').ENGINE;
 
 function extractFn(name) {
   let start = SRC.indexOf(`function ${name}(`);
@@ -29,10 +29,6 @@ function extractFn(name) {
 const nocache = require(path.join(ROOT, 'src', 'main', 'nocache.js'));
 const hashWasm = require('hash-wasm');
 
-// Pause bookkeeping lives at module scope in main.js; recreate that scope here
-// so the real statements are the ones under test.
-const PAUSE_SRC = SRC.match(/let pausedMs = 0, _pauseStart = 0, _pauseHeldSent = false;[\s\S]*?\n}\n/)[0];
-
 const ctx = vm.createContext({
   fs, path, process, Buffer, console, setTimeout, setInterval, clearInterval,
   nocache, getHashWasm: () => hashWasm, module: {}, require,
@@ -40,19 +36,20 @@ const ctx = vm.createContext({
 vm.runInContext(
   extractFn('groupByDevice') + '\n' +
   extractFn('newProHasher') + '\n' +
-  extractFn('hashPro') + '\n' +
-  PAUSE_SRC + '\n' +
-  extractFn('pauseGate') + '\n' +
-  // 2.6.0: pauseGate announces "held" through the module's sendUI(), which
-  // silently drops the message when there is no window — as here.
-  'let __sent = 0; function sendUI(){ __sent++; }\n' +
-  'globalThis.sentCount = () => __sent;\n' +
-  'let pauseCopy = false, cancelCopy = false;\n' +
-  // `let` stays in the script's lexical scope and never lands on the context
-  // object, so the test reaches it through these explicit accessors.
-  'globalThis.setPause = v => { pauseCopy = v; };\n' +
-  'globalThis.getPausedMs = () => pausedMs;\n',
+  extractFn('hashPro') + '\n',
   ctx);
+
+// The pause bookkeeping is the real module, run-control.js. Its window
+// messages go through ctl.send, counted here (there is no window).
+const runControl = require(path.join(ROOT, 'src', 'main', 'run-control.js'));
+let __sent = 0;
+runControl.ctl.send = () => { __sent++; };
+Object.assign(ctx, {
+  pauseGate: runControl.pauseGate, pauseEnd: runControl.pauseEnd, resetPausedMs: runControl.resetPausedMs,
+  sentCount: () => __sent,
+  setPause: v => { runControl.ctl.pauseCopy = v; },
+  getPausedMs: () => runControl.ctl.pausedMs,
+});
 
 let pass = 0, fail = 0;
 const ok = (n, c, extra) => { if (c) { pass++; console.log('  ok  ', n); }
