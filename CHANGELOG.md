@@ -2,6 +2,15 @@
 
 All notable changes to ingesto. Versions before 2.5.5 are not listed here.
 
+## 2.12.0 (2026-10-30)
+- The interface, the reports and the phone notifications in Simplified
+  Chinese (`src/renderer/lang/zh-CN.js`), chosen in Settings, or at first
+  launch on a Mac or PC set to Chinese. Translation by wenjianpai (pull
+  request #12), building on wibi8bo's earlier zh-CN work. Folder names keep
+  the Chinese characters, as already planned for Chinese.
+- The translation was made for 2.9.3; its ntfy paragraph is adapted to the
+  window of 2.11.0 (the link it contains is wired from the code).
+
 ## 2.11.0 (2026-10-29)
 Fixes found by the code review, and the end of the clean-up.
 

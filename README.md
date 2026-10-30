@@ -52,7 +52,7 @@ macOS · Windows · Linux.
   operation instead of finding another way. The only thing that ever writes on
   a card is **Card Tracking**, off by default, and it writes nothing but its own
   journal, `.ingesto.json`.
-- **Speaks your language.** English and French since 2.9.0, chosen in
+- **Speaks your language.** English, French and Simplified Chinese, chosen in
   Settings (the system language at first launch). The interface, the reports
   and the phone notifications follow it; card, drive and folder names never
   change. More languages are welcome, see [Translating ingesto](#translating-ingesto).
@@ -470,7 +470,7 @@ ingesto/
 │       ├── scripts/           — Its code, one file per part of the window
 │       │                        (loaded in the order index.html lists them)
 │       ├── i18n.js            — Shows the interface in the chosen language
-│       └── lang/fr.js         — French dictionary (one file per language)
+│       └── lang/              — One dictionary per language (fr.js, zh-CN.js)
 ├── build-resources/
 │   ├── icon.icns / icon.ico   — Compiled app icons
 │   └── entitlements.mac.plist
@@ -567,6 +567,11 @@ To add a language:
 Never translated: the template variables, the mode names (FAST, SIZE CHECK,
 SECURE, PRO), card, drive and file names, and the field names of the JSON
 report. Open a pull request with the file; you will be credited.
+
+Translations:
+- French: Noar.
+- Simplified Chinese (`zh-CN.js`): [wenjianpai](https://github.com/wenjianpai),
+  building on the earlier work of [wibi8bo](https://github.com/wibi8bo).
 
 ## License
 

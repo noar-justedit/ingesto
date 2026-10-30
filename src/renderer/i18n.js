@@ -32,7 +32,8 @@
   /* Installed languages. dictName is the window variable the file sets. */
   var LANGS = {
     'en': { label: 'English', dictName: null },
-    'fr': { label: 'Français', dictName: 'INGESTO_LANG_FR' }
+    'fr': { label: 'Français', dictName: 'INGESTO_LANG_FR' },
+    'zh-CN': { label: '简体中文', dictName: 'INGESTO_LANG_ZH_CN' }
   };
 
   /* Attributes that are shown to the user. data-ph is the placeholder of the
