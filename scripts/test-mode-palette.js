@@ -20,7 +20,7 @@
 const fs   = require('fs');
 const path = require('path');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 let pass = 0, fail = 0;
 const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fail++; console.log('  FAIL ' + l); } };

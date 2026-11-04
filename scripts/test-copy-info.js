@@ -10,7 +10,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const REND = fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(name) {
   let start = REND.indexOf(`function ${name}(`);
@@ -172,8 +172,10 @@ console.log('\nduring an ingest the new controls are locked too');
 
 console.log('\nthe note mode is remembered without an early save');
 {
-  ok(/noteMode:S\.noteMode==='md'\?'md':'rich',/.test(extractFn('persistPrefsNow')), 'the mode is saved with the preferences');
-  const load = REND.slice(REND.indexOf("if(prefs.noteMode==='md')"), REND.indexOf("if(prefs.noteMode==='md')") + 120);
+  // Saved and read back by the SETTINGS table (checked in test-settings.js).
+  ok(/\{ key:'noteMode', cat:null, valid: v => v === 'md' \|\| v === 'rich' \}/.test(REND), 'the mode is saved with the preferences');
+  const at = REND.indexOf("if(S.noteMode==='md') document.querySelectorAll('.mdn').forEach(mdnApplyMode);");
+  const load = at < 0 ? '' : REND.slice(at, at + 120);
   ok(load.length > 0 && !/setNoteMode\(/.test(load), 'and restored without setNoteMode(), which would save before the rest is restored');
 }
 

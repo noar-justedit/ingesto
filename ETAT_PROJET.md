@@ -10,19 +10,16 @@ tournage). Mac, Windows et Linux. Dépôt : github.com/wibi8bo/ingesto (fork du
 projet original noar-justedit/ingesto, localisé en chinois).
 Auteur : Noar (Arnaud Augst, Just Edit).
 
-- Version du dossier : **2.8.1** (19.10.2026) : fork wibi8bo — localisation
-  zh-CN complète (interface, zone de copie, rapport HTML bilingue, dates),
-  langue persistée avec détection de la langue système, saisie des noms en
-  caractères chinois acceptée, volumes « Recovery » filtrés. Repose sur la
-  2.8.0 : Electron 44, notes en markdown, menu des picture profiles, liste
-  des opérateurs de la session, Operator / Camera / Profile sur une ligne
-  (Copy Info, cartes, kiosk).
+- Version du dossier : **2.12.1** (04.11.2026) : fork wibi8bo, publication complète
+  depuis la 2.8.0. Code base amont 2.12.0, traduction zh-CN assurée par le
+  dictionnaire de l'amont (bâti sur le travail de wibi8bo), correctifs fork
+  conservés (build-mac, push_github, i18n .mdn), documentation en chinois.
 - La 2.7.3 (suivi du projet, `push_github.command`) a été préparée mais n'était
   pas sur GitHub au 13.10 : la 2.8.0 la contient.
 - Dernière version publiée avec binaires : 2.7.2 (tags GitHub `vX.Y.Z`).
 - Electron **44.7.1** : **macOS 13 Ventura minimum** (les 2.7 tournent encore
   sur macOS 12), Windows 10/11 64 bits, Linux x64.
-- Tests : `npm test`, 31 suites, 1890 vérifications, toutes vertes au 13.10.2026.
+- Tests : `npm test`, 39 suites, 2208 vérifications, toutes vertes.
 
 ## Emplacements de la version
 À mettre à jour ensemble à chaque bump, puis vérifier avec
@@ -65,16 +62,34 @@ régénère (`docs/manual/tools/README.md`), pas à chaque bump.
 
 ## Architecture en bref
 ```
-src/main/main.js          moteur : copie, vérification, IPC (38 canaux), verrou carte source
+src/main/main.js          processus principal : fenêtre, menu, IPC
+src/main/engine.js        moteur de copie : une carte, chaque destination, par étapes
+src/main/copy-io.js       lecture unique, écriture sur toutes les destinations, fichiers temporaires
+src/main/source-lock.js   verrou carte source (aucune écriture/suppression sur la carte)
+src/main/manifests.js     vérification, MHL, ASC MHL, notes de prise de vue
+src/main/hashing.js       empreintes xxHash / MD5
+src/main/io-deadline.js   délai de 60 s sur chaque lecture de carte
+src/main/mounts.js        table des volumes générés à la lecture (HDE...)
+src/main/volumes.js       disques et cartes sur chaque OS
+src/main/counter-scan.js  relecture du compteur depuis les destinations
+src/main/run-control.js   pause et annulation, partagés par les ingest en cours
 src/main/sentinel.js      Card Tracking : journal .ingesto.json sur la carte (off par défaut)
 src/main/nocache.js       relecture sans cache (F_NOCACHE / purge) via koffi
 src/main/camera-detect.js détection marque/modèle depuis l'arborescence de la carte
+src/main/lang.js          messages du processus principal, dans la langue choisie
 src/main/preload.js       pont window.ingesto (contextIsolation)
-src/renderer/index.html   TOUTE l'interface (~8 700 lignes : HTML + CSS + JS) et le rapport HTML
-scripts/test-*.js         30 suites lancées par npm test, sans Electron
+src/shared/               règles communes au moteur et à l'interface
+  folder-names.js         gabarits de dossier : variables, sous-dossiers, noms sûrs
+  modes.js                les quatre modes de copie
+  sources.js              ce qu'est une source (HDE...)
+src/renderer/index.html   structure de la fenêtre
+src/renderer/styles.css   styles
+src/renderer/scripts/     code de l'interface, un fichier par partie de fenêtre
+src/renderer/i18n.js      moteur de traduction (dictionnaires dans lang/)
+src/renderer/lang/        fr.js, zh-CN.js
+scripts/test-*.js         39 suites lancées par npm test, sans Electron
 scripts/build_*.command   builds depuis le Mac (lanceurs de build-mac.sh, build-win-from-mac.sh)
 scripts/push_github.*     publication sur GitHub (règle 7 de AGENTS.md)
-docs/manual/              manuel utilisateur EN/FR (HTML + PDF)
 docs/notes/               mémoire détaillée du projet (en français)
 ```
 Deux processus : le principal (Node) fait tout le travail disque ; l'interface,

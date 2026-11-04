@@ -11,10 +11,12 @@
 const fs   = require('fs');
 const path = require('path');
 const os   = require('os');
+const H    = require('./lib/harness');
 const vm   = require('vm');
-const Module = require('module');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+// The whole engine (src/main and the src/shared files it requires), as one
+// text: a function is found by name, whichever file holds it.
+const SRC = require('./lib/source').ENGINE;
 
 // ── Extract a top-level function by brace matching (same trick as test-p0) ──
 function extractFn(name) {
@@ -46,6 +48,7 @@ const fresh = (name) => { const d = path.join(TMP, name); fs.mkdirSync(d, { recu
 const ctx = vm.createContext({ console });
 vm.runInContext([
   extractConst('MAX_FOLDER_DEPTH'),
+  extractFn('asciiFold'),
   extractFn('resolveTemplateVars'),
   extractFn('cleanSegment'),
   extractFn('buildFolderSegments'),
@@ -115,23 +118,7 @@ console.log('\ncounter matcher');
 }
 
 // ═══════════════════ 2. Real ingests ═══════════════════
-const handlers = {};
-const fakeWin = { webContents: { send: () => {} }, isDestroyed: () => false };
-const userData = fresh('userData');
-const electron = {
-  app: { whenReady: () => new Promise(() => {}), on: () => {}, requestSingleInstanceLock: () => true, quit: () => {}, getVersion: () => '2.6.0',
-         getPath: () => userData, getName: () => 'ingesto', isPackaged: false, setAboutPanelOptions: () => {} },
-  BrowserWindow: class { static getAllWindows() { return []; } },
-  Menu: { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) },
-  ipcMain: { handle: (ch, fn) => { handlers[ch] = fn; }, on: (ch, fn) => { handlers[ch] = fn; } },
-  dialog: {}, screen: {},
-  shell: { openPath: async () => {}, showItemInFolder: () => {}, openExternal: async () => {} },
-  powerSaveBlocker: { start: () => 1, stop: () => {}, isStarted: () => false },
-};
-const realLoad = Module._load;
-Module._load = function (req, ...rest) { if (req === 'electron') return electron; return realLoad.call(this, req, ...rest); };
-require(path.join(__dirname, '..', 'src', 'main', 'main.js'));
-const call = (ch, ...args) => handlers[ch]({ sender: fakeWin.webContents }, ...args);
+const { call } = H.loadMain({ version: '2.6.0' });
 const opts = (extra) => ({ mode: 'slow', writeSentinel: false, writeChecksum: true,
                            cksumList: true, cksumMhl: false, ascMhl: false, ...extra });
 

@@ -1,99 +1,183 @@
-# Changelog
+# 更新日志
 
-All notable changes to ingesto. Versions before 2.5.5 are not listed here.
+ingesto 的所有重要变更。2.5.5 之前的版本不在此列出。
 
-## 2.8.1 (2026-10-19)
-First release of this fork: complete Chinese localization on top of 2.8.0.
-The copy engine, the verification and the reports are unchanged in substance.
+本文件是中文版：2.9.0 起的条目译自上游 `CHANGELOG.md`，2.8.1 及更早的说明保留本仓库（wibi8bo/ingesto）的记录。
 
-- Full zh-CN translation of the interface, including the copy progress area,
-  every dialog and the HTML report (the report follows the language at export
-  time; CSV and JSON reports stay in English).
-- Language switch (English / 简体中文) in Settings, persisted with the other
-  preferences. A fresh install starts in the system language; Chinese
-  variants open in Chinese.
-- Dates read year-first in Chinese (2026.10.19) where a full date is shown;
-  record rows keep the compact DD.MM HH:MM form, reordered to MM.DD.
-- The operator and camera fields accept Chinese and other non-reserved
-  characters: only filesystem-invalid characters are stripped now.
-- Volumes named "Recovery" no longer appear in the mounted-volume list.
-- The notes editor shows its placeholder again after all text is deleted;
-  the operator placeholder reads "Name" everywhere, matching kiosk.
-- macOS build script no longer attempts to sign with a non-distribution
-  certificate (it used to hang on a keychain authorisation prompt).
+## 2.12.1 (2026-11-04)
+本仓库（wibi8bo/ingesto）在上游 2.12.0 基础上的发布版。这是本 fork 从 2.8.0 走到今天的一次完整汇总。
+
+**合并上游 2.12.0**
+- 代码底座对齐 `noar-justedit/ingesto` v2.12.0，包括 2.9.0 以来的全部上游改动：多语言架构、模块化重构（`src/shared/`、`src/main/*.js`、`src/renderer/scripts/`）、HDE/虚拟卷支持、读卡 60 秒超时、报告 Errors 列、安全加固（CSP、无内联脚本）等。
+- 界面、HTML/CSV 报告和手机通知的简体中文由上游 `src/renderer/lang/zh-CN.js` 统一提供（该词典基于本仓库早先的工作）。本 fork 不再维护 2.8.x 那套独立的中文补丁，改为跟随上游语言架构，方便以后继续同步。
+
+**本 fork 一直保留的工作（始于 2.8.1）**
+- 完整简体中文界面，包括复制进度区、每个对话框和 HTML 报告；设置中提供语言切换（English / 简体中文），与其他偏好一起保存；全新安装时跟随系统语言，中文系统直接以中文打开。
+- 中文下显示完整日期时采用年在前（2026.10.19）；历史记录行保持紧凑的 DD.MM HH:MM 形式。
+- 操作员和摄像机字段接受中文及其他非保留字符：只移除文件系统不允许的字符。
+- 名为 "Recovery" 的卷不再出现在已挂载卷列表中。
+- 删除全部文字后，备注编辑器会重新显示占位提示；操作员占位符在所有地方都显示"名称"，与 Kiosk 一致。
+- 中文文档：`README.md`（构建、使用、文件夹命名、故障排查、参与翻译）、`CHANGELOG.md`、`ETAT_PROJET.md`、`docs/notes/` 均为中文。
+
+**本次额外的修复与调整**
+- 修复备注编辑器标签与工具栏漏译：上游 `i18n.js` 的用户数据选择器把整个 `.mdn` 容器都跳过了，导致"Notes"标签、Bold/Italic/Heading 等工具栏按钮的提示文本和"Note format"无法翻译。改为只跳过真正的用户内容区 `.mdn-ed`（编辑区）和 `.mdn-src`（文本框），标签与工具栏即可正常翻译。`scripts/test-i18n.js` 断言同步更新。
+- `scripts/build-mac.sh`：没有 Developer ID 证书时强制 `CSC_IDENTITY_AUTO_DISCOVERY=false`，避免 electron-builder 误用"Apple Development"证书而卡在钥匙串授权弹窗上（这个修复从 2.8.1 起一直保留）。
+- `scripts/push_github.sh` / `.command`：采用上游 2.9.3 的修复（从任意目录双击都能正确工作）。本仓库保留自己的项目跟踪文件（`AGENTS.md`、`ETAT_PROJET.md`、`docs/notes/`）并继续发布到 GitHub，不删除它们。
+- 修正两个测试的环境相关问题（不改功能逻辑）：`test-regression.js` 不再用文件大小比较含机器信息的文本文件（MHL、MD5 等），只比较已 blank 掉用户名/主机名的文本内容；`test-engine-guards.js` 的"校验中途取消"改为立即发起取消，不再依赖固定 30 ms 延迟（快盘上 16 MB 已读完会导致取消落空）。
+
+**致谢**：感谢原作者 Noar 在 2.12.0 中提到本仓库的汉化工作，也感谢 wenjianpai 在此基础上完成的 pull request。
+
+## 2.12.0 (2026-10-30)
+- 界面、报告和手机通知支持**简体中文**（`src/renderer/lang/zh-CN.js`），可在设置中选择；首次启动时，如果 Mac 或 PC 的系统语言是中文，会自动使用中文。翻译由 wenjianpai 完成（pull request #12），基于 wibi8bo 早先的 zh-CN 工作。中文下文件夹名保留汉字（与原计划一致）。
+- 该翻译基于 2.9.3 制作；其中的 ntfy 段落已适配 2.11.0 的窗口（其中的链接由代码接入）。
+- 本仓库（wibi8bo/ingesto）：从 2.8.0 汉化版合并到上游 2.12.0。上游已自带 zh-CN 词典，本版不再维护 2.8.x 那套独立的中文补丁，改为跟随上游的语言架构：界面、HTML/CSV 报告和手机通知统一由 `lang/zh-CN.js` 提供，代码与上游保持一致，便于以后继续同步。
+- 本仓库保留自己的项目跟踪文件（`AGENTS.md`、`ETAT_PROJET.md`、`docs/notes/`）并继续发布到 GitHub；`scripts/push_github.command` 采用上游 2.9.3 的修复（从任意目录双击都能正确工作），但没有加入“把这些文件从 GitHub 删除”的行为。
+- `scripts/build-mac.sh` 保留本仓库的修复：没有 Developer ID 证书时强制 `CSC_IDENTITY_AUTO_DISCOVERY=false`，避免 electron-builder 误用“Apple Development”证书而卡在钥匙串授权弹窗上。
+
+## 2.11.0 (2026-10-29)
+代码审查发现的问题，以及清理工作的收尾。
+
+修复
+- 空卡（或所有文件都被文件过滤器排除的卡）不再在目标位置上创建文件夹。以前这个空文件夹会占用一个编号，看起来像一张已上载的卡。
+- 上载结束提示音恢复播放。2.9.1 加入的窗口安全策略曾无声地拒绝它们。
+- “真正检查这张卡”（PRO，macOS）现在算作正在上载：它运行期间 START 会被拒绝，退出应用会先询问，因为此时卡已被卸载并重新读取。
+- 推出卡、以及上述检查中的卸载和重新挂载，不再在 macOS 处理期间冻结应用（最长 15 到 20 秒）。
+- 校验（Verify）过程中按取消，只停止这一次校验：紧接着启动的下一次校验不会被一起取消，同时启动的另一次校验也不会再把取消状态清掉。
+- 设置：偏好文件或导入的设置文件中缺失或不可用的值，现在统一回落到 ingesto 的默认值，两条路径行为一致。以前，导入文件里没有报告开关会关掉报告，导入文件里带未知复制模式会保留当前模式。
+
+变化，但用户看不到
+- 窗口的标记里不再含任何代码：每个按钮都在 `src/renderer/scripts/bindings.js` 中接线，窗口拒绝内联脚本（`script-src 'self'`）。误入页面的名称或文本永远不可能被执行。
+- 保存、加载、导出和导入共用一个设置表（`src/renderer/scripts/preferences.js`）。
+- 引擎的每个结果都有相同字段，无论是否被拒绝。
+- 校验拆成三步（目标位置、二次读卡、清单）。HTML 报告中的固定部分（样式表和查看器）放在 `src/renderer/scripts/report-template.js`；写出的报告内容与以前完全相同。
+- 窗口的监听器逐个移除（`preload.js`）：移除一个不再连带移除同一通道上的其他监听器。
+
+## 2.10.2 (2026-10-29)
+代码清理第 2 至第 6 步。用户侧没有任何变化：每个界面、每次上载、每个写出的文件都和 2.10.1 一样。
+- `src/shared/`：引擎和界面必须共同遵守的规则只存在一份：文件夹模板与安全文件夹名（`folder-names.js`）、HDE 规则（`sources.js`）、复制模式（`modes.js`）。界面不再保留自己的副本。
+- 复制模式在代码中有名字（`MODE.FAST`、`MODE.SIZE_CHECK`、`MODE.SECURE`、`MODE.PRO`）。它们的值（'fast'、'normal'、'slow'、'pro'）不变，因此偏好设置、卡片日志和报告读起来与以前一样。
+- 主进程拆分为模块：`engine.js`、`copy-io.js`、`source-lock.js`、`manifests.js`、`hashing.js`、`io-deadline.js`、`mounts.js`、`volumes.js`、`counter-scan.js`、`run-control.js`、`util.js`。`main.js` 只保留窗口、菜单和 IPC 处理。
+- 复制引擎（`performCopyMulti`）围绕一个 `run` 对象按命名阶段运行，而不再是 1100 行的单个函数。
+- 界面拆分：`index.html`（标记）、`styles.css`，以及 `src/renderer/scripts/`（窗口的每个部分一个文件）。窗口状态 `S` 的每个字段都在 `scripts/state.js` 中声明。
+- 注释描述当前规则及其原因；历史记录留在本文件中。
+- 移除未使用的 `scan-dest-counter` 通道。
+- 测试通过 `scripts/lib/source.js` 读取代码，并新增三项检查守护结果：模式只有一份列表、不再用原始值比较模式、`S` 的每个字段都已声明。卡片锁测试现在扫描所有引擎文件，并拒绝被改名的 `fs`。
+
+## 2.10.1 (2026-10-29)
+代码清理第 1 步：测试。应用与 2.9.2 相比没有变化。
+- 加载真实引擎的八个测试现在共用 `scripts/lib/harness.js`，不再各自携带一套 Electron 替身。
+- `test-engine-guards.js` 重写为真实上载：显示动作、备注文件名中的清理后编号、卡片日志拒绝与 64 MB 上限、以点结尾的模板之后回读编号、批次拒绝（PF-E6）、日志记录引擎实际做了什么。只有“重命名前先刷新”这条规则仍然通过读代码验证：没有测试能观察到断电。
+- `test-source-stall.js`：引擎场景（停止应答的卡、读取时生成的卷）现在通过命名管道作为真实上载运行，在子进程中进行，截止时间缩短到 400 ms 并设有总时限，因此会导致挂起的回归会表现为失败，而不是冻结测试。
+- 为此，引擎从环境变量读取 `INGESTO_STALL_MS`；未设置时（应用中始终未设置），截止时间仍为 60 秒。
+
+## 2.10.0 (2026-10-29)
+代码清理的第一步（AGENTS.md 第 8 条规则）。应用与 2.9.2 相比没有变化；用户看不到任何改动。
+- 回归基准：`scripts/test-regression.js` 通过真实引擎运行 14 次真实上载（每种模式、两个目标位置、卡片日志与“仅复制新文件”、一次拒绝、子文件夹与备注、文件过滤器、两张卡的批次、空卡、校验），并把结果和文件逐字节与录制的基准 `scripts/fixtures/regression.json` 比较。之后每一步清理都必须在不改动基准的情况下保持通过。
+- `scripts/lib/harness.js`：在 Electron 之外加载真实引擎，使用临时文件夹和确定性的测试卡，供各测试共用。
+- 发布：发布脚本（`scripts/push_github.*`）随本版本离开 GitHub，与其他私有文件一样（第 7 条规则）。
+- `AGENTS.md` 载有截至 2026-10-29 的规则（新增第 8 条，重写第 5、7 条）。
+
+## 2.9.3 (2026-10-27)
+发布脚本修复。应用本身与 2.9.2 相比没有变化。
+- `push_github.command` 在访达中双击时，会从 `scripts/` 文件夹工作，git 在那里找私有跟踪文件和 `version.json` 都找错了位置：私有文件留在了 GitHub 上，`version.json` 也在 Release 存在之前就被发出。脚本现在无论从哪里启动，都从项目文件夹工作。新增测试 `test-push-github.js`，按双击的方式运行它。
+- 私有跟踪文件随本版本离开 GitHub。
+
+## 2.9.2 (2026-10-26)
+来自一次 ALEXA Mini 拍摄（ARRIRAW，带与不带 HDE）的现场报告。
+- 报告：每张卡现在逐个文件记录出了什么问题，包括步骤和消息。HTML：点击结果展开列表（PDF 导出会打印每个列表）。CSV：新增 `Errors` 列，放在最后，因此原有列号不变。JSON：`errs` 和 `errsMore`。每张卡最多 50 行。
+- 停止应答的卡不再冻结 ingesto。对卡的每次读取都有 60 秒截止时间（扫描、复制、SIZE CHECK、二次读卡）；一旦超时，该卡被报告为无响应，剩余文件列为未复制。卷列表（macOS、Windows）不再等待无响应的卷；它会将其标为无响应后列出。
+- 虚拟卷，包括 HDE（CODEX Platform，原 Device Manager）：通过名称识别（`A003_hde`，CFast 卡多出来的那个卷），或因为系统报告它由程序提供（FUSE）——这覆盖了卷名保持卡名的 ALEXA LF / SXT / XT 介质。加载卡时会给出提示。副本与该卷实际提供的内容比较（不信任其声明的大小），整卡二次读取（PRO）关闭，卡片日志绝不写入那里，窗口和报告会说明这种复制能证明什么。普通卡不受影响（每种模式下的结果和文件都与 2.9.1 相同，已检查）。
+- 法语界面：信息和拒绝窗口的按钮曾显示英文“GOT IT”，现在显示“COMPRIS”。
+- 项目的私有跟踪文件随本版本离开 GitHub（它们仍保留在 ZIP 中）。
+
+## 2.9.1 (2026-10-24)
+完整代码审查后的修复与统一。
+- 历史记录：顺利完成的 FAST 或 SIZE CHECK 记录现在显示 COPIED（已复制），而不是 VERIFIED（已验证）（其详情里本来就写着“未验证”）。VERIFIED 只保留给 SECURE 和 PRO。
+- 退出 Kiosk 模式会重绘主窗口：不再显示已经不存在的卡；没有卡或没有目标位置时按 START 不会有任何动作。
+- PRO 的“真正检查这张卡”（卸载后重新读取，macOS）在源是卡内某个文件夹时也能工作；以前会把每个文件都报告为无法读取。
+- 法语界面在长时间上载中不再持续增长内存。
+- 偏好设置中格式异常的语言代码，不再可能在复制完成后让上载失败。
+- JSON 报告：`mode` 和 `result` 保持英文，供脚本和后续回读使用；`modeLabel` 和 `resultLabel` 承载翻译后的文本。
+- Windows：源盘上的 `System Volume Information`、`$RECYCLE.BIN` 和 `.DocumentRevisions-V100` 会被跳过，而不再导致上载失败；上载过程中插入硬盘不再冻结复制（卷扫描不再阻塞）。
+- 引擎在上载运行期间拒绝第二次上载。
+- PRO 二次读卡：在 3 万文件的卡上省掉约 10 秒无谓工作。
+- 安全：上载后命令和卡片交接只会在操作员通过系统对话框确认过该命令之后运行。
+- 每一步只有一个名称：Verify（校验，目标位置上的回读）和 Card re-read（二次读卡，PRO 中对卡本身的第二次读取）。报告列 COPY / VERIFY / RE-READ；CSV 列名相应修改。
+- 一种格式：日期在所有地方都是 DD.MM.YYYY HH:MM（报告行现在带年份），时长写作“11m03s”，大小使用与访达一致的小数单位（128 GB 的卡显示 128.0 GB）。
+- “ingesto”在所有地方都小写；标志性的圆点在所有地方都是紫色；Kiosk 与主窗口一样，以绿色表示复制成功。
+- 编号按钮和模板标签有了标签与提示。剩下的两处确认对话框已翻译。
+- 测试：2044 项检查，全部通过。
+
+## 2.9.0 (2026-10-23)
+- ingesto 开放翻译。**法语**是英语之外的第一种语言：设置 > 语言，首次启动时跟随系统语言。界面、HTML 和 CSV 报告、手机通知、系统对话框和拍摄备注都随之切换。在 JSON 报告和 Card Handoff 文档中，字段名和代码保持英文，供脚本使用。
+- 翻译引擎沿用 wibi8bo 中文版（github.com/wibi8bo/ingesto）的设计，因此其他语言可以按同样的方式接入。卡、硬盘、文件夹和文件的名称、备注和操作员姓名永不翻译。
+- 文件夹名：在英语和法语下，文件夹名为纯 ASCII：重音字母变成普通字母（“Hélène”得到“Helene”，以前得到“Hlne”），空格和特殊字符从卡名、固定文本和各个字段中移除。只保留“_”和“-”。拍摄备注保留你输入的全部内容。
+- 没有加载卡时，开始按钮显示 INSERT YOUR CARD 并以橙色呼吸；空的拖放区带底色，卡为红色，目标位置为绿色。
+- 测试：2003 项检查，全部通过。
+
+## 2.8.1
+本中文版（2026-10-19）——fork 的首个版本：在 2.8.0 基础上完成中文汉化。复制引擎、校验和报告在实质上没有改动。
+- 界面完整中文化，包括复制进度区、每个对话框和 HTML 报告（报告在导出时跟随语言；CSV 和 JSON 报告保持英文）。
+- 设置中提供语言切换（English / 简体中文），与其他偏好一起保存。全新安装时跟随系统语言；中文系统直接以中文打开。
+- 中文下显示完整日期时采用年在前（2026.10.19）；历史记录行仍保持紧凑的 DD.MM HH:MM 形式，并重排为 MM.DD。
+- 操作员和摄像机字段接受中文及其他非保留字符：现在只移除文件系统不允许的字符。
+- 名为“Recovery”的卷不再出现在已挂载卷列表中。
+- 删除全部文字后，备注编辑器会重新显示占位提示；操作员占位符在所有地方都显示“名称”，与 Kiosk 一致。
+- macOS 构建脚本不再尝试用非分发证书签名（以前会卡在钥匙串授权弹窗上）。
+
+上游 2.8.1（2026-10-23）
+- 修复：每次向同一目标位置新的上载时，`INGESTO_report.html` 和 `INGESTO_report.json` 会丢失较早卡片的 `folder`（以及硬盘上已有文件的数量）。由 2.8.0 及更早版本写出的报告，对其中已有的卡片仍保留该缺口；从 2.8.1 起上载的卡片会保留其文件夹。
+- HTML 报告标题不再使用长破折号。
+- 项目的私有跟踪文件（`AGENTS.md`、`ETAT_PROJET.md`、`CLAUDE.md`、`docs/notes/`）不再发布到 GitHub（本仓库仍保留发布）。
+- 测试：1917 项检查，全部通过。
 
 ## 2.8.0 (2026-10-13)
-- Electron 44. **macOS 13 Ventura or later is now required** (the 2.7
-  versions still run on macOS 12).
-- Notes are written in markdown: formatting buttons (bold, italic, underline,
-  strikethrough, heading, lists, checklist) or direct markdown input, one
-  switch for both. The note is saved as `001_note.md`; Verify recognises both
-  this and the `001_note.txt` of earlier versions. The HTML report and the
-  ingest history show the note formatted.
-- Operator, Camera and Profile on one row, in Copy Info, on each card and in
-  kiosk mode. The notes field is larger.
-- Profile is a menu of the usual picture profiles, grouped by manufacturer,
-  with a free field for anything else.
-- Operator offers the names used since ingesto was opened (list and
-  autocompletion), kiosk included. The list is kept in memory only.
-- User manual (English and French, HTML and PDF) and README screenshots
-  updated for 2.8.0.
-- Tests: 1890 checks, all passing.
+- Electron 44。**现在要求 macOS 13 Ventura 或更高版本**（2.7 版本仍可在 macOS 12 上运行）。
+- 备注改用 markdown 编写：格式按钮（粗体、斜体、下划线、删除线、标题、列表、勾选清单）或直接输入 markdown，两者共用一个切换。备注保存为 `001_note.md`；校验功能同时识别它和旧版本的 `001_note.txt`。HTML 报告和上载历史会显示格式化后的备注。
+- 操作员、摄像机和 Profile 排在同一行，出现在 Copy Info、每张卡和 Kiosk 模式中。备注字段更大。
+- Profile 变成常用图像配置文件菜单，按厂商分组，其他内容可在自由字段中输入。
+- 操作员字段提供 ingesto 打开以来用过的名字（列表和自动补全），Kiosk 中也有。列表只保存在内存中。
+- 用户手册（英语和法语，HTML 与 PDF）和 README 截图按 2.8.0 更新。
+- 测试：1890 项检查，全部通过。
 
 ## 2.7.3 (2026-10-03)
-No change to the application: the copy engine, the verification and the
-interface are the same as in 2.7.2.
-- Build launchers renamed: `scripts/build_mac.command` and
-  `scripts/build_win_from_mac.command`.
-- New `scripts/push_github.command`: publishes the source folder to GitHub,
-  including removed files and executable flags, and sends `version.json` only
-  once the release and its binaries are out.
-- Project tracking files added: `AGENTS.md`, `ETAT_PROJET.md`, `CHANGELOG.md`,
-  `.gitignore`, and the project notes in `docs/notes/`.
-- Tests: 1832 checks, all passing (6 new ones cover the two publishing scripts).
+应用无变化：复制引擎、校验和界面与 2.7.2 相同。
+- 构建启动器改名：`scripts/build_mac.command` 和 `scripts/build_win_from_mac.command`。
+- 新增 `scripts/push_github.command`：把源码文件夹发布到 GitHub，包括删除的文件和可执行权限，并且只在 Release 及其二进制文件发布后才发送 `version.json`。
+- 新增项目跟踪文件：`AGENTS.md`、`ETAT_PROJET.md`、`CHANGELOG.md`、`.gitignore`，以及 `docs/notes/` 中的项目笔记。
+- 测试：1832 项检查，全部通过（其中 6 项新增检查覆盖两个发布脚本）。
 
 ## 2.7.2
-- Insert menu laid out on two columns: the end of the list was hidden below
-  the edge, as macOS hides the scroll bar with a trackpad.
-- "Custom text..." entry; menus on the floating surface colour; dark scroll
-  bars everywhere.
-- Tests: 1826 checks.
+- Insert 菜单改为两列布局：列表末尾原本被边缘遮住，因为 macOS 用触控板时会隐藏滚动条。
+- 新增“Custom text...”条目；菜单使用浮动表面颜色；所有地方使用深色滚动条。
+- 测试：1826 项检查。
 
 ## 2.7.1
-- Issue #11: expandable ingest history (date, files, size, durations, speed,
-  destinations, operator).
-- Operator, Camera and Picture profile are kept from one ingest to the next,
-  Notes are cleared; a broom clears everything; (M) marks a camera entered by
-  hand.
-- Fixes: history covering the queue during a copy, SELECTED cut off, digit
-  boxes cut off, camera not detected in kiosk mode.
-- README and screenshots redone.
+- Issue #11：可展开的上载历史（日期、文件数、大小、各阶段耗时、速度、目标位置、操作员）。
+- 操作员、摄像机和图像配置文件在两次上载之间保留，备注清空；扫帚按钮可一键清空；手动输入的摄像机会标记为 (M)。
+- 修复：复制期间历史记录遮住队列、SELECTED 被裁切、数字框被裁切、Kiosk 模式检测不到摄像机。
+- README 和截图重做。
 
 ## 2.7.0
-- Complete interface redesign.
-- Ingest history read back from the reports on the drives.
-- Source-card lock: ingesto never deletes, renames or overwrites a file on a
-  source card.
-- Full review: reveal could open a file (fixed), note names cleaned, journal
-  capped at 64 MB, strict content security policy, destination-inside-card
-  check for every card of a batch, manifests fsynced.
-- Performance: 16 MB write buffer, progress 10 times per second, deferred
-  preference writes.
+- 界面完全重新设计。
+- 上载历史从硬盘上的报告中回读。
+- 源卡锁定：ingesto 绝不删除、重命名或覆盖源卡上的任何文件。
+- 全面审查：reveal 可能打开文件（已修复）、备注文件名清理、日志上限 64 MB、严格的内容安全策略、批次中每张卡的目标位置在卡内检查、清单执行 fsync。
+- 性能：16 MB 写缓冲、每秒 10 次进度更新、偏好写入延迟。
 
 ## 2.6.6
-- `{pp}` token (normalised picture profile).
-- Build scripts executable.
+- 新增 `{pp}` 标记（规范化后的图像配置文件）。
+- 构建脚本可执行。
 
 ## 2.6.5
-- Counter width from 2 to 4 digits (issue #9).
-- Card Handoff: `handoff.json` with `safeToErase` (issue #10).
+- 编号宽度从 2 位改为 4 位（issue #9）。
+- Card Handoff：`handoff.json` 带有 `safeToErase`（issue #10）。
 
 ## 2.6.3 / 2.6.4
-- Every message rewritten (70 cases); safety release with 11 fixes.
+- 重写所有消息（70 种情况）；包含 11 项修复的安全版本。
 
-## 2.6.0 to 2.6.2
-- Subfolders in the folder template, `{YYYY}` token, Windows card names,
-  `package-lock.json` and `npm ci`.
+## 2.6.0 至 2.6.2
+- 文件夹模板支持子文件夹、`{YYYY}` 标记、Windows 卡名、`package-lock.json` 和 `npm ci`。
 
 ## 2.5.5
-- First signed and notarized macOS release.
+- 首个经过签名和公证的 macOS 版本。

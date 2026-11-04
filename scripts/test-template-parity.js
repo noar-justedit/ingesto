@@ -20,8 +20,13 @@ const fs   = require('fs');
 const path = require('path');
 const vm   = require('vm');
 
-const MAIN = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const MAIN = require('./lib/source').ENGINE;
+const REND = require('./lib/source').RENDERER;
+// Folder names and source kinds live in src/shared since 2.10.2 (one copy for
+// the engine and the window).
+const SHARED = ['folder-names.js', 'sources.js']
+  .map(f => fs.readFileSync(path.join(__dirname, '..', 'src', 'shared', f), 'utf8')).join('\n');
+const SHARED_API = Object.assign({}, require('../src/shared/folder-names'), require('../src/shared/sources'));
 
 function extractConst(src, name, where) {
   const m = src.match(new RegExp(`^const ${name} = .*;$`, 'm'));
@@ -45,13 +50,14 @@ const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fai
 // ── The engine side ─────────────────────────────────────────────────────────
 const eng = vm.createContext({ console });
 vm.runInContext([
-  extractConst(MAIN, 'CLOCK_TOKENS',      'main.js'),
-  extractFn(MAIN, 'resolveTemplateVars', 'main.js'),
-  extractFn(MAIN, 'cleanSegment',        'main.js'),
-  extractFn(MAIN, 'buildFolderSegments', 'main.js'),
-  extractFn(MAIN, 'buildFolderName',     'main.js'),
-  extractFn(MAIN, 'templateSegments',    'main.js'),
-  extractFn(MAIN, 'makeCounterMatcher',  'main.js'),
+  extractConst(SHARED, 'CLOCK_TOKENS',      'src/shared'),
+  extractFn(SHARED, 'asciiFold', 'src/shared'),
+  extractFn(SHARED, 'resolveTemplateVars', 'src/shared'),
+  extractFn(SHARED, 'cleanSegment',        'src/shared'),
+  extractFn(SHARED, 'buildFolderSegments', 'src/shared'),
+  extractFn(SHARED, 'buildFolderName',     'src/shared'),
+  extractFn(SHARED, 'templateSegments',    'src/shared'),
+  extractFn(SHARED, 'makeCounterMatcher',  'src/shared'),
 ].join('\n'), eng);
 
 // ── The interface side ──────────────────────────────────────────────────────
@@ -67,6 +73,7 @@ const ren = vm.createContext({
   // source could never disagree with the source.
   COUNTER_WIDTHS: [2,3,4],
   document: { getElementById: () => null },
+  window: { IngestoShared: SHARED_API },
 });
 vm.runInContext(extractFn(REND, 'padCounter', 'index.html'), ren);
 vm.runInContext(extractFn(REND, 'resolveTplSegs', 'index.html'), ren);
@@ -159,21 +166,18 @@ for (const w of [2, 3, 4]) {
 // The loop above only compares the templates it was given. A token added to one
 // resolver and forgotten in the other would slip through unless a template here
 // happens to use it — so the two lists are compared directly, from the source.
-console.log('\nboth resolvers know exactly the same variables');
+console.log('\none resolver: the window has no copy of its own');
 {
-  const tokensOf = (src) => new Set(
-    (src.match(/replaceAll\(\s*'(\{[a-zA-Z]+\})'/g) || [])
-      .map(m => m.replace(/^replaceAll\(\s*'/, '').replace(/'$/, ''))
-  );
-  const a = tokensOf(extractFn(MAIN, 'resolveTemplateVars', 'main.js'));
-  const b = tokensOf(extractFn(REND, 'resolveTplSegs', 'index.html'));
-  const only = (x, y) => [...x].filter(t => !y.has(t));
-  ok(a.size >= 11, `the engine list was read (${a.size} variables)`);
-  ok(only(a, b).length === 0, 'no variable the engine resolves is missing from the interface' +
-     (only(a, b).length ? ' — missing: ' + only(a, b).join(' ') : ''));
-  ok(only(b, a).length === 0, 'no variable the interface resolves is missing from the engine' +
-     (only(b, a).length ? ' — missing: ' + only(b, a).join(' ') : ''));
-  ok(a.has('{YYYY}') && b.has('{YYYY}'), 'both sides know {YYYY}');
+  // The window used to carry a copy of the resolver, kept equal to the
+  // engine's by hand. It now calls the shared one; a second copy creeping
+  // back would mean two rules again.
+  const ren = extractFn(REND, 'resolveTplSegs', 'index.html');
+  ok(/window\.IngestoShared\.buildFolderSegments\(/.test(ren), 'the window resolves a template with the shared code');
+  ok(!/replaceAll\(\s*'\{/.test(REND), 'and substitutes no variable itself');
+  const mainFiles = require('./lib/source').files('main');
+  ok(mainFiles.some(f => /require\('\.\.\/shared\/folder-names'\)/.test(f.text)) &&
+     !mainFiles.some(f => /^\s*function resolveTemplateVars\(/m.test(f.text)),
+     'the engine uses the same file, and has no copy either');
 }
 
 // ── The variables offered in the interface ──────────────────────────────────
@@ -187,12 +191,11 @@ console.log('\nboth resolvers know exactly the same variables');
 console.log('\nevery variable offered in the interface inserts a token the resolvers know');
 {
   const chips = [...REND.matchAll(/(?:addTok|insPick)\(\s*'var'\s*,\s*'([A-Za-z]+)'\s*\)/g)].map(m => m[1]);
-  const engSrc = extractFn(MAIN, 'resolveTemplateVars', 'main.js');
-  const renSrc = extractFn(REND, 'resolveTplSegs', 'index.html');
   ok(chips.length >= 10, `the menu was read (${chips.length} variables offered)`);
   for (const k of chips) {
-    ok(engSrc.includes(`'{${k}}'`) && renSrc.includes(`'{${k}}'`),
-       `the "${k}" entry inserts a token both resolvers substitute`);
+    // Resolved for real: a token the resolver does not know stays in the name.
+    const name = eng.buildFolderName(`{${k}}_{counter}`, { counter: '007', name: 'A001', cameraman: 'noar', camera: 'FX6', pp: 'SLOG3' }, CLOCK);
+    ok(!name.includes('{'), `the "${k}" entry inserts a token the resolver substitutes ("${name}")`);
   }
   ok(chips.includes('YYYY'), 'the four-digit year is offered in the menu, not only by typing');
   ok(chips.includes('YY'), 'and the two-digit year is still offered');
@@ -213,7 +216,7 @@ console.log('\nevery variable offered in the interface inserts a token the resol
 console.log('\nevery variable the engine resolves survives the round trip');
 {
   const tokens = [...new Set(
-    (extractFn(MAIN, 'resolveTemplateVars', 'main.js').match(/replaceAll\(\s*'(\{[a-zA-Z]+\})'/g) || [])
+    (extractFn(SHARED, 'resolveTemplateVars', 'src/shared').match(/replaceAll\(\s*'(\{[a-zA-Z]+\})'/g) || [])
       .map(m => m.replace(/^replaceAll\(\s*'/, '').replace(/'$/, ''))
   )].filter(t => t !== '{counter}');
   // Every free-text variable carries a VALUE here. With an empty one the

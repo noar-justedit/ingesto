@@ -15,7 +15,7 @@ const vm   = require('vm');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const SRC  = fs.readFileSync(path.join(ROOT, 'src', 'main', 'main.js'), 'utf8');
+const SRC  = require('./lib/source').ENGINE;
 
 function extractFn(name) {
   let start = SRC.indexOf(`function ${name}(`);

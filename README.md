@@ -3,6 +3,9 @@
 Develop by just edit; Translate by wibi8bo.
 
 原项目地址：[https://github.com/noar-justedit/ingesto](https://github.com/noar-justedit/ingesto)
+本仓库：[https://github.com/wibi8bo/ingesto](https://github.com/wibi8bo/ingesto)
+
+中文界面自 2.12.0 起随上游内置（词典 `src/renderer/lang/zh-CN.js`），可在设置中切换；本仓库维护中文文档和中文使用说明。
 
 面向视频与音频专业人员（DIT 数字影像技师、摄影师、剪辑师）的免费开源素材上载（ingest）工具——可将素材从存储卡和硬盘复制到任意多个目标位置，每个文件都会被回读并校验；支持摄像机自动识别、校验和清单、MHL 与 ASC MHL 清单、上载报告、手机推送通知，以及适用于现场使用的 Kiosk（自助终端）模式。
 
@@ -27,6 +30,7 @@ macOS · Windows · Linux。
 - **完整记录所做的操作**：HTML/CSV/JSON 报告、校验和清单、MHL 与 ASC MHL v2.0 清单，以及每张卡一条推送通知。
 - **绝不说无法证实的话。**"已验证（verified）"一词只用于每个文件都从目标位置回读并比对过的任务（SECURE、PRO 模式）。FAST 模式明确标注*未验证*；SIZE CHECK 标注*仅检查大小*——这一区分出现在所有界面上：摘要、传输列表、报告、手机通知、Kiosk 模式。报告过错误的卡、被中止的批次、什么都没复制的任务：永远不会显示为成功。
 - **在所有平台上都用存储卡自己的名称称呼它。** 在 Windows 上，卷列表显示 `LUMIX (D:)`，因此插在两个读卡器里的两张相同的卡也能被区分开；而 `{cardname}`、上载报告和手机通知使用的是纯卷标——`LUMIX`。
+- **说你的语言。** 英语、法语和简体中文，在设置中选择（首次启动跟随系统语言）。界面、报告和手机通知都会跟随切换；卡、硬盘和文件夹名永不翻译。
 - **绝不触碰源卡。** ingesto 从不在它所复制的卡上删除、重命名或覆盖任何文件。卡正在上载期间会被锁定：任何会写入该卡的删除、重命名或写入操作都会被拒绝，包括通过指向该卡的符号链接进行的操作；一旦拒绝，操作即停止，而不会另寻路径绕过。唯一会向卡写入内容的功能是默认关闭的**卡片追踪（Card Tracking）**，而且它只写入自己的日志文件 `.ingesto.json`。
 - **绝不写入一个已存在的卡片文件夹。** 无论界面上勾选了什么，只要目标文件夹中存在非自身（中断任务残留）内容，引擎都会拒绝写入。这是防止素材被覆盖的最后一道防线——没有 `{counter}` 的模板、两张都叫 "NO NAME" 的卡、作为符号链接的文件夹、计数器读错、两台电脑共用一块硬盘：全部拒绝，什么都不写。
 
@@ -44,7 +48,7 @@ macOS · Windows · Linux。
 
 ## 快速安装（无需编程基础）
 
-**最简单的方式：** 从 [Releases 页面](https://github.com/noar-justedit/ingesto/releases/latest)下载现成的安装包。
+**最简单的方式：** 从 [Releases 页面](https://github.com/wibi8bo/ingesto/releases/latest)下载现成的安装包。
 自 v2.5.5 起，macOS 应用已**通过 Apple 签名和公证**——正常双击即可打开，没有安全警告，不需要任何变通操作。
 
 **系统要求（自 v2.8.0 起）：** Apple 芯片机型需 macOS 13 Ventura 或更高版本；Windows 10 或 11（64 位）；Linux x64。2.7 版本仍可在 macOS 12 Monterey 上运行。
@@ -59,7 +63,7 @@ macOS · Windows · Linux。
 
 ### 第 2 步——下载 ingesto
 克隆或下载本仓库（点击 `Code` → `Download ZIP`，或执行
-`git clone https://github.com/noar-justedit/ingesto.git`），然后解压到你喜欢的位置（例如桌面或 `~/Documents`）。
+`git clone https://github.com/wibi8bo/ingesto.git`），然后解压到你喜欢的位置（例如桌面或 `~/Documents`）。
 
 ### 第 3 步——构建应用
 1. 打开 `ingesto/scripts/` 文件夹
@@ -146,6 +150,8 @@ Linux 版本请在 Linux 机器上运行 `bash scripts/build-linux.sh`。
 
 在 SECURE 和 PRO 模式下，回读会真正到达磁盘——ingesto 在校验前会清除操作系统的缓存，因此网络目标位置确实是通过网络读回的，而不是从内存中读出的。
 
+**虚拟卷与 HDE（ARRIRAW、CODEX Platform）。** CODEX Platform（原 Device Manager）可以把 ARRIRAW 以 HDE 形式提供：在 CFast 卡上是一个名字以 `_hde` 结尾的额外卷，在 ALEXA LF / SXT / XT 介质上则是卡自己的卷，沿用原来的名字。无论哪种，文件都是被读取时才生成的。ingesto 通过卷名、或系统标示该卷由程序提供（FUSE）来识别这种卷，并在加载卡时给出提示。随后它会以该卷实际提供的内容、而不是以卡为准来校验副本，并关闭这张卡的二次读卡。CFast 卡启用 HDE 时，其他格式（ProRes）的片段仍留在卡上的另一个卷里。
+
 ### 复制过程中——上载队列
 
 复制运行时，中栏显示队列：
@@ -212,6 +218,8 @@ Linux 版本请在 Linux 机器上运行 `bash scripts/build-linux.sh`。
 
 `{pp}` 是摄像机设置的图像配置文件。Profile 菜单提供常用项（`SLOG3`、`CLOG3`、`VLOG`、`FLOG2`、`LOGC4`、`HLG`……），也接受你输入的任何其他内容。空格和标点会被去掉，值以大写形式写入，因此 `s-log 3` 和 `SLog3` 都会变成 `SLOG3`：同一场拍摄绝不会因同一个配置文件产生两个文件夹。和其他字段一样它是可选的；留空时不会创建文件夹，也不会留下多余的分隔符。
 
+**文件夹名允许的内容。** 在英语和法语下，文件夹名是纯 ASCII：重音字母变成普通字母（`Hélène` 得到 `Helene`），空格和特殊字符会被移除（卷标为 `NO NAME` 的卡得到 `NONAME`）。只保留 `_` 和 `-` 作为分隔符。完全不含拉丁字母的名字变成 `CARD`。写在素材旁边的拍摄备注保留你输入的全部内容。在中文下，只移除文件系统禁止的字符（`/ \ : * ? " < > |`）。变量本身（`{counter}`、`{cardname}`……）在所有语言下都一样。
+
 ### 子文件夹
 
 模板中的 `/` 会开启一个**子文件夹**，因此一场上载可以构建整个目标结构——在复制期间创建，在每个目标位置上完全相同：
@@ -244,6 +252,7 @@ DAY1/{camera}/{counter}_{operator}_{YY}{MM}{DD}
 npm ci               # 严格安装 package-lock.json 中锁定的版本
 npm start            # 从源码运行
 npm test             # 引擎测试套件
+node scripts/test-regression.js --update   # 有意改变行为后，重新录制回归基准
 npm run build        # macOS（Apple 芯片）
 npm run build:win    # Windows 安装包，在 Mac 上交叉构建
 npm run build:linux  # Linux（在 Linux 上运行）
@@ -258,14 +267,35 @@ npm run build:linux  # Linux（在 Linux 上运行）
 ```
 ingesto/
 ├── src/
-│   ├── main/
-│   │   ├── main.js            — Electron 主进程（复制引擎、卷管理、IPC…）
+│   ├── main/                  — Electron 主进程
+│   │   ├── main.js            — 窗口、菜单、IPC 处理（界面能请求的事情）
+│   │   ├── engine.js          — 复制引擎：一张卡到每个目标位置，分阶段执行
+│   │   ├── copy-io.js         — 只读一次、写入所有目标位置、临时文件
+│   │   ├── source-lock.js     — 阻止任何写入和删除落到卡上的锁
+│   │   ├── manifests.js       — 校验和清单、MHL、ASC MHL、拍摄备注
+│   │   ├── hashing.js         — xxHash / MD5 指纹
+│   │   ├── io-deadline.js     — 每次读卡的超时截止
+│   │   ├── mounts.js          — 挂载表：读取时生成的卷（HDE……）
+│   │   ├── volumes.js         — 各系统上的硬盘与卡
+│   │   ├── counter-scan.js    — 从目标位置回读计数器
+│   │   ├── run-control.js     — 暂停与取消，由正在运行的上载共享
+│   │   ├── util.js            — 小工具函数
 │   │   ├── camera-detect.js   — 根据卡结构检测摄像机品牌/型号
 │   │   ├── sentinel.js        — 卡片追踪（.ingesto.json），默认关闭
 │   │   ├── nocache.js         — 绕过缓存的回读校验（macOS/Windows/Linux）
+│   │   ├── lang.js            — 主进程消息，按所选语言显示
 │   │   └── preload.js         — 主进程与渲染进程之间的安全桥接
-│   └── renderer/
-│       └── index.html         — 完整用户界面（HTML+CSS+JS）
+│   ├── shared/                — 引擎和界面共同遵守的规则
+│   │   ├── folder-names.js    — 文件夹模板：变量、子文件夹、安全名称
+│   │   ├── modes.js           — 四种复制模式
+│   │   └── sources.js         — 判断某个路径是什么来源（HDE）
+│   └── renderer/              — 界面
+│       ├── index.html         — 窗口的标记结构
+│       ├── styles.css         — 样式
+│       ├── scripts/           — 界面代码，窗口每个部分一个文件
+│       │                        （按 index.html 中列出的顺序加载）
+│       ├── i18n.js            — 按所选语言显示界面
+│       └── lang/              — 每种语言一个词典（fr.js、zh-CN.js）
 ├── build-resources/
 │   ├── icon.icns / icon.ico   — 编译后的应用图标
 │   └── entitlements.mac.plist
@@ -276,7 +306,11 @@ ingesto/
 │   ├── build_win_from_mac.command — 在 Mac 上构建 Windows 安装包
 │   ├── build-linux.sh         — 为 Linux 构建应用
 │   ├── dev.sh                 — 以开发模式运行，无需构建
-│   └── test-*.js              — 引擎测试套件（由 `npm test` 运行）
+│   ├── test-*.js              — 引擎测试套件（由 `npm test` 运行）
+│   ├── test-regression.js     — 用真实上载与录制的基准比较
+│   ├── lib/harness.js         — 在 Electron 之外加载真实引擎，供测试使用
+│   ├── lib/source.js          — 读取引擎和窗口的源码文本，供测试使用
+│   └── fixtures/              — test-regression.js 录制的基准
 ├── package.json                — 项目配置
 ├── LICENSE                     — GPL v3 许可证全文
 └── README.md                   — 本文件
@@ -309,11 +343,32 @@ v2.5.5 之后的 Release 不应该出现这个提示——它们已经过签名�
 **上载被拒绝开始**
 → 阅读提示信息：它会指出问题所在（硬盘已不在、两张卡会落入同一文件夹、卡上没有可复制的内容），并告诉你尚未复制任何内容。
 
+**卡停止响应**
+→ ingesto 给每次读卡 60 秒。读卡器卡死、或虚拟卷的服务停滞时，会被报告为无响应，而不是让应用冻结：剩余文件列为未复制，报告会写明是哪些。检查读卡器和线缆，然后重新复制这张卡。
+
+**事后想知道某张卡出了什么问题**
+→ 打开硬盘上的 `INGESTO_report.html`，点击那张卡的结果（`2 errors ▸`）：每个文件都会列出出错的步骤和消息。CSV 报告有 `Errors` 列，JSON 报告有 `errs` 列表。
+
 ---
 
 ## 参与贡献
 
 欢迎在本仓库提交 issue 和 pull request。对于合并哪些内容，维护者保留唯一决定权，但任何真诚的贡献都会被考虑。
+
+### 翻译 ingesto
+
+界面的代码始终是英语；`src/renderer/i18n.js` 用 `src/renderer/lang/` 中的词典把它显示成另一种语言。词典里缺失的文本会原样保留英文，因此翻译可以一点一点补。
+
+新增一种语言：
+1. 把 `src/renderer/lang/fr.js` 复制为 `src/renderer/lang/<code>.js`（`de.js`、`zh-CN.js`……），改名 `INGESTO_LANG_FR`，然后翻译其中的值。键是英文原文，保持不变。
+2. 在 `src/renderer/index.html` 里法语词典那一行旁边加一行 `<script src="lang/<code>.js"></script>`，并在 `src/renderer/i18n.js` 的 `LANGS` 中加一个条目。
+3. 运行 `npm test`：`scripts/test-i18n.js` 会检查每本词典（模式、保留 `{变量}`、报告和通知中不留未翻译的文本）。
+
+永不翻译：模板变量、模式名（FAST、SIZE CHECK、SECURE、PRO）、卡/硬盘/文件名，以及 JSON 报告的字段名。
+
+翻译者：
+- 法语：Noar。
+- 简体中文（`zh-CN.js`）：[wenjianpai](https://github.com/wenjianpai)，基于 [wibi8bo](https://github.com/wibi8bo) 早先的工作。
 
 ## 许可证
 
@@ -321,9 +376,10 @@ v2.5.5 之后的 Release 不应该出现这个提示——它们已经过签名�
 
 ## 支持
 
-**ingesto** — [github.com/noar-justedit/ingesto](https://github.com/noar-justedit/ingesto)
+**ingesto** — 本仓库：[github.com/wibi8bo/ingesto](https://github.com/wibi8bo/ingesto)
+上游项目：[github.com/noar-justedit/ingesto](https://github.com/noar-justedit/ingesto)
 
 报告 bug 或提出功能需求，请在本仓库提交一个 *issue*：
-[github.com/noar-justedit/ingesto/issues](https://github.com/noar-justedit/ingesto/issues)
+[github.com/wibi8bo/ingesto/issues](https://github.com/wibi8bo/ingesto/issues)
 
 版权所有 © Just Edit — 2026

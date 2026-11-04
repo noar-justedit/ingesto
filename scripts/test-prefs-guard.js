@@ -4,7 +4,8 @@
 // The file is written by INGESTO and it is also editable by anyone, syncable
 // by anything, and truncatable by a power cut. Two values out of it decide
 // what an ingest DOES: the copy mode, and the counter every folder name is
-// built from. Both used to be taken as they came.
+// built from. Neither is taken as it comes. (The other settings, the mode
+// included: scripts/test-settings.js.)
 //
 //   node scripts/test-prefs-guard.js
 //
@@ -12,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(src, name) {
   let start = src.indexOf(`async function ${name}(`);
@@ -32,7 +33,7 @@ const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fai
 const els = {};
 const el = () => ({ classList: { toggle(){}, add(){}, remove(){} }, style: {}, checked: false,
                     closest: () => null, querySelectorAll: () => [] });
-const ctx = vm.createContext({
+const ctx = vm.createContext({ ...require('../src/shared/modes'),
   console,
   // The list is written out here rather than read from the file: this is the
   // contract, and a test that took it from the source could never disagree.
@@ -47,7 +48,6 @@ const ctx = vm.createContext({
   persistPrefs(){},
 });
 vm.runInContext(extractFn(REND, 'prefsCounter'), ctx);
-vm.runInContext(extractFn(REND, 'prefsMode'), ctx);
 vm.runInContext(extractFn(REND, 'setMode'), ctx);
 
 (async () => {
@@ -72,16 +72,7 @@ console.log('\nthe counter has to be a whole number a folder can be named after'
     ok(ctx.prefsCounter(prefs) === null, `${what} is refused, and the counter in hand is kept`);
 }
 
-console.log('\nthe mode has to be one of the four');
-{
-  for (const m of ['fast','normal','slow','pro'])
-    ok(ctx.prefsMode({ mode: m }, 'slow') === m, `"${m}" is a mode`);
-  const rejected = ['secure', 'verified', 'SLOW', '', null, undefined, 3, {}, ['pro']];
-  for (const m of rejected)
-    ok(ctx.prefsMode({ mode: m }, 'slow') === 'slow',
-       `${JSON.stringify(m)} is not, and the running mode is kept`);
-  ok(ctx.prefsMode({}, 'fast') === 'fast', 'with nothing saved, the running mode is kept');
-}
+// The mode read from a file: scripts/test-settings.js (the SETTINGS table).
 
 console.log('\nand setMode itself refuses what is not a mode');
 {

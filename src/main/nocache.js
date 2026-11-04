@@ -12,10 +12,10 @@
 //  the cache in the first place, per descriptor, with no alignment constraints.
 //  Applied to the copy's DESTINATION WRITE stream and to verification READS in
 //  SECURE/PRO. Note that some filesystem drivers (exFAT — i.e. every camera
-//  card) ignore it. Since 2.4.6 it is NOT applied to the copy's source read:
-//  the purge below already runs on the source immediately before the copy, and
-//  holding F_NOCACHE for the whole read also disables the kernel's read-ahead,
-//  which cost ~35% of copy speed on macOS (60 MB/s vs 91 in FAST on the same
+//  card) ignore it. It is NOT applied to the copy's source read: the purge
+//  below already runs on the source immediately before the copy, and holding
+//  F_NOCACHE for the whole read also disables the kernel's read-ahead, which
+//  costs ~35% of copy speed on macOS (60 MB/s vs 91 in FAST on the same
 //  card, where Windows/Linux — purge only, then a normal read — hit 76-79).
 //
 //  CACHE PURGE (macOS / Windows / Linux) — evict a file's cached pages so the
@@ -37,9 +37,9 @@
 //
 // Everything here is best-effort and MUST NEVER throw or degrade a copy:
 // koffi missing, library not found, call fails → return false, callers fall
-// back to plain cached behavior. The worst case is "no better than before",
-// never "worse". The speed-based detector in main.js remains the truth-teller
-// when a purge silently fails.
+// back to plain cached behavior. The worst case is "no better than plain
+// cached I/O", never "worse". The eviction probe (probeCacheEviction,
+// copy-io.js) remains the truth-teller when a purge silently fails.
 
 const fs = require('fs');
 
@@ -87,8 +87,8 @@ function ready() {
       // declared as such. On Apple Silicon (AArch64 Apple ABI) variadic
       // arguments are passed on the STACK while fixed arguments go in
       // registers — declaring it `int fcntl(int,int,int)` puts the third
-      // argument where the real fcntl never looks, so F_NOCACHE was silently
-      // never applied on M-series Macs.
+      // argument where the real fcntl never looks, so F_NOCACHE would silently
+      // never be applied on M-series Macs.
       _fcntl = lib.func('int fcntl(int, int, ...)');
       _io = true;
       try {
@@ -228,7 +228,7 @@ function createReadStream(pathname, opts = {}) {
 }
 
 // Drop-in for fs.createWriteStream(pathname) that writes uncached when it can
-// (macOS). Opened with 'w' (create/truncate), matching the previous behavior.
+// (macOS). Opened with 'w' (create/truncate), like fs.createWriteStream.
 function createWriteStream(pathname, opts = {}) {
   if (ready() && _io) {
     let fd = null;

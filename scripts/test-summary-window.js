@@ -13,7 +13,7 @@ const fs   = require('fs');
 const path = require('path');
 const vm   = require('vm');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(src, name) {
   const start = src.indexOf(`function ${name}(`);
@@ -37,6 +37,9 @@ const IDS = ['s-ico','s-title','s-sub','s-grid','s-grid2','s-cards','s-coldverif
 // link the suite would read an empty title and pass on nothing.
 function makeEl() {
   const el = { className:'', disabled:false, style:{}, _cl:new Set(), onclick:null,
+               // The handlers are bound on the live page (no DOM here): see the
+               // checks on the code of showSummary below.
+               querySelector:()=>null, querySelectorAll:()=>[],
                _html:'', _text:'',
                classList:{ add:c=>el._cl.add(c), remove:c=>el._cl.delete(c),
                            toggle:(c,v)=>{ v?el._cl.add(c):el._cl.delete(c); },
@@ -53,7 +56,7 @@ function makeEl() {
   return el;
 }
 let els = {};
-const ctx = vm.createContext({
+const ctx = vm.createContext({ ...require('../src/shared/modes'),
   console,
   document: { getElementById: id => (els[id] || (els[id] = makeEl())) },
   // Everything showSummary reaches for outside itself, stubbed to be inert.
@@ -78,7 +81,7 @@ vm.runInContext([
   // The real failure grouping, so "thirty corrupt files are ONE line" is a fact
   // this suite can check rather than a claim in a comment.
   extractFn(REND, 'humanErrno'), extractFn(REND, 'buildFailureGroups'),
-  extractFn(REND, 'driveNameOf'), extractFn(REND, 'failureVerdict'),
+  extractFn(REND, 'tr'), extractFn(REND, 'driveNameOf'), extractFn(REND, 'failureVerdict'),
   // Wrapped, not stubbed: the gate inside it is what decides whether a DIT is
   // offered the button that comes just before formatting the card.
   // The flag is set where the function stops being a gate and starts offering
@@ -133,7 +136,7 @@ console.log('\nSECURE, one card, nothing skipped');
      'row 1 is what was moved: ' + JSON.stringify(tiles(v.grid)));
   ok(JSON.stringify(tiles(v.grid2)) === '["Copy","Verify","Total","Avg speed"]',
      'row 2 is the tempos then the speed: ' + JSON.stringify(tiles(v.grid2)));
-  ok(!/2nd read/.test(v.grid2), 'no second-read tile: SECURE never reads the card twice');
+  ok(!/Re-read/.test(v.grid2), 'no second-read tile: SECURE never reads the card twice');
   ok(!/color:var\(--green\)/.test(v.grid2) && !/color:var\(--blue\)/.test(v.grid2),
      'the tempos carry no colour: they are measurements, not verdicts');
   ok(/color:var\(--orange\)/.test(v.grid), 'only the MODE tile is coloured');
@@ -160,17 +163,17 @@ console.log('\nPRO with the double read on');
   const v = show([card({ mode:'pro', proAlgo:'xxh128', proDoubleRead:true, verify2Ms:150000 })]);
   ok(v.title === 'ALL FILES COPIED & VERIFIED', 'same promise as SECURE');
   ok(/xxHash128/.test(v.sub), 'the algorithm the operator picked is named');
-  ok(/PRO<span class="sr-opt"> \+ DOUBLE READ<\/span>/.test(v.grid),
+  ok(/PRO<span class="sr-opt"> \+ CARD RE-READ<\/span>/.test(v.grid),
      'the option rides on the SAME line as the mode, smaller');
-  ok(JSON.stringify(tiles(v.grid2)) === '["Copy","Verify","2nd read","Total","Avg speed"]',
+  ok(JSON.stringify(tiles(v.grid2)) === '["Copy","Verify","Re-read","Total","Avg speed"]',
      'five tempo tiles: ' + JSON.stringify(tiles(v.grid2)));
   ok(/n5/.test(v.g2class), 'and the row switches to its tighter type size');
 }
 console.log('\nPRO without it says nothing at all about it');
 {
   const v = show([card({ mode:'pro', proAlgo:'xxh64', proDoubleRead:false })]);
-  ok(!/DOUBLE READ/.test(v.grid), 'never "double read: no"');
-  ok(!/2nd read/.test(v.grid2), 'and no empty tile reserved for it');
+  ok(!/CARD RE-READ/.test(v.grid), 'never "double read: no"');
+  ok(!/Re-read/.test(v.grid2), 'and no empty tile reserved for it');
 }
 
 console.log('\nfiles passed over: "ALL" has to go');
@@ -197,7 +200,8 @@ console.log('\none card: everything is open, EJECT sits on the card, REVEAL on i
   ok(!/sc-caret/.test(v.cards), 'nothing to unfold, so no caret');
   ok(!/display:none/.test(v.cards.split('sc-dests')[1]||''), 'the destinations are already visible');
   ok((v.cards.match(/>REVEAL</g)||[]).length === 2, 'one REVEAL per destination');
-  ok(/sc-ej-0[^>]*onclick="ejectCard\(0\)"/.test(v.cards), 'one EJECT, on the card');
+  ok((v.cards.match(/id="sc-ej-\d+"/g)||[]).length === 1 && /id="sc-ej-0"/.test(v.cards) &&
+     /if\(ej\) ej\.onclick = function\(\)\{ ejectCard\(gi\); \};/.test(REND), 'one EJECT, on the card');
   // The bug this ordering exists to prevent: EJECT nested inside the clickable
   // area meant a click on EJECT also unfolded the card.
   const row = v.cards.match(/<div class="sc-row">([\s\S]*?)<\/div><div class="sc-dests"/);
@@ -213,7 +217,8 @@ console.log('\ntwo cards: names only, and the NAME is what unfolds');
   ok(v.title === 'ALL FILES COPIED & VERIFIED', 'the title does not change for a batch');
   ok(/^2 cards/.test(v.sub), 'the sub-line counts them instead of listing them');
   ok((v.cards.match(/class="sc"/g)||[]).length === 2, 'two card blocks');
-  ok((v.cards.match(/onclick="toggleCard\(/g)||[]).length === 2, 'each name unfolds its own card');
+  ok((v.cards.match(/class="sc-open clk" data-js="toggle-card"/g)||[]).length === 2 &&
+     /if\(open\) open\.onclick = function\(\)\{ toggleCard\(gi\); \};/.test(REND), 'each name unfolds its own card');
   ok((v.cards.match(/class="sc-dests" id="sc-d-\d+" style="display:none"/g)||[]).length === 2,
      'both start folded');
   ok(/EJECT ALL/.test(v.cards), 'and the header offers EJECT ALL');

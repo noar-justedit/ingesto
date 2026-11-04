@@ -5,7 +5,7 @@
 //   node scripts/test-volume-check.js
 //
 const fs = require('fs'), path = require('path'), os = require('os'), vm = require('vm');
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+const SRC = require('./lib/source').ENGINE;
 
 function extractFn(name) {
   let start = SRC.indexOf(`function ${name}(`);

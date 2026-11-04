@@ -16,10 +16,10 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const H    = require('./lib/harness');
 const vm = require('vm');
-const Module = require('module');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(src, name) {
   let start = src.indexOf(`async function ${name}(`);
@@ -37,9 +37,8 @@ let pass = 0, fail = 0;
 const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fail++; console.log('  FAIL ' + l); } };
 
 // ── The document ────────────────────────────────────────────────────────────
-const ctx = vm.createContext({ console, Set, Map, Math, Date, Array, String, Number, JSON,
+const ctx = vm.createContext({ ...require('../src/shared/modes'), console, Set, Map, Math, Date, Array, String, Number, JSON,
                                S: { appVersion: '2.6.5' } });
-vm.runInContext(extractFn(REND, 'modeVerifiesContents'), ctx);
 vm.runInContext(extractFn(REND, 'buildHandoff'), ctx);
 
 const RUN = { dests: [{ path: '/Volumes/SHUTTLE_1', name: 'SHUTTLE_1' }],
@@ -149,9 +148,10 @@ console.log('\nand what is said about the read-back on a machine that cannot bea
 // from the same results.
 console.log('\nthe document and the window never contradict each other');
 {
-  const wctx = vm.createContext({
+  const wctx = vm.createContext({ ...require('../src/shared/modes'),
     console,
     document: { getElementById: () => ({ className:'', style:{}, innerHTML:'', textContent:'',
+      querySelector:()=>null, querySelectorAll:()=>[],
       classList:{ add(){}, remove(){}, toggle(){}, contains:()=>false } }) },
     S: {}, window: { ingesto: { platform:'darwin', isRemovable: async()=>false,
                                 detectCamera: async()=>null, ejectVolume: async()=>({ok:true}) } },
@@ -162,7 +162,7 @@ console.log('\nthe document and the window never contradict each other');
     extractFn(REND, 'fmtSize'), extractFn(REND, 'fmtSpd'), extractFn(REND, 'fmtEta'),
     extractFn(REND, 'esc'), extractFn(REND, 'renderSummaryNotes'),
     extractFn(REND, 'humanErrno'), extractFn(REND, 'buildFailureGroups'),
-    extractFn(REND, 'driveNameOf'), extractFn(REND, 'failureVerdict'),
+    extractFn(REND, 'tr'), extractFn(REND, 'driveNameOf'), extractFn(REND, 'failureVerdict'),
     extractFn(REND, 'setupEjectButtons').replace('const shown=[];', 'ejectOffered = true; const shown=[];'),
     extractFn(REND, 'showSummary'),
   ].join('\n'), wctx);
@@ -192,26 +192,53 @@ console.log('\nthe document and the window never contradict each other');
 }
 
 // ── The file, and the command ───────────────────────────────────────────────
-const handlers = {};
-const electron = {
-  app: { whenReady: () => new Promise(() => {}), on: () => {}, requestSingleInstanceLock: () => true,
-         quit: () => {}, getVersion: () => '2.6.5', getPath: () => os.tmpdir(), getName: () => 'ingesto',
-         isPackaged: false, setAboutPanelOptions: () => {} },
-  BrowserWindow: class { static getAllWindows() { return []; } },
-  Menu: { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) },
-  ipcMain: { handle: (ch, fn) => { handlers[ch] = fn; }, on: (ch, fn) => { handlers[ch] = fn; } },
-  dialog: {}, screen: {},
-  shell: { openPath: async () => {}, showItemInFolder: () => {}, openExternal: async () => {} },
-  powerSaveBlocker: { start: () => 1, stop: () => {}, isStarted: () => false },
-};
-const realLoad = Module._load;
-Module._load = function (req, ...rest) { if (req === 'electron') return electron; return realLoad.call(this, req, ...rest); };
-require(path.join(__dirname, '..', 'src', 'main', 'main.js'));
-const call = (ch, ...args) => handlers[ch]({ sender: { send: () => {} } }, ...args);
+// The system dialog that approves a command the first time (2.9.1). The test
+// answers it: `dialogAnswer` 0 = Run, 1 = Do not run; every question is counted.
+let dialogAnswer = 0, dialogAsked = 0;
+const { call, userData: USERDATA } = H.loadMain({ version: '2.6.5',
+  dialog: { showMessageBox: async () => { dialogAsked++; return { response: dialogAnswer }; } } });
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'ingesto-ho-'));
 
 (async () => {
+
+console.log('\na command runs only once a person has approved it (2.9.1)');
+{
+  const mark = path.join(TMP, 'ran.txt');
+  const script = path.join(TMP, 'marker.js');
+  fs.writeFileSync(script, `require('fs').writeFileSync(${JSON.stringify(mark)}, 'ran')`);
+  const card = fs.mkdtempSync(path.join(TMP, 'card-'));
+  dialogAnswer = 1; dialogAsked = 0;
+  const no = await call('handoff', doc(good({ sourcePath: card })), [process.execPath, script]);
+  ok(no && no.ok === false && /not approved/.test(no.error || '') && !fs.existsSync(mark),
+     'answered "Do not run": the handoff command does not run');
+  ok(dialogAsked === 1, 'the operator was asked');
+  dialogAnswer = 0; dialogAsked = 0;
+  const yes = await call('handoff', doc(good({ sourcePath: card })), [process.execPath, script]);
+  ok(yes && yes.ok === true && fs.existsSync(mark), 'answered "Run": it runs');
+  dialogAnswer = 1; dialogAsked = 0;
+  const again = await call('handoff', doc(good({ sourcePath: card })), [process.execPath, script]);
+  ok(again && again.ok === true && dialogAsked === 0, 'the same command is not asked about again');
+  dialogAsked = 0;
+  const other = await call('handoff', doc(good({ sourcePath: card })), [process.execPath, script, '--other']);
+  ok(other && other.ok === false && dialogAsked === 1, 'a different command is asked about again');
+  dialogAnswer = 0;
+
+  // The post-ingest command: argv must be the command typed in Settings with
+  // only its variables filled in.
+  const hm = path.join(TMP, 'hook.txt');
+  const hs = path.join(TMP, 'hook.js');
+  fs.writeFileSync(hs, `require('fs').writeFileSync(${JSON.stringify(hm)}, process.argv.slice(2).join('|'))`);
+  const tpl = [process.execPath, hs, '{card}'];
+  const r1 = await call('run-hook', [process.execPath, hs, 'A001'], tpl);
+  await new Promise(r => setTimeout(r, 600));
+  ok(r1 && r1.ok === true && fs.existsSync(hm) && fs.readFileSync(hm, 'utf8') === 'A001', 'the hook runs with its variable filled in');
+  const r2 = await call('run-hook', [process.execPath, '-e', 'process.exit(0)'], tpl);
+  ok(r2 && r2.ok === false && /does not match/.test(r2.error || ''), 'a command other than the one typed in Settings is refused');
+  const r3 = await call('run-hook', ['/bin/sh', hs, 'A001'], ['/bin/sh', hs, '{card}']);
+  ok(r3 && r3.ok === true && dialogAsked >= 1, 'a new program is asked about first');
+  ok(fs.existsSync(path.join(USERDATA, 'ingesto-trusted-commands.json')), 'the approvals are kept by the main process, out of the interface\'s reach');
+}
 
 console.log('\nthe document reaches the command, and does not outlive it');
 {

@@ -15,7 +15,7 @@
 const fs   = require('fs');
 const path = require('path');
 const os   = require('os');
-const Module = require('module');
+const H    = require('./lib/harness');
 
 let pass = 0, fail = 0;
 const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fail++; console.log('  FAIL ' + l); } };
@@ -25,24 +25,7 @@ const fresh = (n) => { const d = path.join(TMP, n); fs.mkdirSync(d, { recursive:
 const mk = (dir, files) => { for (const [rel, data] of Object.entries(files)) {
   const p = path.join(dir, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, data); } };
 
-const handlers = {};
-const fakeWin = { webContents: { send: () => {} }, isDestroyed: () => false };
-const userData = fresh('userData');
-const electron = {
-  app: { whenReady: () => new Promise(() => {}), on: () => {}, requestSingleInstanceLock: () => true,
-         quit: () => {}, getVersion: () => '2.6.4', getPath: () => userData, getName: () => 'ingesto',
-         isPackaged: false, setAboutPanelOptions: () => {} },
-  BrowserWindow: class { static getAllWindows() { return []; } },
-  Menu: { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) },
-  ipcMain: { handle: (ch, fn) => { handlers[ch] = fn; }, on: (ch, fn) => { handlers[ch] = fn; } },
-  dialog: {}, screen: {},
-  shell: { openPath: async () => {}, showItemInFolder: () => {}, openExternal: async () => {} },
-  powerSaveBlocker: { start: () => 1, stop: () => {}, isStarted: () => false },
-};
-const realLoad = Module._load;
-Module._load = function (req, ...rest) { if (req === 'electron') return electron; return realLoad.call(this, req, ...rest); };
-require(path.join(__dirname, '..', 'src', 'main', 'main.js'));
-const call = (ch, ...args) => handlers[ch]({ sender: fakeWin.webContents }, ...args);
+const { call } = H.loadMain({ version: '2.6.4' });
 
 
 const run = (card, dst, o) => call('start-copy', {
@@ -113,7 +96,7 @@ console.log('\na clip rewritten in place, same size, is caught too');
 
   ok(r.success === false && r.failedFiles.includes('REWRITTEN.MOV'), 'reported as failed');
   ok(!fs.existsSync(path.join(r.destPath, 'REWRITTEN.MOV')), 'and not delivered');
-  ok(/written again while INGESTO was reading it/.test(
+  ok(/written again while ingesto was reading it/.test(
        (r.errorList.find(e => e.file === 'REWRITTEN.MOV') || {}).error || ''),
      'and the message says the file was rewritten');
 }
@@ -132,7 +115,7 @@ console.log('\na clip cut short the instant the read finished is caught too');
 
   ok(r.success === false && r.failedFiles.includes('CUT.MOV'), 'reported as failed');
   ok(!fs.existsSync(path.join(r.destPath, 'CUT.MOV')), 'and not delivered');
-  ok(/was 4\.0 KB when the card was scanned and is 100 bytes now/.test(
+  ok(/was 4\.1 KB when the card was scanned and is 100 bytes now/.test(
        (r.errorList.find(e => e.file === 'CUT.MOV') || {}).error || ''),
      'and the message gives both sizes in plain units');
   ok(fs.existsSync(path.join(r.destPath, 'STILL.MOV')), 'the rest of the card is delivered');
@@ -242,10 +225,14 @@ console.log('\nthe progress bar never goes past 100%');
   // to the window, and there is no window in a test. A source check is worth
   // little in general, so this one is deliberately narrow: the two expressions
   // that feed the bar must be clamped.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
-  ok(/progress:\s*totalBytes>0\?Math\.min\(1,\s*copiedBytes\/totalBytes\)/.test(src),
+  const src = require('./lib/source').ENGINE;
+  // 2.9.2: an HDE card counts files instead of bytes (its sizes are only
+  // known once read). Both branches are held to the same clamp.
+  ok(/progress:[^\n]*(run\.)?totalBytes>0\?Math\.min\(1,\s*(run\.)?copiedBytes\/(run\.)?totalBytes\)/.test(src),
      'the copy progress is clamped to 1');
-  ok(/eta:\s*sp>0\?Math\.max\(0,\s*\(totalBytes-copiedBytes\)\/sp\)/.test(src),
+  ok(/progress: hdeSource \? \((run\.)?totalFiles>0 \? Math\.min\(1, i\/(run\.)?totalFiles\) : 0\)/.test(src),
+     'on an HDE card too, where it counts files');
+  ok(/eta:[^\n]*sp>0\?Math\.max\(0,\s*\((run\.)?totalBytes-(run\.)?copiedBytes\)\/sp\)/.test(src),
      'and the remaining time never goes below zero');
 }
 

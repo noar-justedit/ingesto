@@ -22,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(src, name) {
   let start = src.indexOf(`async function ${name}(`);

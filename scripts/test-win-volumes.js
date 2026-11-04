@@ -19,10 +19,13 @@ const fs   = require('fs');
 const path = require('path');
 const vm   = require('vm');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+// The whole engine as one text (see scripts/lib/source.js).
+const SRC = require('./lib/source').ENGINE;
+const SHARED_API = Object.assign({}, require('../src/shared/folder-names'), require('../src/shared/sources'));
 function extractFn(name) {
-  const start = SRC.indexOf(`function ${name}(`);
+  let start = SRC.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`function ${name} not found in main.js`);
+  if (SRC.slice(start - 6, start) === 'async ') start -= 6;   // keep "async
   let i = SRC.indexOf('{', start), depth = 0;
   for (; i < SRC.length; i++) {
     if (SRC[i] === '{') depth++;
@@ -30,6 +33,14 @@ function extractFn(name) {
   }
   throw new Error(`unbalanced braces in ${name}`);
 }
+// The deadline helpers the scan goes through (2.9.2), and the HDE rule.
+function extractConst(name) {
+  const m = SRC.match(new RegExp(`^const ${name} = .*;$`, 'm'));
+  if (!m) throw new Error(`const ${name} not found in main.js`);
+  return m[0];
+}
+const HELPERS = [extractConst('SOURCE_STALL_MS'), extractConst('VOLUME_PROBE_MS'), extractConst('_ioInFlight'),
+  extractFn('settleWithin'), extractFn('statWithin'), extractFn('isHdeSource')].join('\n') + '\n';
 const ctx = vm.createContext({ console, JSON, String, Number, Array, Map });
 vm.runInContext(extractFn('mergeWinDrives'), ctx);
 
@@ -97,6 +108,7 @@ console.log('\nthe answer shapes PowerShell can produce');
      'a code point between Z and a is not a drive letter');
 }
 
+(async () => {
 console.log('\nthe REAL Windows scan, run against that machine');
 {
   // Not a mirror of the code — the code itself, with Windows stubbed out at the
@@ -107,22 +119,31 @@ console.log('\nthe REAL Windows scan, run against that machine');
   const winCtx = vm.createContext({
     console, JSON, String, Number, Array, Map, Boolean,
     process: { env: { SystemDrive: 'C:' }, platform: 'win32' },
-    execSync: (cmd) => {
-      asked.push(cmd);
-      if (cmd.includes('Get-PSDrive')) return PSDRIVE;
-      if (cmd.includes('Get-Volume'))  return GETVOLUME;
+    // Since 2.9.1 the scan is asynchronous: PowerShell through tryExecFile,
+    // the drive letters through fs.promises.stat.
+    Promise, setTimeout, clearTimeout,
+    tryExecFile: async (cmd, args) => {
+      const c = args.join(' ');
+      asked.push(c);
+      if (c.includes('Get-PSDrive')) return PSDRIVE;
+      if (c.includes('Get-Volume'))  return GETVOLUME;
       return '';
     },
-    fs: { statSync: (p) => {
+    fs: { promises: { stat: async (p) => {
       if (['C:\\', 'D:\\', 'G:\\', 'Z:\\'].includes(p)) return { isDirectory: () => true };
       throw new Error('ENOENT');
-    } },
+    } } },
     detectCamera: () => null,
   });
-  vm.runInContext(extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), winCtx);
-  const vols = winCtx.getMountedVolumesWin();
+  vm.runInContext(HELPERS + extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), winCtx);
+  const vols = await winCtx.getMountedVolumesWin();
   const by = {}; vols.forEach(v => { by[v.path[0]] = v; });
 
+  // 2.9.1: never a synchronous call. execSync here froze the main process,
+  // and with it a running copy, every time a drive letter appeared.
+  const body = extractFn('getMountedVolumesWin');
+  ok(/^async function/.test(body) && !/execSync|execFileSync|statSync/.test(body),
+     'the scan never blocks the main process (no execSync, no statSync)');
   ok(asked.some(c => c.includes('Get-Volume')),
      'the scan really asks Get-Volume — the only source that names a removable card');
   ok(vols.length === 4, 'four drives found (' + vols.length + ')');
@@ -142,13 +163,14 @@ console.log('\nthe REAL Windows scan, run against that machine');
   const noLabel = vm.createContext({
     console, JSON, String, Number, Array, Map, Boolean,
     process: { env: { SystemDrive: 'C:' }, platform: 'win32' },
-    execSync: (cmd) => cmd.includes('Get-PSDrive')
+    Promise, setTimeout, clearTimeout,
+    tryExecFile: async (cmd, args) => args.join(' ').includes('Get-PSDrive')
       ? JSON.stringify([{ Name:'E', Used:0, Free:1e9, Description:'', DisplayRoot:null }]) : '',
-    fs: { statSync: (p) => { if (p === 'E:\\') return { isDirectory: () => true }; throw new Error('ENOENT'); } },
+    fs: { promises: { stat: async (p) => { if (p === 'E:\\') return { isDirectory: () => true }; throw new Error('ENOENT'); } } },
     detectCamera: () => null,
   });
-  vm.runInContext(extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), noLabel);
-  const e = noLabel.getMountedVolumesWin()[0];
+  vm.runInContext(HELPERS + extractFn('mergeWinDrives') + '\n' + extractFn('getMountedVolumesWin'), noLabel);
+  const e = (await noLabel.getMountedVolumesWin())[0];
   ok(e && e.label === 'E' && e.name === 'E:',
      'a card with no label falls back to the bare letter — "E:" would have become the folder "E_"');
   ok(e && !/:/.test(e.label), 'no colon can reach the card name');
@@ -160,7 +182,7 @@ console.log('\nEVERY route that loads a card asks for the label');
   // others — a drag from Explorer, the Browse button, and kiosk mode, where
   // Browse is the ONLY way to load a card. All three built the name from the
   // path, so "D:\\" became the card name "D:" and the folder "001_D__noar".
-  const HTML = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+  const HTML = require('./lib/source').RENDERER;
   const grab = (name) => {
     const i = HTML.indexOf('function ' + name + '(');
     if (i < 0) return '';
@@ -206,7 +228,7 @@ console.log('\nEVERY route that loads a card asks for the label');
 
 console.log('\nthe renderer asks for the label, and falls back');
 {
-  const HTML = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+  const HTML = require('./lib/source').RENDERER;
   const fn = HTML.match(/function volCardName\(v\)\{[^}]*\}/);
   ok(!!fn, 'volCardName exists');
   const volCardName = new Function('return ' + fn[0] + '; volCardName')();
@@ -223,10 +245,12 @@ console.log('\nWindows device names, refused before the ingest starts');
   // them. They only became reachable the day a card's real label started
   // arriving — before that every Windows card was called "D:". A card labelled
   // AUX must be refused up front, not fail in the middle of a copy.
-  const DEV = SRC.match(/const WIN_DEVICE_NAME = .*;/)[0];
+  // The engine asks the shared rule with its own platform; the window asks
+  // the same rule with the platform the main process reported. Both are run.
+  const MAIN = require('./lib/source').ENGINE;
   const make = (platform) => {
-    const c = vm.createContext({ process: { platform }, String, console });
-    vm.runInContext(DEV + '\n' + extractFn('isSafeFolderName'), c);
+    const c = vm.createContext({ process: { platform }, folderNames: SHARED_API, console });
+    vm.runInContext(MAIN.match(/^function isSafeFolderName\(name\) \{.*\}$/m)[0], c);
     return c.isSafeFolderName;
   };
   const win = make('win32'), mac = make('darwin');
@@ -238,12 +262,11 @@ console.log('\nWindows device names, refused before the ingest starts');
      'macOS is not punished for a Windows limitation — no false refusal there');
 
   // The renderer's pre-flight must agree, or it approves what the engine refuses.
-  const HTML = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
-  const rDev = HTML.match(/const WIN_DEVICE_NAME=.*;/)[0];
-  const rFn  = HTML.match(/function isSafeFolderName\(n\)\{[\s\S]*?\n\}/)[0];
+  const HTML = require('./lib/source').RENDERER;
+  const rFn  = HTML.match(/function isSafeFolderName\(n\)\{.*\}/)[0];
   const mk = (platform) => {
-    const c = vm.createContext({ window: { ingesto: { platform } }, String, console });
-    vm.runInContext(rDev + '\n' + rFn, c);
+    const c = vm.createContext({ window: { ingesto: { platform }, IngestoShared: SHARED_API }, console });
+    vm.runInContext(rFn, c);
     return c.isSafeFolderName;
   };
   const rwin = mk('win32'), rmac = mk('darwin');
@@ -253,3 +276,4 @@ console.log('\nWindows device names, refused before the ingest starts');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(2); });

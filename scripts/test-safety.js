@@ -15,7 +15,7 @@
 const fs   = require('fs');
 const path = require('path');
 const os   = require('os');
-const Module = require('module');
+const H    = require('./lib/harness');
 
 let pass = 0, fail = 0;
 const ok = (c, l) => { if (c) { pass++; console.log('  ok   ' + l); } else { fail++; console.log('  FAIL ' + l); } };
@@ -28,23 +28,8 @@ const read = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch (_) { ret
 const list = (d) => { try { return fs.readdirSync(d).sort(); } catch (_) { return null; } };
 
 // ── Electron stub, then the REAL main.js ────────────────────────────────────
-const handlers = {};
-const userData = fresh('userData');
-const electron = {
-  app: { whenReady: () => new Promise(() => {}), on: () => {}, requestSingleInstanceLock: () => true, quit: () => {},
-         getVersion: () => '2.6.2', getPath: () => userData, getName: () => 'ingesto', isPackaged: false, setAboutPanelOptions: () => {} },
-  BrowserWindow: class { static getAllWindows() { return []; } },
-  Menu: { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) },
-  ipcMain: { handle: (ch, fn) => { handlers[ch] = fn; }, on: (ch, fn) => { handlers[ch] = fn; } },
-  dialog: {}, screen: {},
-  shell: { openPath: async () => {}, showItemInFolder: () => {}, openExternal: async () => {} },
-  powerSaveBlocker: { start: () => 1, stop: () => {}, isStarted: () => false },
-};
-const realLoad = Module._load;
-Module._load = function (req, ...rest) { if (req === 'electron') return electron; return realLoad.call(this, req, ...rest); };
-require(path.join(__dirname, '..', 'src', 'main', 'main.js'));
+const { call } = H.loadMain({ version: '2.6.2' });
 const sentinel = require(path.join(__dirname, '..', 'src', 'main', 'sentinel.js'));
-const call = (ch, ...args) => handlers[ch]({ sender: { send: () => {} } }, ...args);
 
 const opts = (x) => ({ mode: 'slow', folderTemplate: '{counter}_{cardname}', writeSentinel: true,
                        writeChecksum: true, cksumList: true, cksumMhl: false, ascMhl: false, ...x });
@@ -523,6 +508,36 @@ const refused = (r) => r && r.success === false && r.copiedFiles === 0 &&
     ok(fs.statSync(cp).size === 128 * 1024 * 1024, 'the oversized file is left exactly as it was');
     ok(read(path.join(G, 'INGESTO_report-2.csv')) === '#,Card,Folder\n002,B,DAY1\n',
        'and the row goes to a sibling');
+  }
+
+  console.log('\none ingest at a time, enforced by the engine itself (2.9.1)');
+  {
+    const card = fresh('one'), dst = fresh('one-d'), card2 = fresh('two'), dst2 = fresh('two-d');
+    mk(card, { 'A.MOV': 'a'.repeat(4096) }); mk(card2, { 'B.MOV': 'b' });
+    const first = ingest(card, 'ONE', dst, { counter: '081' });
+    let refusedSecond = false;
+    try { await ingest(card2, 'TWO', dst2, { counter: '082' }); }
+    catch (e) { refusedSecond = /already running/.test(e.message); }
+    const r1 = (await first)[0];
+    ok(refusedSecond, 'a second ingest started while one runs is refused');
+    ok(r1 && r1.success === true, 'and the first one is not disturbed');
+    const r3 = (await ingest(card2, 'TWO', dst2, { counter: '083' }))[0];
+    ok(r3 && r3.success === true, 'once the first is over, the next one runs');
+  }
+
+  console.log('\nwhat Windows puts on a drive is never read as footage (2.9.1)');
+  {
+    // On NTFS these folders are protected: reading them failed, the failure
+    // counted as a card read error, and an NTFS drive used as a source could
+    // never finish green.
+    const card = fresh('ntfs'), dst = fresh('ntfs-d');
+    mk(card, { 'CLIP.MOV': 'footage', 'System Volume Information/IndexerVolumeGuid': 'x',
+               '$RECYCLE.BIN/S-1-5-21/desktop.ini': 'y', '.DocumentRevisions-V100/db': 'z' });
+    const r = (await ingest(card, 'NTFS', dst, { counter: '091', writeSentinel: false }))[0];
+    ok(r && r.success === true, 'the ingest succeeds');
+    ok(r && list(r.destPath).join(',') .includes('CLIP.MOV') &&
+       !list(r.destPath).some(n => /System Volume|RECYCLE|DocumentRevisions/.test(n)),
+       'the footage is copied, the system folders are not: ' + (r ? list(r.destPath).join(', ') : ''));
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);

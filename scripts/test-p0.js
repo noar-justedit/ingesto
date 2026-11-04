@@ -10,7 +10,9 @@ const path = require('path');
 const os   = require('os');
 const vm   = require('vm');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+// The whole engine (src/main and the src/shared files it requires), as one
+// text: a function is found by name, whichever file holds it.
+const SRC = require('./lib/source').ENGINE;
 
 // ── Extract a top-level `function name(...) { ... }` by brace matching ──────
 function extractFn(name) {
@@ -40,7 +42,7 @@ const PART_SUFFIX = extractConst('PART_SUFFIX').match(/'([^']+)'/)[1];
 const ctx = vm.createContext({ fs, path, process, Buffer, console, setImmediate, setTimeout,
   setInterval, clearInterval,
   nocache: { fullFsync: () => false, available: () => false },
-  cancelCopy: false });   // copyFanOut reads this module global for mid-file cancel
+  ctl: { cancelCopy: false } });   // copyFanOut reads the run controls for mid-file cancel
 vm.runInContext([
   extractConst('PART_SUFFIX'),
   extractConst('FSYNC_UNSUPPORTED'),
@@ -72,6 +74,7 @@ vm.runInContext([
   extractFn('isAppleDouble'),
   // 2.6.0: a template can carry "/" and buildFolderName is the LAST level of
   // the path the resolver produces.
+  extractFn('asciiFold'),
   extractFn('resolveTemplateVars'),
   extractFn('cleanSegment'),
   extractFn('buildFolderSegments'),
@@ -442,9 +445,9 @@ console.log('\ncopyFanOut');
     const bigSrc = path.join(TMP, 'big.bin');
     fs.writeFileSync(bigSrc, Buffer.alloc(24 * 1024 * 1024, 3));
     const tmpDst = path.join(TMP, 'cancel.bin.ingesto-part');
-    ctx.cancelCopy = true;   // simulate a cancel already in flight
+    ctx.ctl.cancelCopy = true;   // simulate a cancel already in flight
     const r = await ctx.copyFanOut(bigSrc, [tmpDst], () => {}, null);
-    ctx.cancelCopy = false;
+    ctx.ctl.cancelCopy = false;
     ok(r.failed[0] && r.failed[0].aborted === true, 'a cancelled file is flagged aborted (not an error)');
     // failDest waited for close; the caller would unlink — emulate and confirm
     // the file is removable (fd already closed).

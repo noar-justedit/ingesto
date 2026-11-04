@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(src, name) {
   let start = src.indexOf(`async function ${name}(`);
@@ -56,7 +56,10 @@ const ctx = vm.createContext({
   buildReportHtml:  async (c, n, p, recs) => 'HTML:' + JSON.stringify(recs),
   buildReportCsv:   (recs) => 'CSV:' + JSON.stringify(recs),
   buildReportJson:  (c, n, p, recs) => 'JSON:' + JSON.stringify(recs),
+  // The error list (2.9.2): its own test is test-report-data.js.
+  REPORT_ERR_MAX: 50, driveNameOf: (r) => r.destName || 'D',
 });
+vm.runInContext(extractFn(REND, 'reportErrEntry'), ctx);
 vm.runInContext(extractFn(REND, 'padCounter'), ctx);
 vm.runInContext(extractFn(REND, 'updateReports'), ctx);
 

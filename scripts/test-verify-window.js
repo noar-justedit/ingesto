@@ -19,7 +19,7 @@ const fs   = require('fs');
 const path = require('path');
 const vm   = require('vm');
 
-const REND = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'index.html'), 'utf8');
+const REND = require('./lib/source').RENDERER;
 
 function extractFn(src, name) {
   const start = src.indexOf(`function ${name}(`);
@@ -77,7 +77,7 @@ console.log('\neverything listed, everything matches');
   ok(/sum-ico ok/.test(v.icls), 'the icon is the green one');
   ok(/m9 11 3 3L22 4/.test(v.ico), 'and it is the tick drawing');
   ok(!/not in the manifest/.test(v.lists), 'nothing is listed as unknown');
-  ok(/INGESTO's own files/.test(v.lists),
+  ok(/ingesto's own files/.test(v.lists),
      "the grey line explains what was deliberately not checked");
   ok(v.sub === '001_A001', 'the folder is named under the title');
   ok(v.open === true, 'and the window opens');

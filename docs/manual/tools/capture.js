@@ -212,9 +212,10 @@ S['21-settings'] = async b => {
     document.getElementById('settings-ov').style.alignItems = 'flex-start';
   });
   await p.setViewportSize({ width: 1500, height: 3400 }); await wait(p, 800);
-  // Sections 5 et 6 (Post-Ingest Command, Card Handoff) : decrites sans capture.
-  const names = ['tracking', 'checksum', 'report', 'filter', 'ntfy', null, null, 'file'];
-  for (let i = 0; i < names.length; i++) if (names[i]) await shot(p, `22-set-${i}-${names[i]}`, `#settings-ov .set-section >> nth=${i}`);
+  // Section 0 (Language, 2.9.0) : pas encore dans le manuel. Sections 6 et 7
+  // (Post-Ingest Command, Card Handoff) : decrites sans capture.
+  const names = [null, 'tracking', 'checksum', 'report', 'filter', 'ntfy', null, null, 'file'];
+  for (let i = 0; i < names.length; i++) if (names[i]) await shot(p, `22-set-${i - 1}-${names[i]}`, `#settings-ov .set-section >> nth=${i}`);
 };
 
 S['25-kiosk-pin'] = async b => { const p = await open(b); await p.evaluate(() => enterKiosk()); await shot(p, '25-kiosk-pin', '#kiosk-pin-ov > *'); };
