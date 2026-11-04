@@ -617,7 +617,6 @@
   "trees": [
    {
     "001_A001/001_A001.xxh": {
-     "size": 414,
      "mtime": "run",
      "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
     },
@@ -672,7 +671,6 @@
    },
    {
     "001_A001/001_A001.xxh": {
-     "size": 414,
      "mtime": "run",
      "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
     },
@@ -811,12 +809,10 @@
   "trees": [
    {
     "001_A001/001_A001.mhl": {
-     "size": 2532,
      "mtime": "run",
      "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<hashlist version=\"1.0\">\n  <creatorinfo>\n    <username><x></username>\n    <hostname><x></hostname>\n    <tool>INGESTO <v></tool>\n    <startdate><date></startdate>\n    <finishdate><date></finishdate>\n  </creatorinfo>\n  <hash>\n    <file>AUDIO/take 1.wav</file>\n    <size>70000</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>cd45c733045700c1</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/DSC00001.JPG</file>\n    <size>51200</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>ce872513639bdf24</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/DSC00002.JPG</file>\n    <size>0</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>ef46db3751d8e999</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/Été_01.JPG</file>\n    <size>1200</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>cfebef36a898d303</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0001.MP4</file>\n    <size>3145851</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>14002eb6bc11578c</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0001M01.XML</file>\n    <size>4096</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>2be1812165cdbf67</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0002.MP4</file>\n    <size>1048576</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>afcf35a936571c43</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0002M01.XML</file>\n    <size>4100</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>cee743b0a86bf31a</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/MEDIAPRO.XML</file>\n    <size>900</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <xxhash64be>5b8e3d66dee275ee</xxhash64be>\n    <hashdate><date></hashdate>\n  </hash>\n</hashlist>\n"
     },
     "001_A001/001_A001.xxh": {
-     "size": 414,
      "mtime": "run",
      "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
     },
@@ -1094,12 +1090,10 @@
   "trees": [
    {
     "001_A001/001_A001.md5": {
-     "size": 558,
      "mtime": "run",
      "text": "4425ef12863c4fc0f1349f4d771b621c *AUDIO/take 1.wav\n0c05a1c33a21a721898dc885dbf83ea5 *DCIM/100MSDCF/DSC00001.JPG\nd41d8cd98f00b204e9800998ecf8427e *DCIM/100MSDCF/DSC00002.JPG\n3337a1614a980ee054ec570c9c1f0d49 *DCIM/100MSDCF/Été_01.JPG\nb5422a580e48b6d140eac5df0a100b54 *PRIVATE/M4ROOT/CLIP/C0001.MP4\n5451f838f7d1dbf8eedcb76325211edf *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nba3280b3adede3c7e2bf8d269e176a41 *PRIVATE/M4ROOT/CLIP/C0002.MP4\nfe6169d2d9aa3e1e1f54a6abc35e2398 *PRIVATE/M4ROOT/CLIP/C0002M01.XML\nadf80a1b18b062f9d51377f0ff8835ba *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
     },
     "001_A001/001_A001.mhl": {
-     "size": 2550,
      "mtime": "run",
      "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<hashlist version=\"1.0\">\n  <creatorinfo>\n    <username><x></username>\n    <hostname><x></hostname>\n    <tool>INGESTO <v></tool>\n    <startdate><date></startdate>\n    <finishdate><date></finishdate>\n  </creatorinfo>\n  <hash>\n    <file>AUDIO/take 1.wav</file>\n    <size>70000</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>4425ef12863c4fc0f1349f4d771b621c</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/DSC00001.JPG</file>\n    <size>51200</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>0c05a1c33a21a721898dc885dbf83ea5</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/DSC00002.JPG</file>\n    <size>0</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>d41d8cd98f00b204e9800998ecf8427e</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>DCIM/100MSDCF/Été_01.JPG</file>\n    <size>1200</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>3337a1614a980ee054ec570c9c1f0d49</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0001.MP4</file>\n    <size>3145851</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>b5422a580e48b6d140eac5df0a100b54</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0001M01.XML</file>\n    <size>4096</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>5451f838f7d1dbf8eedcb76325211edf</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0002.MP4</file>\n    <size>1048576</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>ba3280b3adede3c7e2bf8d269e176a41</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/CLIP/C0002M01.XML</file>\n    <size>4100</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>fe6169d2d9aa3e1e1f54a6abc35e2398</md5>\n    <hashdate><date></hashdate>\n  </hash>\n  <hash>\n    <file>PRIVATE/M4ROOT/MEDIAPRO.XML</file>\n    <size>900</size>\n    <lastmodificationdate><date></lastmodificationdate>\n    <md5>adf80a1b18b062f9d51377f0ff8835ba</md5>\n    <hashdate><date></hashdate>\n  </hash>\n</hashlist>\n"
     },
@@ -1276,7 +1270,6 @@
   "trees": [
    {
     "001_A001/001_A001.xxh": {
-     "size": 414,
      "mtime": "run",
      "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
     },
@@ -1329,7 +1322,6 @@
      "hash": "981291ce12ca3c6c"
     },
     "002_A001/002_A001.xxh": {
-     "size": 48,
      "mtime": "run",
      "text": "449cafc5a5d37456 *PRIVATE/M4ROOT/CLIP/C0003.MP4\n"
     },
@@ -1356,7 +1348,6 @@
     "hash": "ff4a41f6aa62a1c9"
    },
    ".ingesto.json": {
-    "size": 1789,
     "mtime": "run",
     "text": "{\n  \"ingesto_version\": \"<v>\",\n  \"ingests\": [\n    {\n      \"date\": \"<x>\",\n      \"destination\": \"<tmp>/d-log/001_A001\",\n      \"destinations\": [\n        \"<tmp>/d-log/001_A001\"\n      ],\n      \"mode\": \"slow\",\n      \"verified\": true,\n      \"files_count\": 9,\n      \"files\": [\n        {\n          \"p\": \"AUDIO/take 1.wav\",\n          \"s\": 70000,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"DCIM/100MSDCF/DSC00001.JPG\",\n          \"s\": 51200,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"DCIM/100MSDCF/DSC00002.JPG\",\n          \"s\": 0,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"DCIM/100MSDCF/Été_01.JPG\",\n          \"s\": 1200,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0001.MP4\",\n          \"s\": 3145851,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0001M01.XML\",\n          \"s\": 4096,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0002.MP4\",\n          \"s\": 1048576,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0002M01.XML\",\n          \"s\": 4100,\n          \"m\": 1768471200\n        },\n        {\n          \"p\": \"PRIVATE/M4ROOT/MEDIAPRO.XML\",\n          \"s\": 900,\n          \"m\": 1768471200\n        }\n      ]\n    },\n    {\n      \"date\": \"<x>\",\n      \"destination\": \"<tmp>/d-log/002_A001\",\n      \"destinations\": [\n        \"<tmp>/d-log/002_A001\"\n      ],\n      \"mode\": \"slow\",\n      \"verified\": true,\n      \"files_count\": 1,\n      \"files\": [\n        {\n          \"p\": \"PRIVATE/M4ROOT/CLIP/C0003.MP4\",\n          \"s\": 2048,\n          \"m\": 1768471200\n        }\n      ]\n    }\n  ]\n}"
    },
@@ -1570,12 +1561,10 @@
   "trees": [
    {
     "DAY01/001_A001_noar/001_A001_noar.xxh": {
-     "size": 414,
      "mtime": "run",
      "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
     },
     "DAY01/001_A001_noar/001_note.md": {
-     "size": 195,
      "mtime": "run",
      "text": "# ingesto - Shooting Note\n\n- **Date:** <date>\n- **Counter:** 001\n- **Card:** A001\n- **Operator:** noar\n- **Camera:** FX6\n- **Profile:** SLOG3\n\n---\n\n**take 4** is the one\n\n- [x] checked\n"
     },
@@ -1699,7 +1688,6 @@
   "trees": [
    {
     "001_A001/001_A001.xxh": {
-     "size": 223,
      "mtime": "run",
      "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *PICTURES/DSC00001.JPG\nef46db3751d8e999 *PICTURES/DSC00002.JPG\ncfebef36a898d303 *PICTURES/Été_01.JPG\n14002eb6bc11578c *VIDEO/C0001.MP4\nafcf35a936571c43 *VIDEO/C0002.MP4\n"
     },
@@ -1963,7 +1951,6 @@
   "trees": [
    {
     "001_A001/001_A001.xxh": {
-     "size": 414,
      "mtime": "run",
      "text": "cd45c733045700c1 *AUDIO/take 1.wav\nce872513639bdf24 *DCIM/100MSDCF/DSC00001.JPG\nef46db3751d8e999 *DCIM/100MSDCF/DSC00002.JPG\ncfebef36a898d303 *DCIM/100MSDCF/Été_01.JPG\n14002eb6bc11578c *PRIVATE/M4ROOT/CLIP/C0001.MP4\n2be1812165cdbf67 *PRIVATE/M4ROOT/CLIP/C0001M01.XML\nafcf35a936571c43 *PRIVATE/M4ROOT/CLIP/C0002.MP4\ncee743b0a86bf31a *PRIVATE/M4ROOT/CLIP/C0002M01.XML\n5b8e3d66dee275ee *PRIVATE/M4ROOT/MEDIAPRO.XML\n"
     },
@@ -2016,7 +2003,6 @@
      "hash": "981291ce12ca3c6c"
     },
     "002_B001/002_B001.xxh": {
-     "size": 58,
      "mtime": "run",
      "text": "bbda9f7aa90d30c3 *CLIP/B.MOV\n791484c02f57c4a2 *CLIP/B.XML\n"
     },

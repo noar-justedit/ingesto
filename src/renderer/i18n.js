@@ -48,7 +48,9 @@
   /* User data, by the class the interface gives it: drive names (.vc-name),
    * loaded cards and destinations (.zi-name, .src-info-name, .sc-name,
    * .kl-name, .tf-nm), history lines (.sess-name, .sess-folder), template
-   * parts typed by the user (.tok-txt), notes (.md-note, .mdn), names in the
+   * parts typed by the user (.tok-txt), notes (.md-note; in the notes
+   * editor, the text typed .mdn-ed / .mdn-src and the note's file name
+   * .mdn-ft, while its labels and buttons are translated), names in the
    * refusal windows (#pf-ov .m), folder names and paths (.sic-preview,
    * .zi-folder, .zi-path, .sc-path, .c-path), file names (.tf-file,
    * .fg-file, .fg-files, .vf-file, .krun-file, .ufc-fitem). Anything else
@@ -56,7 +58,7 @@
    * history details). docs/notes/i18n/userdata.js checks it with real names.
    */
   var USER_DATA = '[data-i18n-skip], .vc-name, .zi-name, .src-info-name, .sc-name, .kl-name, ' +
-                  '.sess-name, .sess-folder, .tok-txt, .md-note, .mdn, #pf-ov .m, ' +
+                  '.sess-name, .sess-folder, .tok-txt, .md-note, .mdn-ed, .mdn-src, .mdn-ft, #pf-ov .m, ' +
                   '.tf-nm, .sic-preview, .zi-folder, .zi-path, .sc-path, .c-path, .tf-file, .fg-file, ' +
                   '.fg-files, .vf-file, .krun-file, .ufc-fitem';
 

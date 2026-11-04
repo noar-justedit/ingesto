@@ -122,8 +122,11 @@ function snapshotTree(dir, normalise) {
         // The engine copies the card's dates onto the copies: a file that
         // kept the card's date says "card", one written by the run says "run".
         const mtime = Math.abs(st.mtimeMs - FIXED_MTIME.getTime()) < 2000 ? 'card' : 'run';
+        // A file described by its text (after `normalise` blanked what depends
+        // on the machine) is compared by that text alone: its size in bytes
+        // still depends on the user and machine names it carried.
         const text = normalise ? normalise(rel, fs.readFileSync(p, 'utf8')) : null;
-        out[rel] = text != null ? { size: st.size, mtime, text } : { size: st.size, mtime, hash: sha(p) };
+        out[rel] = text != null ? { mtime, text } : { size: st.size, mtime, hash: sha(p) };
       }
     }
   })(dir);

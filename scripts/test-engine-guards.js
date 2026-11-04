@@ -257,8 +257,11 @@ const SMALL = { 'CLIP/A.MOV': 3000, 'CLIP/B.MOV': 2000 };
     const ra = (await ingest([src(ca, 'A001')], [da], {}))[0];
     const rb = (await ingest([src(cb, 'B001')], [db], {}))[0];
     const pa = call('verify-folder', ra.destPath);
-    await new Promise(r => setTimeout(r, 30));
-    // Cancel, and a second Verify started in the same instant.
+    // Cancel at once, and a second Verify started in the same instant. No
+    // fixed delay: on a fast disk these 16 MB are read back in a few
+    // milliseconds, and the Verify could end before Cancel arrived. The first
+    // Verify is already registered here (it waits on its first read), so
+    // Cancel always lands while it runs.
     const pc = call('cancel-verify');
     const pb = call('verify-folder', rb.destPath);
     await pc;

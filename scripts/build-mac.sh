@@ -239,6 +239,12 @@ if [ -n "$SIGN_ID" ]; then
 else
   echo -e "  ${YELLOW}No Developer ID certificate found — building UNSIGNED.${NC}"
   echo -e "  ${YELLOW}Fine for your own machine; this build will be blocked on any other Mac.${NC}"
+  # Without this, electron-builder ignores the detection above and signs with
+  # ANY codesigning identity it finds, typically the free "Apple Development"
+  # certificate: the build waits on a keychain prompt nobody expects, and the
+  # app it produces cannot be distributed. The unsigned build is asked for
+  # explicitly.
+  export CSC_IDENTITY_AUTO_DISCOVERY=false
 fi
 set +e
 # --line-buffered is NOT cosmetic. Without it grep buffers by block, and the

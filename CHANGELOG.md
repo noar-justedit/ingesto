@@ -2,6 +2,21 @@
 
 All notable changes to ingesto. Versions before 2.5.5 are not listed here.
 
+## 2.12.1 (2026-11-04)
+Fixes from wibi8bo (pull request #13), integrated with small adaptations.
+- The notes editor is translated: its label, its buttons and their tooltips
+  (Bold, Note format, Markdown source...) stayed in English in French and
+  Chinese. What is typed in a note, and the note's file name under it, are
+  still never translated.
+- Mac build without a Developer ID certificate: the build is now explicitly
+  unsigned, instead of electron-builder signing with any other certificate it
+  finds (a keychain prompt, and an app that cannot be distributed). Builds
+  signed with a Developer ID are unchanged.
+- Tests: the regression bench compares the manifests and notes by their text
+  only, not by their size, which depended on the user and machine names; it
+  failed on any computer other than the one that recorded it. The Cancel
+  during Verify test no longer depends on a 30 ms delay.
+
 ## 2.12.0 (2026-10-30)
 - The interface, the reports and the phone notifications in Simplified
   Chinese (`src/renderer/lang/zh-CN.js`), chosen in Settings, or at first

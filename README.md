@@ -573,6 +573,9 @@ Translations:
 - Simplified Chinese (`zh-CN.js`): [wenjianpai](https://github.com/wenjianpai),
   building on the earlier work of [wibi8bo](https://github.com/wibi8bo).
 
+Thanks also to [wibi8bo](https://github.com/wibi8bo) for the fixes of 2.12.1
+(the notes editor in every language, the unsigned Mac build, portable tests).
+
 ## License
 
 This project is licensed under **GNU GPL v3.0**. See the [`LICENSE`](./LICENSE)

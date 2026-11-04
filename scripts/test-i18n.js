@@ -39,7 +39,7 @@ console.log('\nthe engine');
   // English must stay untouched: with no dictionary the engine does nothing.
   ok(/dict = \(lang === 'en'\) \? null/.test(ENGINE) && /if \(!s \|\| !dict\) return null;/.test(ENGINE), 'in English the engine changes nothing');
   ok(/el\.tagName === 'TEXTAREA'/.test(ENGINE) && /getAttribute\('contenteditable'\) === 'true'/.test(ENGINE), 'what the user types (textarea, rich notes) is never walked into');
-  for (const cls of ['.vc-name', '.zi-name', '.src-info-name', '.tok-txt', '.md-note', '.mdn', '#pf-ov .m', '.tf-file'])
+  for (const cls of ['.vc-name', '.zi-name', '.src-info-name', '.tok-txt', '.md-note', '.mdn-ed', '.mdn-src', '.mdn-ft', '#pf-ov .m', '.tf-file'])
     ok(ENGINE.includes(cls), `user data ${cls} is never translated`);
   ok(/'<div class="mem-name"' \+ \(p \? ' data-i18n-skip' : ''\)/.test(REND), 'a saved template keeps its name, an empty slot is translated');
   // 2.9.1: records of nodes the code has replaced are dropped, or a day of
