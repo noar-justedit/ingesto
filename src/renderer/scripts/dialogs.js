@@ -97,10 +97,10 @@ function showUnformattedCardDialog(entry, info) {
       </div>
       <div class="ufc-actions">
         <button id="ufc-skip" class="ufc-abtn ufc-abtn-primary">
-          <div class="ufc-abtn-title">COPY NEW FILES</div>
+          <div class="ufc-abtn-title">COPY NEW</div>
         </button>
         <button id="ufc-all" class="ufc-abtn ufc-abtn-secondary">
-          <div class="ufc-abtn-title">COPY FULL CARD</div>
+          <div class="ufc-abtn-title">COPY ALL</div>
         </button>
         <button id="ufc-cancel" class="ufc-abtn ufc-abtn-cancel">
           <div class="ufc-abtn-title">CANCEL</div>
@@ -181,4 +181,34 @@ function showToast(msg, type='info', duration=4000){
   t.style.opacity = '1';
   clearTimeout(t._timer);
   t._timer = setTimeout(()=>{ t.style.opacity='0'; }, duration);
+}
+
+// ─── Confirmation ───────────────────────────────────────────────────────
+// Asks before an action, with a button that names it ("Delete", "Clear
+// history"): the browser's confirm() can only say OK. `paragraphs` are
+// shown in order; resolves true when the action is chosen, false on Cancel,
+// Escape or a click outside. The action button has the focus, as in the
+// system dialog, so Enter chooses it.
+function askConfirm({ title, paragraphs = [], action }){
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.id = 'askconfirm-ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:6000;display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.innerHTML = `<div class="mi-card" style="max-width:480px;">`+
+      `<div class="mi-h">${esc(title)}</div>`+
+      paragraphs.map(p => `<div class="mi-sub">${esc(p)}</div>`).join('')+
+      `<div class="vp-actions">`+
+      `<button class="vp-ign" id="askconfirm-no">${esc(tr('Cancel'))}</button>`+
+      `<button class="vp-use" id="askconfirm-ok">${esc(action)}</button></div></div>`;
+    document.body.appendChild(ov);
+    let done = false;
+    const finish = (yes) => { if(done) return; done = true;
+                              document.removeEventListener('keydown', onKey, true); ov.remove(); resolve(yes); };
+    const onKey = (e) => { if(e.key === 'Escape'){ e.preventDefault(); finish(false); } };
+    document.addEventListener('keydown', onKey, true);
+    ov.querySelector('#askconfirm-ok').onclick = () => finish(true);
+    ov.querySelector('#askconfirm-no').onclick = () => finish(false);
+    ov.onclick = (e) => { if(e.target === ov) finish(false); };
+    setTimeout(() => ov.querySelector('#askconfirm-ok').focus(), 0);
+  });
 }

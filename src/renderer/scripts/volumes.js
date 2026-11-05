@@ -71,7 +71,7 @@ function proposeNewVolumes(vols){
     `<div class="mi-sub">Add ${n>1?'them':'it'} as ingest source${n>1?'s':''}?</div>`+
     `<div class="mi-row" style="border-top:none;"><div class="mi-body vp-names">${esc(names)}</div></div>`+
     `<div class="vp-actions">`+
-    `<button class="vp-use">Use as source${n>1?'s':''}</button>`+
+    `<button class="vp-use">Add card${n>1?'s':''}</button>`+
     `<button class="vp-ign">Ignore</button></div>`+
     `</div>`;
   document.body.appendChild(ov);
@@ -353,7 +353,7 @@ function warnHdeSource(entry){
     cause:'ingesto can only compare the copies with what this volume delivers, not with the card itself. '+
           'Sizes are only known once each file is copied, and the card re-read (PRO) is off for this card.',
     action:'With HDE, clips in other formats (ProRes) can stay on another volume of the same card: load it too if it holds any.',
-    buttons:[{ label:'GOT IT', value:'ok' }] });
+    buttons:[{ label:'OK', value:'ok' }] });
 }
 function addToZone(z,entry){
   // An ingest works from the list frozen when it started: anything added now
@@ -370,7 +370,7 @@ function addToZone(z,entry){
       cause:'An ingest is running. The '+(z==='src'?'card':'destination')+' list is frozen until it '+
             'finishes, so that nothing added halfway can reach a copy already in flight.',
       action:'Load it when the current ingest is done.',
-      buttons:[{ label:'GOT IT', value:'ok' }] });
+      buttons:[{ label:'OK', value:'ok' }] });
     return;
   }
   const arr=z==='src'?S.sources:S.dests;
@@ -484,8 +484,8 @@ async function onSourceAdded(entry) {
         cause:'ingesto cannot write its tracking log on the card, so it will not be able to tell you '+
               'later which files were already copied.',
         action:'The copy itself works normally. Unlock the card if you want the tracking.',
-        buttons:[{ label:'CONTINUE', value:'go', style:'go' },
-                 { label:'REMOVE THE CARD', value:'cancel', style:'ghost',
+        buttons:[{ label:'KEEP CARD', value:'go', style:'go' },
+                 { label:'REMOVE CARD', value:'cancel', style:'ghost',
                    act:()=>removeFromZone('src', entry.path) }] });
     }
     // A tracking log that exists but can no longer be read: say so, rather than

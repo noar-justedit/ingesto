@@ -2,6 +2,20 @@
 
 All notable changes to ingesto. Versions before 2.5.5 are not listed here.
 
+## 2.12.2 (2026-11-05)
+Every button now says what happens when it is clicked.
+- Confirmations name their action: Clear history, Delete, Enable tracking,
+  Run command, Quit Anyway, each next to Cancel. The three browser
+  confirmations, which could only say OK, are replaced by ingesto's own
+  dialog.
+- Shorter labels that say the result: COPY NEW and COPY ALL on a card that was
+  not formatted, Keep SECURE, Add card, KEEP CARD and REMOVE CARD on a
+  write-protected card, START ANYWAY, OPEN FILTER, Open report, Check card,
+  Download for an update.
+- OK where there is nothing to decide (it replaces Got it, Done and Dismiss);
+  Close for Settings.
+- Four labels that were still in English in French are now translated.
+
 ## 2.12.1 (2026-11-04)
 Fixes from wibi8bo (pull request #13), integrated with small adaptations.
 - The notes editor is translated: its label, its buttons and their tooltips

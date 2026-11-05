@@ -168,12 +168,12 @@ function ctxSave(e){
   if(slot<0)return;
   promptSaveSlot(slot);
 }
-function ctxDelete(e){
+async function ctxDelete(e){
   if(e)e.stopPropagation();
   const slot=S.ctxSlot;
   closeCtx();
   if(slot<0||!S.presets[slot])return;
-  if(!confirm(trf('Delete template {n}?', {n:slot+1})))return;
+  if(!await askConfirm({ title: trf('Delete template {n}?', {n:slot+1}), action: tr('Delete') }))return;
   S.presets[slot]=null;
   if(S.activePreset===slot)S.activePreset=-1;
   renderPresets();persistPrefs();

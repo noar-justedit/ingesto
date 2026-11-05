@@ -107,8 +107,8 @@ console.log('\nthe caveat under the buttons');
   // that the operator reads it before pressing a button.
   ok(/<div class="ufc-caveat">A file is skipped only/.test(h),
      'and it is visible, not hidden behind an attribute or a display:none');
-  const iBtn = h.indexOf('COPY NEW FILES'), iCav = h.indexOf('A file is skipped only');
-  ok(iCav > iBtn, 'and it sits under the buttons, where the decision is made');
+  const iBtn = h.indexOf('COPY NEW'), iCav = h.indexOf('A file is skipped only');
+  ok(iBtn > 0 && iCav > iBtn, 'and it sits under the buttons, where the decision is made');
 }
 
 console.log('\nDETAILS is folded, and it holds what nobody reads before deciding');
@@ -127,7 +127,7 @@ console.log('\nDETAILS is folded, and it holds what nobody reads before deciding
 console.log('\nthe three choices');
 {
   const h = open(248, 186);
-  for (const b of ['COPY NEW FILES','COPY FULL CARD','CANCEL'])
+  for (const b of ['COPY NEW','COPY ALL','CANCEL'])
     ok(h.includes(b), `"${b}" is offered`);
   ok(/id="ufc-skip"/.test(h) && /id="ufc-all"/.test(h) && /id="ufc-cancel"/.test(h),
      'and each one is wired');

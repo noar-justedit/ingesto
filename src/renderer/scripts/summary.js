@@ -328,7 +328,7 @@ function showSummary(R, opt){
             `<button id="dr-redo" style="display:block;width:100%;margin-top:8px;padding:9px;border-radius:var(--rs);`+
             `border:1px solid rgba(242,160,61,.5);background:rgba(242,160,61,.16);color:var(--orange);`+
             `font-family:var(--font);font-size:12.5px;font-weight:700;cursor:pointer;">`+
-            `⟳ Check the card for real</button></div>`
+            `⟳ Check card</button></div>`
           : ``)+
         `<div id="dr-result" style="margin-top:8px;"></div>`+
         `</div>`;
@@ -413,7 +413,7 @@ function showSummary(R, opt){
   const reBtn = document.getElementById('sum-recopy');
   if (reBtn){
     reBtn.style.display = nFailed>0 ? '' : 'none';
-    reBtn.textContent   = `↻ Re-copy ${nFailed} failed file${nFailed>1?'s':''}`;
+    reBtn.textContent   = `↻ Re-copy ${nFailed} file${nFailed>1?'s':''}`;
   }
 
   setupEjectButtons(R, G, { ok });
@@ -519,16 +519,15 @@ function showModesInfo(){ document.getElementById('modes-info-ov').classList.add
 function hideModesInfo(){ document.getElementById('modes-info-ov').classList.remove('open'); }
 
 // Card tracking (sentinel) switch. OFF by default; enabling requires confirmation.
-function onSentinelToggle(el){
+async function onSentinelToggle(el){
   if(el.checked){
     // Each paragraph through the dictionary, or this message would stay in
     // English in a translated interface.
-    const ok = confirm([
-      tr('Enable card tracking?'),
+    const ok = await askConfirm({ title: tr('Enable card tracking?'), paragraphs: [
       tr('ingesto will write a small log file (.ingesto.json) on the SOURCE card after each copy, so it can detect an already-ingested card next time.'),
       tr('This requires write access to the card. While this option is OFF, ingesto never writes anything on your cards.'),
       tr('Do you want ingesto to write on the source card?')
-    ].join('\n\n'));
+    ], action: tr('Enable tracking') });
     if(!ok){ el.checked=false; S.writeSentinel=false; persistPrefs(); return; }
     S.writeSentinel=true;
   } else {

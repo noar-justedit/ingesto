@@ -162,19 +162,19 @@ for (const f of fs.readdirSync(LANG_DIR).filter(f => f.endsWith('.js'))) {
   ok(missing.length === 0, `lang/${f} translates all of them` + (missing.length ? ': ' + missing.slice(0, 4).map(x => JSON.stringify(x)).join(' | ') : ''));
 }
 
-// The button of the information and refusal windows (2.9.2). It is written
-// in capitals in the code, and the dictionary only had "Got it": every such
-// window kept "GOT IT" in English in the French interface.
+// The button of a window that only informs: OK, the one place where OK is the
+// right word (it decides nothing). Translated in every dictionary, or such a
+// window would keep it in English.
 {
-  const gotIt = (REND.match(/label:'GOT IT'/g) || []).length;
-  ok(gotIt >= 2, `"GOT IT" is the button of ${gotIt} windows, the default one included`);
+  const okButtons = (REND.match(/label:'OK'/g) || []).length;
+  ok(okButtons >= 2, `"OK" is the button of ${okButtons} information windows, the default one included`);
+  ok(!/label:'GOT IT'/.test(REND) && !/>Got it</.test(REND), 'and none of them says "Got it" any more');
   for (const f of fs.readdirSync(LANG_DIR).filter(f => f.endsWith('.js'))) {
     const ctx = { window: {} };
     vm.runInNewContext(fs.readFileSync(path.join(LANG_DIR, f), 'utf8'), ctx);
     const d = Object.values(ctx.window)[0] || {};
-    const v = d.texts && d.texts['GOT IT'];
-    ok(typeof v === 'string' && v.length > 0 && v !== 'GOT IT' && v === v.toUpperCase(),
-       `lang/${f} translates "GOT IT", in capitals like the other buttons (${JSON.stringify(v)})`);
+    const v = d.texts && d.texts['OK'];
+    ok(typeof v === 'string' && v.length > 0, `lang/${f} translates "OK" (${JSON.stringify(v)})`);
   }
 }
 

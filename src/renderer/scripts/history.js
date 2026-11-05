@@ -17,10 +17,11 @@ function historyKey(r){ return [r && r.n, r && r.card, r && r.date].map(x => Str
 // are the record handed to the client, and the app has no business erasing
 // them. The hidden keys are kept in the preferences so a cleared history stays
 // cleared after a restart, and the empty state offers to show it again.
-function clearIngestHistory(){
+async function clearIngestHistory(){
   if(!_sessRows.length) return;
-  // Translated paragraph by paragraph, so the blank line between them stays.
-  if(!confirm(tr('Clear the ingest history?')+'\n\n'+tr('The lines are only hidden in ingesto. The reports on the drives are kept, untouched.'))) return;
+  if(!await askConfirm({ title: tr('Clear the ingest history?'),
+                         paragraphs: [tr('The lines are only hidden in ingesto. The reports on the drives are kept, untouched.')],
+                         action: tr('Clear history') })) return;
   const keep = Array.isArray(S.historyHidden) ? S.historyHidden : [];
   const add = _sessRows.map(row => historyKey(row.rec));
   // Capped so the preferences file cannot grow without end: the oldest keys go
@@ -130,7 +131,7 @@ function renderSessionLog(rows){
       const d=new Date(S.historyClearedAt), p=x=>String(x).padStart(2,'0');
       const when=isNaN(d)?'':` on ${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} at ${p(d.getHours())}:${p(d.getMinutes())}`;
       list.innerHTML=`<div class="sess-empty">History cleared${when}. The reports on the drives are untouched.`+
-        `<button class="sess-restore">Show it again</button></div>`;
+        `<button class="sess-restore">Show again</button></div>`;
       list.querySelector('.sess-restore').onclick = function(){ restoreIngestHistory(); };
     } else {
       list.innerHTML='<div class="sess-empty">Nothing has been ingested on these destinations yet.</div>';
@@ -662,7 +663,7 @@ function showOneEngineRefusal(R){
       cause:'The filter is on and no format is checked. Not a single file would be copied, and the '+
             'ingest would still report a success.',
       action:'Check at least one format, or turn the filter off.',
-      buttons:[{ label:'OPEN FILE FILTER', value:'filter', style:'fix', act:()=>pfOpenFilter() }, CANCEL] },
+      buttons:[{ label:'OPEN FILTER', value:'filter', style:'fix', act:()=>pfOpenFilter() }, CANCEL] },
     'PF-E8':{ title:[`${dest} disappeared`,'between the check and the copy'],
       cause:'The drive was there when ingesto checked, and gone when it started to write. Nothing was '+
             'copied.',
