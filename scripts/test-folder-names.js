@@ -47,11 +47,11 @@ vm.runInContext([extractConst(SHARED, 'CLOCK_TOKENS'), 'asciiFold', 'resolveTemp
 function rendCtx(lang) {
   const c = vm.createContext({
     console, INGESTO_I18N: { getLanguage: () => lang },
-    S: { counter: 1, tokens: [] }, padCounter: n => String(n).padStart(3, '0'),
+    S: { counter: 1, tokens: [], copyDefaults: { operator:'', camera:'', pp:'', note:'' } }, padCounter: n => String(n).padStart(3, '0'),
     document: { getElementById: () => null },
     window: { IngestoShared: SHARED_API }, asciiFold: SHARED_API.asciiFold,
   });
-  vm.runInContext(['nameRule', 'tplText', 'sanitizeMeta', 'resolveTplSegs', 'buildTplStr', 'litTokens']
+  vm.runInContext(['nameRule', 'tplText', 'cleanMeta', 'sanitizeMeta', 'resolveTplSegs', 'buildTplStr', 'litTokens']
     .map(n => extractFn(REND, n)).join('\n'), c);
   return c;
 }

@@ -110,13 +110,13 @@ function leafNameFromTemplate(src, i, refDate){
 // on the card comes from the Copy Info fields; the folder-name rule follows
 // the language (nameRule()).
 function resolveTplSegs(tplStr, src, i, refDate){
-  const field = id => document.getElementById(id)?.value || '';
+  const D = S.copyDefaults;
   return window.IngestoShared.buildFolderSegments(tplStr, {
     name:      src.name,
     counter:   padCounter((S.counter||1)+i),
-    cameraman: src.operator || field('meta-cam'),
-    camera:    src.camera   || field('meta-model'),
-    pp:        src.pp       || field('meta-pp'),
+    cameraman: src.operator || D.operator,
+    camera:    src.camera   || D.camera,
+    pp:        src.pp       || D.pp,
     nameRule:  src.nameRule || (typeof nameRule==='function' ? nameRule() : 'unicode'),
   }, refDate||new Date());
 }
@@ -627,9 +627,9 @@ async function startCopy(){
   // the card, then fill Operator and Camera globally, and the folder on the
   // drive would carry them while the report, the phone notification and the
   // handoff document said the fields were empty.
-  const globalOp  = document.getElementById('meta-cam')?.value  || '';
-  const globalCam = document.getElementById('meta-model')?.value || '';
-  const globalPP  = document.getElementById('meta-pp')?.value    || '';
+  const globalOp  = S.copyDefaults.operator;
+  const globalCam = S.copyDefaults.camera;
+  const globalPP  = S.copyDefaults.pp;
   // ── Freeze the run ──────────────────────────────────────────────────────
   // Everything the engine and the report need is captured HERE, once. The
   // sequential (per-card) path calls the engine inside a loop; reading the

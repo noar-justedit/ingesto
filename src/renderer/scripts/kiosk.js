@@ -4,9 +4,9 @@ function applyKioskMode(){
   if(!ov) return;
   if(S.kioskMode){
     ov.classList.add('on');
-    document.getElementById('k-op').value  = document.getElementById('meta-cam')?.value||'';
-    document.getElementById('k-cam').value = document.getElementById('meta-model')?.value||'';
-    document.getElementById('k-pp').value  = document.getElementById('meta-pp')?.value||'';
+    document.getElementById('k-op').value  = S.copyDefaults.operator;
+    document.getElementById('k-cam').value = S.copyDefaults.camera;
+    document.getElementById('k-pp').value  = S.copyDefaults.pp;
     document.getElementById('k-note').value= '';
     renderKioskSource();
     kioskUpdateStart();
@@ -198,10 +198,7 @@ async function kioskStart(){
   const cam=clean(document.getElementById('k-cam').value);
   const pp=normPP(document.getElementById('k-pp').value);
   const note=document.getElementById('k-note').value.trim();
-  document.getElementById('meta-cam').value=op;
-  document.getElementById('meta-model').value=cam;
-  { const mp=document.getElementById('meta-pp'); if(mp) mp.value=pp; }
-  document.getElementById('meta-note').value=note;
+  S.copyDefaults = { operator:op, camera:cam, pp, note };
   if(S.sources[0]){ S.sources[0].operator=op; S.sources[0].camera=cam||S.sources[0].camera; S.sources[0].pp=pp; S.sources[0].note=note; S.sources[0]._customised=true; }
   { const b=document.getElementById('krun-cancel'); if(b) b.disabled=false; }
   await startCopy();
@@ -413,14 +410,10 @@ function kioskReset(){
   { const kp=document.getElementById('k-pp'); if(kp) kp.value=''; }
   kioskCamMark('');
   document.getElementById('k-op').value='';
-  // kioskStart() copies these kiosk fields into the global Operator/Camera/
-  // Profile/Notes inputs before starting the copy — clear those too, or the
-  // next card (kiosk or standard) would silently inherit this shooter's
-  // leftover values.
-  const mc=document.getElementById('meta-cam');   if(mc) mc.value='';
-  const mm=document.getElementById('meta-model'); if(mm) mm.value='';
-  const mp=document.getElementById('meta-pp');    if(mp) mp.value='';
-  const mn=document.getElementById('meta-note');  if(mn) mn.value='';
+  // kioskStart() makes these kiosk fields the defaults before starting the
+  // copy: cleared too, or the next card (kiosk or standard) would inherit this
+  // shooter's values.
+  S.copyDefaults = { operator:'', camera:'', pp:'', note:'' };
   renderVolumes();
   renderKioskSource();
   kioskUpdateStart();

@@ -137,15 +137,14 @@ console.log('\nthe operators of the session');
      'after the run is frozen, not before a refusal');
 }
 
-console.log('\nthe three places a card is described all have the new fields');
+console.log('\nthe two places a card is described all have the new fields');
 {
   const grab = (id, n) => REND.slice(REND.indexOf(`id="${id}"`), REND.indexOf(`id="${id}"`) + (n || 260));
-  ok(/data-opcb/.test(grab('meta-cam')) && /data-opcb/.test(grab('k-op')), 'Operator offers the session list in Copy Info and in kiosk');
+  ok(/data-opcb/.test(grab('k-op')), 'Operator offers the session list in kiosk');
   ok(/OPERATOR<\/div>\s*<input class="sif-input"[^>]*data-opcb/.test(REND), 'and on each loaded card');
-  ok(/data-mdn\b/.test(grab('meta-note')) && /data-mdn\b/.test(grab('k-note')), 'Notes is the markdown editor in Copy Info and in kiosk');
+  ok(/data-mdn\b/.test(grab('k-note')), 'Notes is the markdown editor in kiosk');
   ok(/<textarea class="sif-textarea" data-mdn\b/.test(REND), 'and on each loaded card');
-  ok(/<div class="row3">\s*<div class="mf"><div class="mf-label">Operator<\/div>/.test(REND), 'Operator, Camera and Profile share one row in Copy Info');
-  ok(/class="sif-grid row3"/.test(REND), 'on each card');
+  ok(/class="sif-grid row3"/.test(REND), 'Operator, Camera and Profile share one row on each card');
   ok(/<div class="row3">\s*<div class="k-field">\s*<div class="k-lbl">Operator/.test(REND), 'and in kiosk');
   ok(/fieldsInit\(list\);\s*updatePreview\(\);/.test(REND), 'the card fields are built again each time the cards are drawn');
   const boot = REND.indexOf("fieldsInit(document)"), prefs = REND.indexOf('const prefs=(await window.ingesto.loadPrefs())');

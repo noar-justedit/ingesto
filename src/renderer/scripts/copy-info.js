@@ -3,8 +3,8 @@
 // operators of the session
 // ═══════════════════════════════════════════════════════
 // The three are built AROUND the original fields rather than in place of them.
-// #meta-note, #k-note and each card's note stay real <textarea>s holding the
-// markdown; #meta-pp, #k-pp and each card's profile stay real <input>s holding
+// #k-note and each card's note stay real <textarea>s holding the
+// markdown; #k-pp and each card's profile stay real <input>s holding
 // the value. Every line of code that reads or writes .value (prefs, kiosk,
 // the broom, startCopy, the report) keeps working unchanged, and a value set
 // by script is mirrored on screen by hookValue() below.
@@ -246,7 +246,6 @@ function refreshNoteFooters(){
   const width = S.counterWidth;
   const set = (ta, n) => { const f = ta && ta.closest('.mdn') && ta.closest('.mdn').querySelector('.mdn-ft');
                            if(f) f.textContent = padCounter(n, width) + '_note.md'; };
-  set(document.getElementById('meta-note'), S.counter);
   set(document.getElementById('k-note'), S.counter);
   document.querySelectorAll('#src-info-list textarea[data-mdn]').forEach(ta => set(ta, S.counter + Number(ta.dataset.i || 0)));
 }

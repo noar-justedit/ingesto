@@ -496,20 +496,18 @@ async function recopyFailed(){
 // Reset the source list (keeps destinations, template, counter)
 function clearSources(){
   S.sources=[];
-  // addToZone pre-fills a new card's fields from the global Operator/Camera/
-  // Profile/Notes inputs, so whatever stays in them is inherited by the NEXT
-  // card.
+  // addToZone pre-fills a new card's fields from S.copyDefaults, so whatever
+  // stays in them is inherited by the NEXT card.
   // Operator, camera and picture profile are KEPT for the next card: on a
   // shoot they change rarely, and typing them again for every card is where
   // inconsistent metadata comes from. The (A)/(M) mark on the next card says
   // where its camera came from, and the broom beside the title clears them all
   // in one click. Notes describe ONE card, so they go.
-  const mn=document.getElementById('meta-note');  if(mn) mn.value='';
+  S.copyDefaults.note = '';
   persistPrefs();
   renderZoneList('src');
   renderVolumes();
   renderSourceInfoCards();
-  updateCopyInfoVisibility();
   updateBtn();
   persistPrefs();
 }

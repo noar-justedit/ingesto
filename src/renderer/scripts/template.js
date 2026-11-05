@@ -284,6 +284,3 @@ function refreshCardPreviews(){
   });
 }
 
-document.addEventListener('input',e=>{
-  if(['meta-cam','meta-model','meta-pp'].includes(e.target.id)){updatePreview();persistPrefs();}
-});

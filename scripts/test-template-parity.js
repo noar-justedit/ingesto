@@ -61,13 +61,13 @@ vm.runInContext([
 ].join('\n'), eng);
 
 // ── The interface side ──────────────────────────────────────────────────────
-// resolveTplSegs() reads two things from its page: the counter (S.counter) and,
-// as a fallback when the card carries none, the operator/camera fields. The
-// fallback is stubbed to "not present" so the card's own values are the only
-// input — the same input the engine gets.
+// resolveTplSegs() reads two things from the window state: the counter
+// (S.counter) and, as a fallback when the card carries none, the defaults
+// (S.copyDefaults). The defaults are empty so the card's own values are the
+// only input, the same input the engine gets.
 const ren = vm.createContext({
   console,
-  S: { counter: 7, counterWidth: 3 },
+  S: { counter: 7, counterWidth: 3, copyDefaults: { operator:'', camera:'', pp:'', note:'' } },
   // A const inside a vm script never lands on the context object, so the list
   // is written out here. It is the contract, and a test that read it from the
   // source could never disagree with the source.

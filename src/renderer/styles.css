@@ -264,7 +264,6 @@ text-transform:uppercase;color:var(--text3);}
 .bs{background:var(--orange-d);color:var(--orange);} /* SECURE = orange */
 .bp{background:var(--pro-d);color:var(--pro);}        /* PRO = violet */
 /* ── Meta inputs ──────────────────────────────── */
-.meta-sec{padding:0 12px 8px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
 .mf-label{font-size:14px;color:var(--text3);font-family:var(--font);font-weight:400;margin-bottom:3px;}
 .mf input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:4px;
 padding:8px 11px;color:var(--text);font-size:15px;font-family:var(--font);
@@ -893,16 +892,6 @@ justify-content:center;gap:8px;padding:40px;color:var(--text3);}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes popIn{from{opacity:0;transform:scale(.95) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}
-.titlebar-logo {
-display:inline-block;
-width: 18px;
-height: 18px;
-margin-right: 6px;
-vertical-align: middle;
--webkit-user-drag: none;
-user-select: none;
-border-radius: 4px;
-}
 
 /* ── Windows window controls ──────────────────────────────── */
 .win-controls { display:none; -webkit-app-region:no-drag; margin-left:auto; flex-shrink:0; height:100%; }
@@ -1119,7 +1108,7 @@ html,body{background:var(--page);}
 
 /* Les blocs de la colonne deviennent des cartes. :not(:empty) evite la carte
    vide quand aucune carte n est chargee et qu aucune destination n est posee. */
-.src-info-list:not(:empty), .meta-sec, .zone-list:not(:empty),
+.src-info-list:not(:empty), .zone-list:not(:empty),
 .tpl-section, .memory-list, .tpl-preview-wrap{
   background:var(--card); border-radius:14px; padding:13px; margin:0;
 }
@@ -1149,6 +1138,15 @@ html,body{background:var(--page);}
 #vols-grid{max-height:290px;}
 #center-controls{border-top:none;background:var(--card);border-radius:14px;
   padding:13px;flex-shrink:0;}
+/* The copy modes sit at the bottom of the column whatever is above them:
+   the history appearing with a destination never moves them. */
+#center-controls{margin-top:auto;}
+
+/* What only means something once a card or a destination is there. Without a
+   card: no card fields and no counter; without a destination: no folder
+   structure and no templates. renderZoneList sets the two classes. */
+body.no-src #src-info-title, body.no-src #counter-sec,
+body.no-dst #dst-setup{display:none;}
 .modes{padding:0;gap:9px;}
 .mbtn{background:var(--ins);border:none;border-radius:11px;}
 
@@ -1334,7 +1332,7 @@ html,body{background:var(--page);}
 
 /* Plus aucune bordure sur les elements poses dans une carte : ils descendent
    d un niveau au lieu de s entourer d un trait. */
-.mf input, .mf textarea, #meta-note, .counter-val, .tpl-raw, .zi{
+.mf input, .mf textarea, .counter-val, .tpl-raw, .zi{
   background:var(--ins) !important; border:none !important; border-radius:8px;
 }
 .drop-zone{background:var(--card);border:none;border-radius:14px;}
@@ -1528,7 +1526,7 @@ body.tf-on #sess-card{display:none !important;}
 .mdn-ed ul.task li.done{color:var(--text3);text-decoration:line-through;}
 .mdn-ed ul.task li.done::before{background:var(--green);box-shadow:none;}
 .mdn-ed[contenteditable="false"]{opacity:.6;}
-textarea.mdn-src,#meta-note.mdn-src,.k-ta.mdn-src,.sif-textarea.mdn-src{
+textarea.mdn-src,.k-ta.mdn-src,.sif-textarea.mdn-src{
   all:unset;box-sizing:border-box;display:block;width:100%;min-height:150px;max-height:260px;overflow-y:auto;
   padding:6px 10px 4px;color:var(--text2);font-family:var(--mono);font-size:12.5px;line-height:1.5;
   white-space:pre-wrap;overflow-wrap:anywhere;resize:none;-webkit-user-select:text;user-select:text;

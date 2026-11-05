@@ -76,6 +76,10 @@ const S = {
   counter:1,           // next counter value (auto or overridden)
   noteMode:'rich',     // notes shown formatted ('rich') or as markdown ('md'), saved in prefs
   sessionOps:[],       // operators of this session, most recent first. NEVER saved: empty at each launch
+  // What a new card starts from: the last operator, camera and profile typed
+  // on a card, and the note. Saved in the preferences file (cameraman,
+  // camera, pp, note).
+  copyDefaults:{ operator:'', camera:'', pp:'', note:'' },
   counterOverride:false, // true = user set a manual value
   counterMax:0,          // highest counter found in destinations
   copying:false, paused:false,

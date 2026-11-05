@@ -454,12 +454,25 @@ console.log('\nan ingest history line opens on its details');
 
 console.log('\nCopy Info is kept from one card to the next, and a broom clears it');
 {
-  const cs = extractFn(REND, 'clearSources');
-  ok(!/meta-cam|meta-model|meta-pp/.test(cs), 'operator, camera and profile survive the end of an ingest');
-  ok(/meta-note'\);\s*if\(mn\) mn\.value=''/.test(cs), 'the note, which describes one card, does not');
-  ok(/const SRC_DEFAULT_FIELD = \{ operator:'meta-cam', camera:'meta-model', pp:'meta-pp' \}/.test(REND) &&
-     /g\.value = value/.test(extractFn(REND, 'updateSrcField')),
-     'what is typed on a card becomes the value the next card starts from');
+  // The end of an ingest, run.
+  const noop = () => {};
+  const ctx0 = vm.createContext({ S:{ sources:[{}], copyDefaults:{ operator:'A', camera:'B', pp:'C', note:'D' } },
+    persistPrefs:noop, renderZoneList:noop, renderVolumes:noop, renderSourceInfoCards:noop, updatePreview:noop, updateBtn:noop,
+    refreshCardPreviews:noop, scanCounter:noop, document:{ getElementById:() => null } });
+  vm.runInContext(extractFn(REND, 'clearSources'), ctx0);
+  ctx0.clearSources();
+  const d0 = ctx0.S.copyDefaults;
+  ok(d0.operator === 'A' && d0.camera === 'B' && d0.pp === 'C', 'operator, camera and profile survive the end of an ingest');
+  ok(d0.note === '', 'the note, which describes one card, does not');
+  // A field typed on a card, run.
+  let saved1 = 0;
+  const ctx1 = vm.createContext({ S:{ sources:[{ operator:'', camera:'', pp:'', note:'' }], copyDefaults:{ operator:'', camera:'', pp:'', note:'' } },
+    persistPrefs:() => saved1++, updatePreview:noop });
+  vm.runInContext(extractFn(REND, 'updateSrcField').replace(/^/, "const SRC_DEFAULT_FIELDS = ['operator', 'camera', 'pp'];\n"), ctx1);
+  ok(/const SRC_DEFAULT_FIELDS = \['operator', 'camera', 'pp'\];/.test(REND), 'the card fields carried over: operator, camera, profile');
+  ctx1.updateSrcField(0, 'operator', 'MARC'); ctx1.updateSrcField(0, 'note', 'card note');
+  ok(ctx1.S.copyDefaults.operator === 'MARC' && ctx1.S.copyDefaults.note === '' && saved1 === 1,
+     'what is typed on a card becomes the value the next card starts from, the note excepted');
   // The mark: a carried-over camera is not a detected one.
   const ctx = vm.createContext({ MARK_A:'(A)', MARK_M:'(M)' });
   vm.runInContext(extractFn(REND, 'srcMark'), ctx);
@@ -468,21 +481,32 @@ console.log('\nCopy Info is kept from one card to the next, and a broom clears i
   ok(ctx.srcMark({ camera:'FX3', _camDetected:true, _forced:{ camera:true } }, 'camera') === '(M)', 'typed over, (M) again');
   ok(/entry\._camDetected = true;/.test(extractFn(REND, 'onSourceAdded')), 'the detection is what sets (A)');
   // The broom, run.
-  const el = {}; ['meta-cam','meta-model','meta-pp','meta-note'].forEach(k => el[k] = { value:'x' });
   let toast = '', saved = 0;
-  const ctx2 = vm.createContext({ S:{ copying:false, sources:[{ operator:'A', camera:'B', pp:'C', note:'D', _camDetected:true, _forced:{camera:true} }] },
-    document:{ getElementById:(id) => el[id] }, persistPrefs:() => saved++, renderSourceInfoCards(){}, updatePreview(){},
+  const ctx2 = vm.createContext({ S:{ copying:false, copyDefaults:{ operator:'x', camera:'x', pp:'x', note:'x' },
+                                      sources:[{ operator:'A', camera:'B', pp:'C', note:'D', _camDetected:true, _forced:{camera:true} }] },
+    persistPrefs:() => saved++, renderSourceInfoCards(){}, updatePreview(){},
     showToast:(m) => toast = m });
   vm.runInContext(extractFn(REND, 'clearCopyInfo'), ctx2);
   ctx2.clearCopyInfo();
   const s0 = ctx2.S.sources[0];
-  ok(Object.values(el).every(x => x.value === ''), 'the broom empties the four default fields');
+  ok(Object.values(ctx2.S.copyDefaults).every(x => x === ''), 'the broom empties the four defaults');
   ok(s0.operator === '' && s0.camera === '' && s0.pp === '' && s0.note === '' && !s0._camDetected, 'and every loaded card');
   ok(saved === 1 && /cleared/.test(toast), 'saved, and said');
-  ctx2.S.copying = true; el['meta-cam'].value = 'kept'; ctx2.clearCopyInfo();
-  ok(el['meta-cam'].value === 'kept', 'never during an ingest');
+  ctx2.S.copying = true; ctx2.S.copyDefaults.operator = 'kept'; ctx2.clearCopyInfo();
+  ok(ctx2.S.copyDefaults.operator === 'kept', 'never during an ingest');
+  // The defaults read from the preferences file follow the folder-name rule
+  // of the language, like a field typed in the window.
+  for (const [rule, want] of [['ascii', 'Helene'], ['unicode', 'Hé lène']]) {
+    const c = vm.createContext({ nameRule:() => rule, asciiFold:t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '') });
+    vm.runInContext(extractFn(REND, 'cleanMeta'), c);
+    ok(c.cleanMeta('Hé lène/') === want && c.cleanMeta(undefined) === '', `a default read back under the ${rule} rule: "${want}"`);
+  }
+  ok(/S\.copyDefaults = \{ operator: cleanMeta\(prefs\.cameraman\), camera: cleanMeta\(prefs\.camera\),\s*pp: normPP\(prefs\.pp\)/.test(REND),
+     'which is how the window reads them at launch');
   const brooms = REND.match(/on\('[^']*', 'click', function \(event\) \{ clearCopyInfo\(\); \}\);/g) || [];
-  ok(brooms.length === 2, 'beside Copy Info, and beside Loaded Cards when cards are in (' + brooms.length + ')');
+  // Copy Info is never shown (2.13.0): the broom left is the one of Loaded Cards.
+  ok(brooms.length === 1 && /data-js="clear-copy-info-cards"/.test(REND),
+     'beside Loaded Cards (' + brooms.length + ')');
 }
 
 // ── 9. The session log ──────────────────────────────────────────────────────
@@ -744,6 +768,34 @@ console.log('\nno code in the markup, and the window refuses inline script');
   ok(sels.length >= 140 && lost.length === 0, `every one of the ${sels.length} bindings finds its control` + (lost.length ? ' : ' + lost.join(', ') : ''));
   const unbound = [...hooks].filter(h => !B.includes(`[data-js="${h}"]`));
   ok(unbound.length === 0, 'and every data-js name of the markup is bound' + (unbound.length ? ' : ' + unbound.join(', ') : ''));
+}
+
+console.log('\nwhat a card or a destination brings, shown only once it is there (2.13.0)');
+{
+  const CSS = REND;
+  ok(/body\.no-src #src-info-title, body\.no-src #counter-sec,\s*body\.no-dst #dst-setup\{display:none;\}/.test(CSS),
+     'without a card: no card fields, no counter; without a destination: no folder structure, no templates');
+  ok(/<body class="no-src no-dst">/.test(REND), 'and the window opens that way');
+  ok(/<div id="counter-sec">[\s\S]*?id="counter-auto-btn"/.test(REND), 'the counter is inside what is hidden');
+  ok(/<div id="dst-setup">[\s\S]*?Folder Structure[\s\S]*?id="presets-row"/.test(REND),
+     'so are the folder structure and the templates');
+  ok(!/id="global-meta-sec"|id="copy-info-title"|id="meta-(cam|model|pp|note)"/.test(REND),
+     'no Copy Info block of its own: a loaded card carries its own fields, the defaults live in S');
+  // The class follows the lists, whatever adds or removes a card.
+  const cls = new Set(['no-src', 'no-dst']);
+  const ctx = vm.createContext({ S:{ sources:[], dests:[] }, setTimeout:()=>{}, applyIngestLock:()=>{}, esc:x=>x,
+    getZoneIcon:()=>'', destFolderLines:()=>'',
+    document:{ body:{ classList:{ toggle:(c, v) => v ? cls.add(c) : cls.delete(c) } },
+               getElementById:() => ({ classList:{ toggle(){} }, innerHTML:'', querySelectorAll:()=>[] }) } });
+  vm.runInContext(extractFn(REND, 'renderZoneList'), ctx);
+  ctx.S.sources = [{ name:'A001', path:'/Volumes/A001' }]; ctx.renderZoneList('src');
+  ok(!cls.has('no-src') && cls.has('no-dst'), 'a card in: its fields and the counter appear');
+  ctx.S.dests = [{ name:'RAID', path:'/Volumes/RAID' }]; ctx.renderZoneList('dst');
+  ok(!cls.has('no-dst'), 'a destination in: the folder structure and the templates appear');
+  ctx.S.sources = []; ctx.renderZoneList('src');
+  ok(cls.has('no-src'), 'the last card out: they go again');
+  ok(/#center-controls\{margin-top:auto;\}/.test(CSS), 'the copy modes stay at the bottom, the history never moves them');
+  ok(!/titlebar-logo/.test(REND), 'the title bar shows the name, without the icon');
 }
 
 console.log('\na button says what happens when it is clicked (2.12.2)');

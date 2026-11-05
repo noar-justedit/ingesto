@@ -571,7 +571,8 @@ report. Open a pull request with the file; you will be credited.
 Translations:
 - French: Noar.
 - Simplified Chinese (`zh-CN.js`): [wenjianpai](https://github.com/wenjianpai),
-  building on the earlier work of [wibi8bo](https://github.com/wibi8bo).
+  building on the earlier work of [wibi8bo](https://github.com/wibi8bo), who
+  reworked it in 2.13.0 to one term per idea across the whole interface.
 
 Thanks also to [wibi8bo](https://github.com/wibi8bo) for the fixes of 2.12.1
 (the notes editor in every language, the unsigned Mac build, portable tests).

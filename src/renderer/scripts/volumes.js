@@ -385,11 +385,11 @@ A card cannot be copied into itself.`, 'error');
       return;
     } }
   if(z==='src'){
-    // Pre-fill per-card fields from global defaults
-    entry.operator = document.getElementById('meta-cam')?.value   || '';
-    entry.camera   = document.getElementById('meta-model')?.value || '';
-    entry.pp       = document.getElementById('meta-pp')?.value    || '';
-    entry.note     = document.getElementById('meta-note')?.value  || '';
+    // A new card starts from the defaults (the last values typed on a card)
+    entry.operator = S.copyDefaults.operator;
+    entry.camera   = S.copyDefaults.camera;
+    entry.pp       = S.copyDefaults.pp;
+    entry.note     = S.copyDefaults.note;
     entry._open    = true;  // auto-expand so user sees the fields immediately
     entry._customised = false;
     // Kiosk is single-card: a source accepted from the new-volume proposal
@@ -418,7 +418,7 @@ A card cannot be copied into itself.`, 'error');
   renderZoneList(z);
   renderVolumes();
   updateBtn();
-  if(z==='src'){ renderSourceInfoCards(); updateCopyInfoVisibility(); }
+  if(z==='src') renderSourceInfoCards();
   if(z==='dst'){ scanCounter(false); refreshSessionLog(); }
   // Keep the kiosk panel in sync when a card is added while locked.
   if(S.kioskMode && z==='src' && typeof renderKioskSource==='function'){
@@ -450,7 +450,7 @@ async function onSourceAdded(entry) {
         entry.camera = (cam.model||'').replace(/[^A-Za-z0-9]/g,'');
         entry._camDetected = true;
         // The next card starts from what this one really is.
-        { const g = document.getElementById('meta-model'); if (g && entry.camera) { g.value = entry.camera; persistPrefs(); } }
+        if (entry.camera) { S.copyDefaults.camera = entry.camera; persistPrefs(); }
         // Update the corresponding input if the source card is rendered
         renderSourceInfoCards();
         // The kiosk is told of every detection, not only those from its own Browse
@@ -529,7 +529,7 @@ function removeFromZone(z,p){
   if(z==='src') S.sources=S.sources.filter(x=>x.path!==p);
   else          S.dests  =S.dests.filter(x=>x.path!==p);
   renderZoneList(z);renderVolumes();updateBtn();
-  if(z==='src'){ renderSourceInfoCards(); updateCopyInfoVisibility(); }
+  if(z==='src') renderSourceInfoCards();
   if(z==='dst'){ scanCounter(false); refreshSessionLog(); }
 }
 
@@ -539,6 +539,7 @@ function renderZoneList(z){
   const arr=z==='src'?S.sources:S.dests;
   const list=document.getElementById(`${z}-list`);
   const zone=document.getElementById(`${z}-zone`); if(zone) zone.classList.toggle('dz-empty', !arr.length);   // not 'empty': a generic .empty rule exists
+  document.body.classList.toggle(z==='src' ? 'no-src' : 'no-dst', !arr.length);
   if(!arr.length){list.innerHTML='';return;}
   const tag=z==='src'?'SRC':'DST';
   list.innerHTML=arr.map((e,i)=>{

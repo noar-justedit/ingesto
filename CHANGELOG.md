@@ -2,6 +2,21 @@
 
 All notable changes to ingesto. Versions before 2.5.5 are not listed here.
 
+## 2.13.0 (2026-11-05)
+A lighter window.
+- Without a card, the Sources column shows only its drop zone: the card
+  fields and the counter appear with the first card. Without a destination,
+  the folder structure and the templates appear with the first destination.
+- The copy modes stay at the bottom of the window; the ingest history no
+  longer moves them when a destination is added.
+- The title bar shows the name alone, without the icon.
+- The Copy Info block shown without a card is gone: a loaded card carries its
+  own fields. A new card still starts from the last operator, camera and
+  picture profile typed, kept between launches as before.
+- Simplified Chinese reworked by wibi8bo (pull request #14): one term per idea
+  across the whole interface (拷贝 for copy, 弹出 for eject, 摄影机 for camera,
+  摄影师 for operator...). The two "Re-copy" patterns are adapted to 2.12.2.
+
 ## 2.12.2 (2026-11-05)
 Every button now says what happens when it is clicked.
 - Confirmations name their action: Clear history, Delete, Enable tracking,

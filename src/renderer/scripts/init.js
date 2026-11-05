@@ -64,12 +64,10 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }catch(e){ console.error('language', e); }
   { const c = prefsCounter(prefs);
     if(c !== null){ S.counter = c; S.counterOverride = !!prefs.counterOverride; } }
-  if(prefs.cameraman) document.getElementById('meta-cam').value=prefs.cameraman;
-  if(prefs.note)      { const n=document.getElementById('meta-note'); if(n) n.value=prefs.note; }
-  if(prefs.camera)    document.getElementById('meta-model').value=prefs.camera;
-  if(prefs.pp)        { const pe=document.getElementById('meta-pp'); if(pe) pe.value=prefs.pp; }
-  ['meta-cam','meta-model'].forEach(id=>{const el=document.getElementById(id); if(el) sanitizeMeta(el);});
-  { const pe=document.getElementById('meta-pp'); if(pe) sanitizePP(pe); }
+  // Under the folder-name rule of the language just applied: the file can be
+  // edited by hand, or come from another language.
+  S.copyDefaults = { operator: cleanMeta(prefs.cameraman), camera: cleanMeta(prefs.camera),
+                     pp: normPP(prefs.pp), note: typeof prefs.note==='string' ? prefs.note : '' };
   // The kiosk PIN and the kiosk state are deliberately NOT restored. Restored,
   // they would relaunch the app straight back into kiosk mode, so an operator
   // who forgot the PIN would be locked out for good, with no way back short of
@@ -87,7 +85,6 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   renderPresets();
   renderCounter();
   renderSourceInfoCards();
-  updateCopyInfoVisibility();
   // Auto-scan on startup if destinations are already set
   if(S.dests.length > 0) scanCounter();
   applyKioskMode();   // kiosk is always off at launch (see above): draws the standard screen
@@ -188,12 +185,16 @@ function tplText(x){
 // ascii: letters and digits only, accents turned into the plain letter
 // ("Hélène" gives "Helene", not "Hlne").
 // unicode: only what a filesystem forbids is removed.
+function cleanMeta(v){
+  const s = String(v==null?'':v);
+  return nameRule()==='ascii'
+    ? asciiFold(s).replace(/[^A-Za-z0-9]/g,'')
+    : s.replace(/[\/\\:*?"<>|\x00-\x1f]/g,'');
+}
 function sanitizeMeta(el){
   const start = el.selectionStart;
   const before = el.value;
-  const after  = nameRule()==='ascii'
-    ? asciiFold(before).replace(/[^A-Za-z0-9]/g,'')
-    : before.replace(/[\/\\:*?"<>|\x00-\x1f]/g,'');
+  const after  = cleanMeta(before);
   if (after !== before){
     el.value = after;
     // keep caret from jumping to the end when a char is stripped
@@ -258,10 +259,8 @@ function persistPrefsNow(){
     counter:S.counter, counterOverride:S.counterOverride,
     language:(window.INGESTO_I18N && window.INGESTO_I18N.getLanguage()) || 'en',
     tplVersion:2,          // "/" in a literal means a subfolder (see tokensFromStored)
-    cameraman:document.getElementById('meta-cam')?.value||'',
-    camera:document.getElementById('meta-model')?.value||'',
-    pp:document.getElementById('meta-pp')?.value||'',
-    note:document.getElementById('meta-note')?.value||'',
+    cameraman:S.copyDefaults.operator, camera:S.copyDefaults.camera,
+    pp:S.copyDefaults.pp, note:S.copyDefaults.note,
     // kioskMode and kioskPin are intentionally absent: see the loader. A
     // forgotten PIN must never outlive the session that set it.
     kioskMode:false, kioskPin:'',

@@ -67,11 +67,11 @@ vm.runInContext([
 ].join('\n'), eng);
 
 // ── The interface ───────────────────────────────────────────────────────────
-// getElementById returns null throughout: the card's own values are the only
-// input, exactly as they are once a card has been loaded and its fields filled.
+// The defaults are empty: the card's own values are the only input, exactly as
+// they are once a card has been loaded and its fields filled.
 const ren = vm.createContext({
   console,
-  S: { counter: 7, counterWidth: 3 },
+  S: { counter: 7, counterWidth: 3, copyDefaults: { operator:'', camera:'', pp:'', note:'' } },
   COUNTER_WIDTHS: [2, 3, 4],
   document: { getElementById: () => null },
   window: { IngestoShared: SHARED_API },
@@ -292,8 +292,8 @@ console.log('\nthe profile survives the run payload, frozen at START');
   const payload = REND.slice(s2, s2 + 260);
   ok(/pp:\s*normPP\(s\.pp \|\| globalPP\)/.test(payload),
      'the card value wins, the global field is the fallback, and the rule is applied once more here');
-  ok(/const globalPP\s*=\s*document\.getElementById\('meta-pp'\)/.test(REND),
-     'and that global field is read from the interface');
+  ok(/const globalPP\s*=\s*S\.copyDefaults\.pp;/.test(REND),
+     'and that fallback is the default the next card starts from');
 }
 
 console.log('\nthe frozen list and the engine payload describe the SAME card');
@@ -359,8 +359,8 @@ console.log('\nthe frozen list and the engine payload describe the SAME card');
   const startAt = REND.indexOf('S.copying=true;updateBtn();');
   const freezeAt = REND.indexOf('  S.run = {', startAt);
   ok(startAt > 0 && freezeAt > startAt, 'the freeze was found');
-  ok(REND.slice(startAt, freezeAt).includes("getElementById('meta-pp')"),
-     'the global profile field is read before the run is frozen');
+  ok(REND.slice(startAt, freezeAt).includes("S.copyDefaults.pp"),
+     'the default profile is read before the run is frozen');
 }
 
 console.log('\nthe profile is in the report, all three formats');
@@ -482,8 +482,7 @@ console.log('\nthe dry run shows the fields, and still answers no');
 function rest(){
 console.log('\nthe interface offers the field, everywhere a card is described');
 {
-  ok(/id="meta-pp"/.test(REND), 'the main panel has a Picture profile field');
-  ok(/id="k-pp"/.test(REND), 'and so does the kiosk screen');
+  ok(/id="k-pp"/.test(REND), 'the kiosk screen has a Picture profile field');
   ok(/updateSrcField\(i, 'pp', this\.value\)/.test(REND), 'each loaded card has its own');
   ok(/(?:addTok|insPick)\('var','pp'\)/.test(REND), 'and the Insert menu offers the variable');
   // The same sanitiser as the operator and the camera: what goes in a folder
@@ -494,21 +493,20 @@ console.log('\nthe interface offers the field, everywhere a card is described');
   // written in the markup.
   ok(/\[data-js="pp"\]'\)\.oninput = function\(\)\{ sanitizePP\(this\); updateSrcField\(i, 'pp'/.test(REND),
      'the per-card field is normalised as it is typed');
-  const global = REND.slice(REND.indexOf('id="meta-pp"'), REND.indexOf('id="meta-pp"') + 200);
-  ok(/on\('#meta-pp', 'input', function \(event\) \{ sanitizePP\(this\);/.test(REND), 'so is the global one');
   const kiosk = REND.slice(REND.indexOf('id="k-pp"'), REND.indexOf('id="k-pp"') + 220);
   ok(/on\('#k-pp', 'input', function \(event\) \{ sanitizePP\(this\);/.test(REND), 'and so is the kiosk one');
   // 2.8.0: the three fields are shown as a button opening the Profile menu.
-  ok(/data-pp\b/.test(global) && /data-pp\b/.test(kiosk) && /data-pp\b/.test(perCard),
-     'and all three open the Profile menu');
+  ok(/data-pp\b/.test(kiosk) && /data-pp\b/.test(perCard),
+     'and both open the Profile menu');
   ok(!/<datalist id="pp-list">/.test(REND), 'the old suggestion list is gone');
 
   // 2.7.1: the profile is KEPT for the next card (it rarely changes on a
   // shoot), and the broom beside the title clears it with the rest.
   const clear = REND.slice(REND.indexOf('function clearSources()'), REND.indexOf('function clearSources()') + 900);
-  ok(!/getElementById\('meta-pp'\)/.test(clear), 'the profile is kept for the next card');
+  ok(!/copyDefaults\.pp|copyDefaults = /.test(clear), 'the profile is kept for the next card (run in test-ui-guards)');
   const broom = REND.slice(REND.indexOf('function clearCopyInfo()'), REND.indexOf('function clearCopyInfo()') + 700);
-  ok(/'meta-pp'/.test(broom) && /src\.pp = ''/.test(broom), 'and the broom clears it, on the defaults and on every card');
+  ok(/S\.copyDefaults = \{ operator:'', camera:'', pp:'', note:'' \}/.test(broom) && /src\.pp = ''/.test(broom),
+     'and the broom clears it, on the defaults and on every card');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
