@@ -101,9 +101,8 @@ window.INGESTO_LANG_FR = {
     /* ── Bottom actions ── */
     "Pause": "Pause",
     "Start Ingest": "Lancer l'ingest",
-    "↻ Re-copy failed files": "↻ Recopier les fichiers en échec",
-    "DONE": "TERMINÉ",
-    "Done": "Terminé",
+    "↻ Re-copy files": "↻ Recopier les fichiers",
+    "OK": "OK",
 
     /* ── Settings ── */
     "Settings": "Réglages",
@@ -136,7 +135,7 @@ window.INGESTO_LANG_FR = {
     "Server": "Serveur",
     "Topic": "Sujet",
     "Scan to install the ntfy app": "Scannez pour installer l'app ntfy",
-    "Send test notification": "Envoyer une notification de test",
+    "Send test": "Envoyer un test",
     "Post-Ingest Command": "Commande après ingest",
     "Runs a shell command after ingest": "Lance une commande shell après l'ingest",
     "Command": "Commande",
@@ -168,14 +167,12 @@ window.INGESTO_LANG_FR = {
     /* ── Information windows (the paragraphs are in blocks) ── */
     "Copy verification modes": "Modes de vérification de la copie",
     "How ingesto checks your footage after copying each card.": "Comment ingesto contrôle vos rushes après la copie de chaque carte.",
-    "Got it": "Compris",
-    "GOT IT": "COMPRIS",
     "An extra safety check for the card itself (PRO mode).": "Un contrôle de plus, pour la carte elle-même (mode PRO).",
     "How the ingest number for each card is chosen.": "Comment le numéro d'ingest de chaque carte est choisi.",
     "PRO mode, advanced use": "Mode PRO, usage avancé",
     "Not recommended for most users.": "Déconseillé à la plupart des utilisateurs.",
     "Don't show this again": "Ne plus afficher",
-    "Back to SECURE": "Revenir à SECURE",
+    "Keep SECURE": "Garder SECURE",
     "Use PRO": "Utiliser PRO",
     "PRO · Card re-read": "PRO · Relecture de la carte",
 
@@ -223,7 +220,6 @@ window.INGESTO_LANG_FR = {
     "Wrong PIN": "PIN incorrect",
     "Browse a card…": "Choisir une carte…",
     "selected": "sélectionné",
-    "Dismiss": "Fermer",
 
     /* ── End of ingest window ── */
     "NO MANIFEST WRITTEN": "AUCUN MANIFESTE ÉCRIT",
@@ -286,7 +282,7 @@ window.INGESTO_LANG_FR = {
     "level.": ".",
     "The computer's memory could not be cleared before re-reading, so the card itself was never asked.": "La mémoire de l'ordinateur n'a pas pu être vidée avant la relecture : la carte elle-même n'a jamais été interrogée.",
     "You can run the card check for real: the card stays in the reader, and your copied files are untouched.": "Vous pouvez lancer le vrai contrôle de la carte : elle reste dans le lecteur, et vos fichiers copiés ne sont pas touchés.",
-    "⟳ Check the card for real": "⟳ Contrôler vraiment la carte",
+    "⟳ Check card": "⟳ Vérifier la carte",
     "⟳ Unmounting and re-reading…": "⟳ Démontage et relecture…",
     "You can double-check this later": "Vous pourrez revérifier plus tard",
     "Today's check ran right after the copy, so part of it may have been answered by the computer's memory. For extra peace of mind: another day, re-plug the drive and press": "Le contrôle d'aujourd'hui a suivi la copie de près : une partie a pu être servie par la mémoire de l'ordinateur. Pour être tranquille : un autre jour, rebranchez le disque et cliquez sur",
@@ -380,7 +376,7 @@ window.INGESTO_LANG_FR = {
     "EDIT TEMPLATE": "MODIFIER LE MODÈLE",
     "RECHECK DRIVES": "RECONTRÔLER LES DISQUES",
     "REMOVE DESTINATION": "RETIRER LA DESTINATION",
-    "OPEN FILE FILTER": "OUVRIR LE FILTRE",
+    "OPEN FILTER": "OUVRIR LE FILTRE",
     "CHANGE COUNTER": "CHANGER LE COMPTEUR",
     "REVEAL FOLDER": "AFFICHER LE DOSSIER",
 
@@ -411,7 +407,7 @@ window.INGESTO_LANG_FR = {
 
     /* ── Ingest history ── */
     "Nothing has been ingested on these destinations yet.": "Aucun ingest sur ces destinations pour l'instant.",
-    "Show it again": "Le réafficher",
+    "Show again": "Réafficher",
     "FAILED": "ÉCHEC",
     "SUSPECT": "SUSPECT",
     "VERIFIED": "VÉRIFIÉ",
@@ -464,8 +460,7 @@ window.INGESTO_LANG_FR = {
     "PICTURES": "PHOTOS",
     "OTHERS": "AUTRES",
     "New version available": "Nouvelle version disponible",
-    "Later": "Plus tard",
-    "Get it": "La télécharger",
+    "Download": "Télécharger",
     "Clear the ingest history? The lines are only hidden in ingesto. The reports on the drives are kept, untouched.": "Effacer l'historique des ingests ? Les lignes sont seulement masquées dans ingesto. Les rapports sur les disques sont gardés, intacts.",
 
     /* ── Copy Info fields, volumes, menus ── */
@@ -504,7 +499,7 @@ window.INGESTO_LANG_FR = {
     "free.": "de libre.",
     "The copy would stop before the end.": "La copie s'arrêterait avant la fin.",
     "Free some space, choose another drive, or start anyway and re-copy what fails.": "Libérez de la place, choisissez un autre disque, ou lancez quand même et recopiez ce qui échoue.",
-    "CONTINUE ANYWAY": "CONTINUER QUAND MÊME",
+    "START ANYWAY": "DÉMARRER QUAND MÊME",
     "Nothing has been written yet.": "Rien n'a encore été écrit.",
 
     /* ── Kiosk: PIN and result ── */
@@ -548,8 +543,8 @@ window.INGESTO_LANG_FR = {
     "Already ingested": "Déjà copiés",
     "New files": "Nouveaux fichiers",
     "Previous destination": "Destination précédente",
-    "COPY NEW FILES": "COPIER LES NOUVEAUX FICHIERS",
-    "COPY FULL CARD": "COPIER TOUTE LA CARTE",
+    "COPY NEW": "COPIER NOUVEAUX",
+    "COPY ALL": "TOUT COPIER",
     "A file is skipped only when every destination you selected already holds a verified copy of it.": "Un fichier n'est sauté que si chaque destination choisie en a déjà une copie vérifiée.",
     "The list could not be read back from the card.": "La liste n'a pas pu être relue sur la carte.",
 
@@ -656,7 +651,6 @@ window.INGESTO_LANG_FR = {
 
     /* ── Main process: system dialogs and the shooting note ── */
     "Quit Anyway": "Quitter quand même",
-    "Stay": "Rester",
     "An ingest is running": "Un ingest est en cours",
     "An ingest is running. Your card is untouched either way.": "Un ingest est en cours. Votre carte n'est pas touchée, dans les deux cas.",
     "Quitting now stops the copy immediately. Files being written at that moment would be left incomplete on the destination.": "Quitter maintenant arrête la copie tout de suite. Les fichiers en cours d'écriture resteraient incomplets sur la destination.",
@@ -684,8 +678,7 @@ window.INGESTO_LANG_FR = {
     "ingesto will write a small log file (.ingesto.json) on the SOURCE card after each copy, so it can detect an already-ingested card next time.": "ingesto écrira un petit fichier journal (.ingesto.json) sur la carte SOURCE après chaque copie, pour reconnaître la prochaine fois une carte déjà copiée.",
     "This requires write access to the card. While this option is OFF, ingesto never writes anything on your cards.": "Il faut pour cela pouvoir écrire sur la carte. Tant que cette option est désactivée, ingesto n'écrit jamais rien sur vos cartes.",
     "Do you want ingesto to write on the source card?": "Voulez-vous qu'ingesto écrive sur la carte source ?",
-    "Run": "Lancer",
-    "Do not run": "Ne pas lancer",
+    "Run command": "Exécuter",
     "Run this command?": "Lancer cette commande ?",
     "ingesto is about to run the post-ingest command for the first time.": "ingesto va lancer la commande après ingest pour la première fois.",
     "ingesto is about to run the card handoff command for the first time.": "ingesto va lancer la commande de remise de la carte pour la première fois.",
@@ -696,6 +689,16 @@ window.INGESTO_LANG_FR = {
     "Remove": "Retirer",
     "Remove card": "Retirer la carte",
 
+    "Open report": "Ouvrir le rapport",
+    "Add card": "Ajouter la carte",
+    "Add cards": "Ajouter les cartes",
+    "KEEP CARD": "GARDER LA CARTE",
+    "REMOVE CARD": "RETIRER LA CARTE",
+    "RENAME CARD": "RENOMMER LA CARTE",
+    "COPY THEM": "LES COPIER",
+    "Clear history": "Effacer l'historique",
+    "Delete": "Supprimer",
+    "Enable tracking": "Activer le suivi",
   },
 
   attrs: {
@@ -820,8 +823,8 @@ window.INGESTO_LANG_FR = {
     ["^✓ Card checked\\. All 1 file read back identical \\((.+)\\)\\. Full PRO level confirmed\\.$", "✓ Carte contrôlée. Le fichier a été relu identique ($1). Niveau PRO complet confirmé."],
     ["^✓ Card checked\\. All (\\d+) files? read back identical \\((.+)\\)\\. Full PRO level confirmed\\.$", "✓ Carte contrôlée. Les $1 fichiers ont été relus identiques ($2). Niveau PRO complet confirmé."],
     ["^The card couldn't be checked \\((.+)\\)\\. This is usually another app using the card\\. Close Finder windows or photo apps and try again\\. Your copied files are not affected\\.$", "La carte n'a pas pu être contrôlée ($1). Le plus souvent, une autre app utilise la carte. Fermez les fenêtres du Finder ou les apps photo et réessayez. Vos fichiers copiés ne sont pas concernés."],
-    ["^↻ Re-copy 1 failed file$", "↻ Recopier 1 fichier en échec"],
-    ["^↻ Re-copy (\\d+) failed files?$", "↻ Recopier $1 fichiers en échec"],
+    ["^↻ Re-copy 1 file$", "↻ Recopier 1 fichier"],
+    ["^↻ Re-copy (\\d+) files$", "↻ Recopier $1 fichiers"],
     ["^(.+) disappeared$", "$1 a disparu"],
     ["^(.+) could not be read$", "$1 n'a pas pu être lu"],
     ["^(.+) has less free space$", "$1 a moins d'espace libre"],

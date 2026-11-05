@@ -257,7 +257,7 @@ function preflightIngest(){
               `of them in the source list.`
             : `Add ${m('{counter}')} or ${m('{cardname}')} to the template so each card gets its own folder.`,
           buttons:[EDIT('{counter}'),
-                   { label:'RENAME A CARD', value:'rename', act:()=>pfShowSources() },
+                   { label:'RENAME CARD', value:'rename', act:()=>pfShowSources() },
                    CANCEL] };
       }
       byKey.set(k, i);
@@ -293,7 +293,7 @@ function preflightIngest(){
       cause:'The filter is on and no format is checked. Not a single file would be copied, and the '+
             'ingest would still report a success.',
       action:'Check at least one format, or turn the filter off.',
-      buttons:[{ label:'OPEN FILE FILTER', value:'filter', style:'fix', act:()=>pfOpenFilter() }, CANCEL] };
+      buttons:[{ label:'OPEN FILTER', value:'filter', style:'fix', act:()=>pfOpenFilter() }, CANCEL] };
   }
   return null;
 }
@@ -355,7 +355,7 @@ async function checkVolumesStillThere(){
       ? `Put the original back and press Recheck, or take ${one?'it':'them'} out of the list.`
       : `Reconnect ${one?'it':'them'} and press Recheck, or take ${one?'it':'them'} out of the list.`,
     buttons:[{ label:'RECHECK DRIVES', value:'recheck', style:'fix' },
-             { label:'REMOVE IT', value:'removed',
+             { label:'REMOVE DESTINATION', value:'removed',
                act:()=>{ lost.forEach(l=>removeFromZone(l.zone, l.entry.path)); } },
              { label:'CANCEL', value:'cancel', style:'ghost' }] };
 }
@@ -391,7 +391,7 @@ function showRefusal(spec){
   }
   const kind = spec.kind || 'block';
   const btns = (spec.buttons && spec.buttons.length) ? spec.buttons
-             : [{ label:'GOT IT', value:'cancel' }];
+             : [{ label:'OK', value:'cancel' }];
   const ov=document.createElement('div');
   ov.id='pf-ov';
   ov.innerHTML =
@@ -724,7 +724,7 @@ async function startCopy(){
           : `None of the previous ingests of ${esc(s.name)} went to the destinations you selected with `+
             `verification. The full card will be copied.`,
         action:'Nothing is skipped unless every selected destination already holds a verified copy.',
-        buttons:[{ label:'CONTINUE', value:'go', style:'go' },
+        buttons:[{ label:'COPY THEM', value:'go', style:'go' },
                  { label:'CANCEL', value:'cancel', style:'ghost' }] });
       if(go!=='go'){ S.copying=false; updateBtn(); setIngestLock(false);
                      window.ingesto.setPowerBlock(false); S.run=null; tfExit(); return; }

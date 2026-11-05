@@ -168,12 +168,12 @@ function ctxSave(e){
   if(slot<0)return;
   promptSaveSlot(slot);
 }
-function ctxDelete(e){
+async function ctxDelete(e){
   if(e)e.stopPropagation();
   const slot=S.ctxSlot;
   closeCtx();
   if(slot<0||!S.presets[slot])return;
-  if(!confirm(trf('Delete template {n}?', {n:slot+1})))return;
+  if(!await askConfirm({ title: trf('Delete template {n}?', {n:slot+1}), action: tr('Delete') }))return;
   S.presets[slot]=null;
   if(S.activePreset===slot)S.activePreset=-1;
   renderPresets();persistPrefs();
@@ -190,10 +190,10 @@ function loadFromSlot(i){
 let _saveSlotIdx = -1;
 function promptSaveSlot(i){
   _saveSlotIdx = i;
-  document.getElementById('sno-title').textContent = INGESTO_I18N.t(`Save template ${i+1}`);
+  document.getElementById('sno-title').textContent = trf(`Save template ${i+1}`, {});
   const inp = document.getElementById('sno-input');
   inp.value = S.presets[i]?.name || '';
-  inp.placeholder = INGESTO_I18N.t(`Template ${i+1}`);
+  inp.placeholder = trf(`Template ${i+1}`, {});
   const ov = document.getElementById('save-name-overlay');
   ov.style.display = 'flex';
   setTimeout(()=>inp.focus(), 50);
@@ -204,7 +204,7 @@ function snoCancel(){
 }
 function snoConfirm(){
   if(_saveSlotIdx<0)return;
-  let name = document.getElementById('sno-input').value.trim() || INGESTO_I18N.t(`Template ${_saveSlotIdx+1}`);
+  let name = document.getElementById('sno-input').value.trim() || trf(`Template ${_saveSlotIdx+1}`, {});
   if(name.length > 24) name = name.slice(0, 24); // enforce max length
   S.presets[_saveSlotIdx]={name,tokens:S.tokens.map(t=>({type:t.type,key:t.key}))};
   S.activePreset=_saveSlotIdx;

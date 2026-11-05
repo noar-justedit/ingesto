@@ -68,8 +68,8 @@ function showUpdateNotice({ version, url }){
     `<div class="mi-h">New version available</div>`+
     `<div class="mi-sub">ingesto v${esc(version)} is available. You're on v${esc(S.appVersion||'')}.</div>`+
     `<div class="pw-actions">`+
-    `<button class="pw-back" id="upd-later">Later</button>`+
-    `<button class="pw-use" id="upd-go">Get it</button></div>`+
+    `<button class="pw-back" id="upd-later">Cancel</button>`+
+    `<button class="pw-use" id="upd-go">Download</button></div>`+
     `</div>`;
   document.body.appendChild(ov);
   const dismiss=()=>{ S.updateDismissedVersion=version; persistPrefs(); ov.remove(); };

@@ -56,7 +56,7 @@ async function confirmDiskSpace(sp){
     cause:`It needs ${m(fmtSize(sp.need))}, the drive has ${m(fmtSize(sp.free))} free. `+
           `The copy would stop before the end.`,
     action:'Free some space, choose another drive, or start anyway and re-copy what fails.',
-    buttons:[{ label:'CONTINUE ANYWAY', value:'go', style:'go' },
+    buttons:[{ label:'START ANYWAY', value:'go', style:'go' },
              { label:'CANCEL', value:'cancel', style:'ghost' }] });
   return answer==='go';
 }
@@ -69,7 +69,7 @@ async function warnSpaceUnknown(dests){
     cause:'ingesto asked the drive how much room is left and got no answer, so it cannot tell you '+
           'whether this ingest fits. The copy may stop before the end.',
     action:'Check the drive yourself, or start anyway and re-copy what fails.',
-    buttons:[{ label:'CONTINUE ANYWAY', value:'go', style:'go' },
+    buttons:[{ label:'START ANYWAY', value:'go', style:'go' },
              { label:'CANCEL', value:'cancel', style:'ghost' }] });
   return answer==='go';
 }
@@ -402,7 +402,7 @@ function kioskShowResult(kind,title,sub,answer){
   document.getElementById('kr-sub').innerHTML =
     lines.map(x=>esc(x)).join('<br>') +
     (answer?`<div class="kr-answer">${esc(answer)}</div>`:'');
-  document.getElementById('kr-btn').textContent = kind==='ok'?'Next card':'Dismiss';
+  document.getElementById('kr-btn').textContent = kind==='ok'?'Next card':'OK';
   document.getElementById('kiosk-result-ov').classList.add('on');
 }
 function kioskReset(){

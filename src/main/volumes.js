@@ -35,11 +35,6 @@ async function getMountedVolumes() {
 
   let entries = [];
   try { entries = fs.readdirSync('/Volumes'); } catch (_) { return []; }
-  // macOS creates a "Recovery" volume (the one used to reinstall the system
-  // or change the startup disk) that is never an ingest source. Filtering it
-  // here keeps the Mounted Volumes list free of a drive nobody wants to copy
-  // from or to.
-  entries = entries.filter(n => !/^recovery$/i.test(n));
 
   let rootDev = null;
   try { rootDev = fs.statSync('/').dev; } catch (_) {}

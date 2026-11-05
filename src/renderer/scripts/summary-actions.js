@@ -88,7 +88,7 @@ async function redoDoubleRead(){
     out.innerHTML = `<div style="color:var(--orange);">The card couldn't be checked (${why}). `+
       `This is usually another app using the card. Close Finder windows or photo apps and try again. `+
       `Your copied files are not affected.</div>`;
-    if(btn){ btn.disabled=false; btn.style.opacity=''; btn.textContent='⟳ Check the card for real'; }
+    if(btn){ btn.disabled=false; btn.style.opacity=''; btn.textContent='⟳ Check card'; }
     return;
   }
   if(btn) btn.style.display='none';

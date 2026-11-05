@@ -264,7 +264,7 @@ function createWindow() {
     e.preventDefault();
     dialog.showMessageBox(mainWindow, {
       type: 'warning',
-      buttons: [i18n.t('Quit Anyway'), i18n.t('Stay')],
+      buttons: [i18n.t('Quit Anyway'), i18n.t('Cancel')],
       defaultId: 1,
       cancelId: 1,
       title: i18n.t('An ingest is running'),
@@ -885,7 +885,7 @@ async function approveCommand(kind, tpl) {
   const shown = tpl.map(t => (t === '' || /[\s"']/.test(t)) ? JSON.stringify(t) : t).join(' ');
   const opts = {
     type: 'warning',
-    buttons: [i18n.t('Run'), i18n.t('Do not run')],
+    buttons: [i18n.t('Run command'), i18n.t('Cancel')],
     defaultId: 1, cancelId: 1,
     title: i18n.t('Run this command?'),
     message: kind === 'hook'

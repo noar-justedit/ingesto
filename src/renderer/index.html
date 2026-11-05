@@ -170,7 +170,7 @@ value="001">
   <div class="sess-list scroll" id="sess-list"></div>
   <div class="sess-ft">
     <span>Read back from the reports written on the destinations, so it survives a restart.</span>
-    <button class="mini" id="sess-open">Open the report</button>
+    <button class="mini" id="sess-open">Open report</button>
   </div>
 </div>
 <div id="center-controls">
@@ -310,9 +310,9 @@ Start Ingest
 <div class="err-block" id="s-errs" style="display:none">
 <div id="s-errlist"></div>
 </div>
-<button id="sum-recopy" style="display:none;width:100%;margin-bottom:8px;padding:12px;border-radius:var(--rs);border:1px solid rgba(242,160,61,.5);background:rgba(242,160,61,.14);color:var(--orange);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;">↻ Re-copy failed files</button>
+<button id="sum-recopy" style="display:none;width:100%;margin-bottom:8px;padding:12px;border-radius:var(--rs);border:1px solid rgba(242,160,61,.5);background:rgba(242,160,61,.14);color:var(--orange);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;">↻ Re-copy files</button>
 <div class="sum-actions">
-<button id="sum-close">DONE</button>
+<button id="sum-close">OK</button>
 </div>
 </div>
 </div>
@@ -389,7 +389,7 @@ Save
 <div class="mi-body"><b>Optional in PRO, detects a failing card.</b> After verifying the copies, ingesto reads the <b>source a second time</b> and checks it still returns the same data. A card that gives different bytes on re-read is dying, and those files are flagged as suspect (and left out of the checksum list). <b>Limit:</b> the second read only reaches the card if the data no longer sits in the OS RAM cache. That is the case on real offloads (footage larger than your RAM), but <b>not guaranteed on a small test copy on a high-RAM machine</b>. It roughly doubles verify time. Hard read errors are always caught, cache or not.</div>
 </div>
 
-<button data-js="hide-modes-info" class="mi-close">Got it</button>
+<button data-js="hide-modes-info" class="mi-close">OK</button>
 </div>
 </div>
 
@@ -405,7 +405,7 @@ Save
 <div class="mi-row">
 <div class="mi-body"><b>When to use it.</b> Whenever the card is about to be formatted, or the footage can't be reshot: it's your last chance to catch a failing card while the footage still exists. It adds roughly one extra full read of the card to the ingest time.</div>
 </div>
-<button data-js="hide-dr-info" class="mi-close">Got it</button>
+<button data-js="hide-dr-info" class="mi-close">OK</button>
 </div>
 </div>
 <div id="counter-info-ov" class="modes-info-ov-like">
@@ -427,7 +427,7 @@ Save
 </div>
 </div>
 </div>
-<button data-js="hide-counter-info" class="mi-close">Got it</button>
+<button data-js="hide-counter-info" class="mi-close">OK</button>
 </div>
 </div>
 
@@ -448,7 +448,7 @@ Save
 </div>
 <label class="pw-chk"><input type="checkbox" id="pro-warn-chk"> Don't show this again</label>
 <div class="pw-actions">
-<button data-js="pro-warn-cancel" class="pw-back">Back to SECURE</button>
+<button data-js="pro-warn-cancel" class="pw-back">Keep SECURE</button>
 <button data-js="pro-warn-use" class="pw-use">Use PRO</button>
 </div>
 </div>
@@ -568,7 +568,7 @@ Save
     </div>
     <div class="sum-grid" id="vf-r-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;"></div>
     <div id="vf-r-lists"></div>
-    <button data-js="close-verify-result" class="sum-close">Done</button>
+    <button data-js="close-verify-result" class="sum-close">OK</button>
   </div>
 </div>
 
@@ -638,7 +638,7 @@ Save
 Then open the app and subscribe to the topic above. Pick a long, hard-to-guess topic name: on the public server it is the only thing protecting your notifications.</div>
 </div>
 </div>
-<button data-js="test-ntfy" class="set-test">Send test notification</button>
+<button data-js="test-ntfy" class="set-test">Send test</button>
 <span class="set-test-res" id="set-ntfy-res"></span>
 </div>
 </div>
@@ -684,7 +684,7 @@ Then open the app and subscribe to the topic above. Pick a long, hard-to-guess t
 </div>
 </div>
 
-<button data-js="close-settings" class="mi-close">Done</button>
+<button data-js="close-settings" class="mi-close">Close</button>
 </div>
 </div>
 

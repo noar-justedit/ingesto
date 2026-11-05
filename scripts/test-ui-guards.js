@@ -173,7 +173,7 @@ console.log('\nduring an ingest the centre column shows the transfers, with no s
   ok(/S\.centerView = 'volumes'/.test(extractFn(REND, 'tfExit')), 'and the volumes come back when it ends');
 }
 
-console.log('\nthe Done button of Settings stays in view');
+console.log('\nthe Close button of Settings stays in view');
 {
   // Eight sections: the button sat at the very end, and closing Settings meant
   // scrolling all the way down first.
@@ -590,13 +590,15 @@ console.log('\nthe ingest history can be cleared, and nothing on a drive is eras
     { n:'002', card:'B002', date:'20.09 22:05', folder:'002_B002', bytes:20, rclass:'r-ok' },
   ]}};
   const api = new Proxy({}, { get: (_, k) => async (...a) => { calls.push(String(k)); return k === 'reportRead' ? REP[a[0]] : null; } });
+  let answer = true;
   const ctx3 = vm.createContext({
     S: { dests: [{ path:'/Volumes/SHUTTLE_1', name:'SHUTTLE_1' }], historyHidden: [], historyClearedAt: '' },
     window: { ingesto: api },
     document: { getElementById: () => ({ style:{}, textContent:'', innerHTML:'', disabled:false, querySelectorAll: () => [] }) },
     renderSessionLog: (rows) => { shown = rows; },
     persistPrefs: () => { saved = { hidden: ctx3.S.historyHidden.slice(), at: ctx3.S.historyClearedAt }; },
-    confirm: () => true,
+    // The confirmation window answers what the test says (askConfirm, dialogs.js).
+    askConfirm: async () => answer,
     Map, Set, Array, String, Number, Promise, Date, console,
   });
   vm.runInContext('let _sessBusy=false,_sessAgain=false,_sessRows=[];', ctx3);
@@ -627,8 +629,7 @@ console.log('\nthe ingest history can be cleared, and nothing on a drive is eras
   // Declining the confirmation changes nothing.
   ctx3.clearIngestHistory(); await settle();
   const before = ctx3.S.historyHidden.length;
-  ctx3.confirm = () => false;
-  vm.runInContext('confirm = () => false;', ctx3);
+  answer = false;
   ctx3.restoreIngestHistory(); await settle();
   ctx3.clearIngestHistory(); await settle();
   ok(ctx3.S.historyHidden.length === 0 && before === 3, 'declining the confirmation hides nothing');
@@ -743,6 +744,44 @@ console.log('\nno code in the markup, and the window refuses inline script');
   ok(sels.length >= 140 && lost.length === 0, `every one of the ${sels.length} bindings finds its control` + (lost.length ? ' : ' + lost.join(', ') : ''));
   const unbound = [...hooks].filter(h => !B.includes(`[data-js="${h}"]`));
   ok(unbound.length === 0, 'and every data-js name of the markup is bound' + (unbound.length ? ' : ' + unbound.join(', ') : ''));
+}
+
+console.log('\na button says what happens when it is clicked (2.12.2)');
+{
+  // The rule: the verb of the question, never Yes/No, Cancel to back out,
+  // one or two words, OK only where there is nothing to decide. Read without
+  // the question, the buttons must still make sense.
+  const code = REND.replace(/\/\/[^\n]*/g, '');
+  ok(!/(^|[^.\w])(confirm|alert)\(/m.test(code),
+     'no confirm() or alert(): they can only say OK (askConfirm names the action)');
+  const words = t => t.replace(/\$\{[^}]*\}/g, ' ').replace(/&[a-z]+;/g, ' ')
+                      .replace(/[↻⟳+✕×←→…]/g, ' ').replace(/\d+/g, ' ')
+                      .split(/\s+/).filter(w => /[A-Za-z]/.test(w));
+  const labels = [];
+  // Buttons of the markup, and those built by the scripts. The copy-mode
+  // cards and the items of the insert menu are choices in a list, not
+  // buttons that act, and carry a description under their name.
+  for (const m of REND.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)) {
+    if (/class="[^"]*\b(mbtn|ins-it)\b/.test(m[1])) continue;
+    const text = m[2].replace(/<[^>]*>/g, ' ').replace(/`\s*\+\s*`/g, '').trim();
+    if (text) labels.push(text);
+  }
+  for (const m of REND.matchAll(/\blabel:\s*'([^']*)'/g)) labels.push(m[1]);
+  ok(labels.length > 40, `the labels are found (${labels.length})`);
+  const yesNo = labels.filter(t => /^(yes|no)$/i.test(t.trim()));
+  ok(yesNo.length === 0, 'never Yes or No' + (yesNo.length ? ' : ' + yesNo.join(' | ') : ''));
+  // A count followed by its action ("3 hidden, show again") is read as the
+  // action: only what follows the comma is counted.
+  const long = labels.filter(t => words(t.split(',').pop()).length > 2);
+  ok(long.length === 0, 'one or two words' + (long.length ? ' : ' + long.join(' | ') : ''));
+  // The native dialogs of the main process.
+  const MAIN = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+  const native = [...MAIN.matchAll(/buttons:\s*\[([^\]]*)\]/g)]
+    .flatMap(m => [...m[1].matchAll(/t\('([^']*)'\)/g)].map(x => x[1]));
+  ok(native.length >= 4, `the buttons of the native dialogs are found (${native.length})`);
+  const badNative = native.filter(t => /^(yes|no|ok|stay)$/i.test(t) || words(t).length > 2);
+  ok(badNative.length === 0, 'and they follow the same rule' + (badNative.length ? ' : ' + badNative.join(' | ') : ''));
+  ok(native.filter(t => t === 'Cancel').length === native.length / 2, 'each one backs out with Cancel');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

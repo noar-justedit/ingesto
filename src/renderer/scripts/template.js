@@ -55,8 +55,8 @@ function litTokens(lit){
 }
 // Ask for one line of text, in the app's own style.
 // NOT window.prompt(): Electron does not implement it — it returns undefined
-// and the button would silently do nothing. (An alert() and a confirm() DO work,
-// which is why the two other dialogs of this app are fine.)
+// and the button would silently do nothing. (confirm() works but can only say
+// OK: askConfirm, in dialogs.js, names the action instead.)
 // Rebuild the chip list from stored tokens (prefs, a preset, an imported
 // settings file). A stored literal is split the same way a typed one is: a
 // token saved as "DAY1/" is one chip in the file but TWO on screen — the fixed
