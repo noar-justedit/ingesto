@@ -178,11 +178,7 @@
   }
 
   function translateAttrs(el) {
-    // User-data elements must keep their text untouched, but the notes
-    // editor (.mdn-ed / .mdn-src) carries fixed interface text in its
-    // placeholder / data-ph / aria-label attributes: those are translated.
-    if (el.closest && el.closest(USER_DATA) &&
-        !el.classList.contains('mdn-ed') && !el.classList.contains('mdn-src')) return;
+    if (el.closest && el.closest(USER_DATA)) return;
     for (var i = 0; i < ATTRS.length; i++) {
       var a = ATTRS[i];
       if (!el.hasAttribute(a)) continue;
@@ -259,17 +255,9 @@
     if (node.nodeType !== 1) return;
     var el = node;
     if (SKIP_TAGS[el.tagName]) return;
-    if (el.matches && el.matches(USER_DATA)) { translateAttrs(el); return; }
+    if (el.matches && el.matches(USER_DATA)) return;
     if (el.isContentEditable && el.parentElement && el.parentElement.isContentEditable) return;
-    if (el.tagName === 'TEXTAREA') {
-      // A notes textarea (data-mdn) keeps its English placeholder: mdnInit
-      // copies it onto the visible editor's data-ph, which i18n then
-      // translates. If we translated it here, mdnInit would copy the
-      // translation and i18n could never re-translate it on a language
-      // switch (lookup would not find the translated text as a key).
-      if (el.hasAttribute('data-mdn')) return;
-      translateAttrs(el); return;
-    }   // its content is the user's
+    if (el.tagName === 'TEXTAREA') { translateAttrs(el); return; }   // its content is the user's
     if (el.getAttribute('contenteditable') === 'true') { translateAttrs(el); return; }
     translateAttrs(el);
     if (translateHtmlOverride(el)) return;
