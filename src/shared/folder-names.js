@@ -98,7 +98,10 @@ function resolveTemplateVars(tpl, src, now) {
 // "/" is NOT mapped here — it is the separator, removed by the
 // split above this function.
 function cleanSegment(seg) {
-  return String(seg == null ? '' : seg)
+  // One Unicode form for every name written: an accent can be stored as one
+  // character or as a letter plus a mark, and a Mac and a NAS do not always
+  // pick the same. NFC changes nothing to plain ASCII.
+  return String(seg == null ? '' : seg).normalize('NFC')
     // Clean up orphan separators left by empty variables:
     // e.g. "001__card___260503" → "001_card_260503"
     .replace(/[_\-]+/g, m => m[0]) // collapse repeated separators to one

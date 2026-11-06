@@ -1536,3 +1536,27 @@ textarea.mdn-src::placeholder{color:#6f757f;}
 .mdn-ft{display:flex;justify-content:flex-end;padding:0 10px 6px;font-family:var(--mono);font-size:10px;color:#6f757f;}
 
 
+
+/* Folder Names (Settings): a list of two choices. The active one is the only
+   one on a surface, with the green check (charter, Lists). */
+.nm-intro{margin-left:0;}
+.nm-list{display:flex;flex-direction:column;gap:6px;}
+.nm-opt{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;padding:10px 12px;border-radius:11px;}
+.nm-opt:focus-visible{box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.nm-opt.on{background:var(--bg4);}
+.nm-top{display:flex;align-items:center;justify-content:space-between;}
+.nm-name{font-size:13px;font-weight:600;color:var(--text2);}
+.nm-opt.on .nm-name, .nm-opt:hover .nm-name{color:var(--text);}
+.nm-ck{color:var(--green);visibility:hidden;flex-shrink:0;}
+.nm-opt.on .nm-ck{visibility:visible;}
+.nm-desc{font-size:12px;color:var(--text3);line-height:1.4;margin-top:3px;}
+html:not([lang^="zh"]) .nm-zh{display:none;}
+.nm-ex{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:6px;overflow-wrap:anywhere;}
+.nm-opt.on .nm-ex{color:var(--green);}
+.nm-note{font-size:11px;color:var(--text3);margin-top:8px;}
+
+/* Profile menu: the profiles of a detected brand fit in one column; the
+   switch below them shows every brand. */
+.pp-cols.one{grid-template-columns:200px;}
+.pp-all{display:flex;align-items:center;gap:10px;padding:6px 8px 2px;font-size:12px;color:var(--text2);}
+.pp-all[hidden]{display:none;}

@@ -116,7 +116,7 @@ function resolveTplSegs(tplStr, src, i, refDate){
     counter:   padCounter((S.counter||1)+i),
     cameraman: src.operator || D.operator,
     camera:    src.camera   || D.camera,
-    pp:        src.pp       || D.pp,
+    pp:        profileOf(src, D.pp),
     nameRule:  src.nameRule || (typeof nameRule==='function' ? nameRule() : 'unicode'),
   }, refDate||new Date());
 }
@@ -659,7 +659,7 @@ async function startCopy(){
     sources:    S.sources.map(x => ({ path: x.path, name: x.name,
                                       operator: x.operator || globalOp  || '',
                                       camera:   x.camera   || globalCam || '',
-                                      pp:       normPP(x.pp || globalPP),
+                                      pp:       profileOf(x, globalPP),
                                       note: x.note || '' })),
     sentinel:   S.writeSentinel,
     cksum:      S.writeChecksum, cksumList: S.cksumList, cksumMhl: S.cksumMhl, ascMhl: S.ascMhl,
@@ -735,7 +735,7 @@ async function startCopy(){
     counter:   padCounter(S.run.base+i, S.run.counterWidth),
     cameraman: s.operator || globalOp  || '',
     camera:    s.camera   || globalCam || '',
-    pp:        normPP(s.pp || globalPP),
+    pp:        profileOf(s, globalPP),
     note:      s.note     || '',
     nameRule:  S.run.nameRule,
   }));

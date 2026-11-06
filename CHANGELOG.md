@@ -2,6 +2,26 @@
 
 All notable changes to ingesto. Versions before 2.5.5 are not listed here.
 
+## 2.14.0 (2026-11-06)
+- Folder Names, in Settings: Strict (letters, digits, _ and -; accents become
+  plain letters, spaces are removed as you type) or Flexible (spaces, accents
+  and other scripts kept; only the characters a drive refuses are removed).
+  Under each choice, the current template written with example values. The
+  default follows the language of the first launch (Flexible in Chinese,
+  Strict otherwise), so nothing changes on update; once chosen, it no longer
+  follows the language. Switching to Strict corrects what is already typed.
+  The setting travels with the naming template in an exported settings file.
+- Flexible names are written in one Unicode form (NFC), and the counter reads
+  a folder whose accents a drive stored the other way as the same card.
+- The kiosk follows the Folder Names setting.
+- Picture profile menu: a card whose camera was detected is offered the
+  profiles of its brand, the standard curves (Rec.709, HLG, PQ) and a value
+  of one's own. "All brands" shows the whole list, for the rest of the
+  session. A camera typed by hand, or a brand without known profiles, gets
+  the whole list. RED and Nikon are separate (Nikon: N-Log and Log3G10).
+- Audio recorders (Tascam, Zoom, PicoMic, DJI Mic) have no Profile field, and
+  no default profile in their folder name.
+
 ## 2.13.0 (2026-11-05)
 A lighter window.
 - Without a card, the Sources column shows only its drop zone: the card

@@ -27,6 +27,13 @@ const isText  = v => typeof v === 'string';
 const isPlainObject = v => !!v && typeof v === 'object' && !Array.isArray(v);
 
 const SETTINGS = [
+  // How folder names are written. FIRST: the template and the presets below
+  // are read under this rule. A preferences file without it (earlier
+  // versions, first launch) gets the rule the language gave until 2.13:
+  // flexible in Chinese, strict otherwise.
+  { key:'folderNames', cat:'namingTemplate', valid: v => v === 'strict' || v === 'flexible',
+    legacy: p => /^zh/.test(String(p.language || ((typeof INGESTO_I18N !== 'undefined' && INGESTO_I18N) ? INGESTO_I18N.getLanguage() : '')))
+                 ? 'flexible' : undefined },
   // The naming template, and the width of its counter.
   { key:'tokens', cat:'namingTemplate', file:'lastTemplate',
     valid: v => Array.isArray(v) && v.length > 0,
@@ -155,6 +162,7 @@ function showSettings() {
   if (S.exportInclude) for (const [id, key] of Object.entries(EXPORT_INC))
     if (typeof S.exportInclude[key] === 'boolean') check(id, S.exportInclude[key]);
   renderCounterWidth();
+  renderFolderNames();
   if (S.fileFilter && S.fileFilterFormats) renderFilterList();
   updateSettingsDetails();
 }

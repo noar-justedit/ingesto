@@ -77,7 +77,7 @@ const ren = vm.createContext({
   window: { IngestoShared: SHARED_API },
 });
 vm.runInContext(extractFn(REND, 'padCounter',     'index.html'), ren);
-vm.runInContext(extractFn(REND, 'resolveTplSegs', 'index.html'), ren);
+vm.runInContext(['normPP', 'profileOf', 'resolveTplSegs'].map(n => extractFn(REND, n, 'index.html')).join('\n'), ren);
 
 const CLOCK = new Date(2026, 0, 5, 3, 4, 5);
 const CARD = (over) => Object.assign(
@@ -138,12 +138,17 @@ console.log('\none form, whatever was typed');
   // Applied at the field AND on the way to the engine: a value that arrived by
   // another door (an imported settings file, an old preferences file) is not
   // allowed to put a lower-case folder on the drive.
-  ok(/pp:\s*normPP\(/.test(REND.slice(REND.indexOf('sources:    S.sources.map('),
+  ok(/pp:\s*profileOf\(x, globalPP\)/.test(REND.slice(REND.indexOf('sources:    S.sources.map('),
                                        REND.indexOf('sources:    S.sources.map(') + 420)),
-     'the frozen run list applies it');
-  ok(/pp:\s*normPP\(/.test(REND.slice(REND.indexOf('cameraman: s.operator || globalOp'),
+     'the frozen run list applies it (profileOf, run below)');
+  ok(/pp:\s*profileOf\(s, globalPP\)/.test(REND.slice(REND.indexOf('cameraman: s.operator || globalOp'),
                                        REND.indexOf('cameraman: s.operator || globalOp') + 260)),
      'and so does the payload handed to the engine');
+  { const c = vm.createContext({});
+    vm.runInContext(extractFn(REND, 'normPP', 'index.html') + '\n' + extractFn(REND, 'profileOf', 'index.html'), c);
+    ok(c.profileOf({ pp:'s-log 3' }, 'VLOG') === 'SLOG3' && c.profileOf({ pp:'' }, 'v-log') === 'VLOG',
+       'profileOf: the card value, else the default, always normalised');
+    ok(c.profileOf({ pp:'SLOG3', _camAudio:true }, 'VLOG') === '', 'and none for an audio recorder, whatever the default'); }
   // The suggestions have to be in the form the folders will carry, or picking
   // one from the menu and typing the same thing by hand give two answers.
   // Since 2.8.0 they are the Profile menu, grouped by manufacturer.
@@ -281,7 +286,7 @@ console.log('\nthe profile survives the run payload, frozen at START');
   const start = REND.indexOf('sources:    S.sources.map(');
   ok(start > 0, 'the frozen source list was found');
   const frozen = REND.slice(start, start + 420);
-  ok(/pp:\s*normPP\(x\.pp \|\| globalPP\)/.test(frozen),
+  ok(/pp:\s*profileOf\(x, globalPP\)/.test(frozen),
      'it carries the profile, normalised, with the same global fallback the engine gets');
   ok(/operator: x\.operator \|\| globalOp/.test(frozen) && /camera:   x\.camera   \|\| globalCam/.test(frozen),
      'and the operator and the camera fall back the same way');
@@ -290,7 +295,7 @@ console.log('\nthe profile survives the run payload, frozen at START');
   const s2 = REND.indexOf('cameraman: s.operator || globalOp');
   ok(s2 > 0, 'the engine payload was found');
   const payload = REND.slice(s2, s2 + 260);
-  ok(/pp:\s*normPP\(s\.pp \|\| globalPP\)/.test(payload),
+  ok(/pp:\s*profileOf\(s, globalPP\)/.test(payload),
      'the card value wins, the global field is the fallback, and the rule is applied once more here');
   ok(/const globalPP\s*=\s*S\.copyDefaults\.pp;/.test(REND),
      'and that fallback is the default the next card starts from');
@@ -327,6 +332,7 @@ console.log('\nthe frozen list and the engine payload describe the SAME card');
 
   const box = vm.createContext({ console, Object, String, Number, Array });
   vm.runInContext(extractFn(REND, 'normPP', 'index.html'), box);
+  vm.runInContext(extractFn(REND, 'profileOf', 'index.html'), box);
   vm.runInContext(extractFn(REND, 'padCounter', 'index.html'), box);
   box.COUNTER_WIDTHS = [2, 3, 4];
   box.S = { counter: 7, counterWidth: 3, run: { base: 7, counterWidth: 3 } };
@@ -346,6 +352,8 @@ console.log('\nthe frozen list and the engine payload describe the SAME card');
      { path:'/c', name:'A001', operator:'', camera:'', pp:'', note:'' }, '', '', ''],
     ['a profile that still has to be normalised',
      { path:'/c', name:'A001', operator:'', camera:'', pp:'s-log 3', note:'' }, '', '', 'd.log2'],
+    ['an audio recorder, with a default profile',
+     { path:'/c', name:'ZOOM', operator:'', camera:'', pp:'', note:'', _camAudio:true }, 'Noar', 'F6', 'SLOG3'],
   ];
   for (const [label, card, gOp, gCam, gPP] of CASES) {
     const a = box.frozenOf(card, gOp, gCam, gPP);
@@ -507,6 +515,62 @@ console.log('\nthe interface offers the field, everywhere a card is described');
   const broom = REND.slice(REND.indexOf('function clearCopyInfo()'), REND.indexOf('function clearCopyInfo()') + 700);
   ok(/S\.copyDefaults = \{ operator:'', camera:'', pp:'', note:'' \}/.test(broom) && /src\.pp = ''/.test(broom),
      'and the broom clears it, on the defaults and on every card');
+}
+
+console.log('\na detected camera is offered its own profiles (2.14.0)');
+{
+  const ci = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'scripts', 'copy-info.js'), 'utf8');
+  const grab = (name) => (ci.match(new RegExp('^const ' + name + ' = [\\s\\S]*?\\n\\];|^const ' + name + ' = \\{[\\s\\S]*?\\n\\};|^const ' + name + ' = .*;$', 'm')) || [''])[0];
+  const c = vm.createContext({ S:{ sources:[] }, document:{ getElementById:() => null } });
+  vm.runInContext([grab('PP_GROUPS'), grab('PP_COLUMNS'), grab('PP_BRANDS'), extractFn(REND, 'ppGroupsFor'), extractFn(REND, 'ppBrandFor'),
+                   'globalThis.T = { PP_GROUPS, PP_COLUMNS, ppGroupsFor, ppBrandFor };'].join('\n'), c);
+  const T = c.T;
+  const vals = (brand) => { const g = T.ppGroupsFor(brand); return g && g.map(([t, items]) => t + ':' + items.map(x => x[1]).join(',')).join(' | '); };
+  ok(vals('Sony') === 'Sony:SLOG3,SLOG2,SCINETONE,HLG3 | Standard:REC709,HLG,PQ', 'Sony: its profiles, then the standard curves');
+  ok(vals('Canon') === 'Canon:CLOG3,CLOG2,CLOG | Standard:REC709,HLG,PQ', 'Canon');
+  ok(vals('Fuji').startsWith('Fujifilm:FLOG2C') && vals('BMD').startsWith('Blackmagic:') && vals('Arri').startsWith('ARRI:'),
+     'the names the detection gives (Fuji, BMD, Arri) find their group');
+  ok(vals('RED') === 'RED:LOG3G10 | Standard:REC709,HLG,PQ', 'RED: Log3G10');
+  ok(vals('Nikon') === 'Nikon:NLOG,LOG3G10 | Standard:REC709,HLG,PQ', 'Nikon: N-Log, and Log3G10 for R3D NE');
+  ok(vals('Apple') === 'Apple:APPLELOG2,APPLELOG | Standard:REC709,HLG,PQ', 'Apple: Apple Log only, not Samsung');
+  ok(vals('Insta360').startsWith('Insta360:ILOG |') && vals('ZCAM').startsWith('Z CAM:ZLOG2 |'), 'Insta360 and Z CAM');
+  for (const b of ['GoPro', 'Tascam', 'Zoom', 'Phantom', '', undefined])
+    ok(T.ppGroupsFor(b) === null, `${JSON.stringify(b)}: no profile of its own, the whole list`);
+  // Every value offered to a brand exists in the full list: one list of profiles.
+  const all = new Set(T.PP_GROUPS.flatMap(([, it]) => it.map(x => x[1])));
+  ok(['Sony','Canon','Panasonic','Fuji','Arri','RED','Nikon','BMD','DJI','Apple','Insta360','ZCAM']
+       .every(b => T.ppGroupsFor(b).every(([, it]) => it.length && it.every(x => all.has(x[1])))), 'every brand offers profiles of the full list');
+  ok(T.PP_COLUMNS.flat().every(g => T.PP_GROUPS.some(([n]) => n === g)) && T.PP_GROUPS.every(([n]) => T.PP_COLUMNS.flat().includes(n)),
+     'the full list still shows every group');
+  // Which brand the menu filters on, for the field it opens from.
+  const card = (i) => ({ id:'k', closest: () => ({ id:'sic-' + i }) });
+  c.S.sources = [{ _camDetected:true, _camBrand:'Sony' }, { _camDetected:true, _camBrand:'Sony', _forced:{ camera:true } },
+                 { _camDetected:false, _camBrand:'' }];
+  ok(T.ppBrandFor(card(0)) === 'Sony', 'a camera read off the card: its brand');
+  ok(T.ppBrandFor(card(1)) === '', 'a camera typed over: the whole list');
+  ok(T.ppBrandFor(card(2)) === '', 'no detection: the whole list');
+  const kc = { _typed:false };
+  c.document.getElementById = (id) => id === 'k-cam' ? kc : null;
+  ok(T.ppBrandFor({ id:'k-pp' }) === 'Sony', 'the kiosk: the brand of its card');
+  kc._typed = true;
+  ok(T.ppBrandFor({ id:'k-pp' }) === '', 'until the camera is typed over');
+  ok(/entry\._camBrand = cam\.brand \|\| '';/.test(REND) && /S\.sources\[0\]\._camBrand=cam\.brand\|\|''/.test(REND),
+     'the detection keeps the brand, in the window and in the kiosk');
+  ok(/S\.ppAllBrands = e\.target\.checked/.test(REND) && /if\(groups && !S\.ppAllBrands\)/.test(REND),
+     'All brands is kept for the session, in S');
+  ok(!/ppAllBrands/.test(fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'scripts', 'preferences.js'), 'utf8')),
+     'and never saved: filtered again at the next launch');
+  ok(/<div\$\{src\._camAudio \? ' style="display:none"' : ''\}>\s*<div class="sif-label">PROFILE/.test(REND),
+     'the card of an audio recorder shows no Profile field');
+  ok(/entry\._camAudio = !!cam\.audio;[^\n]*\n\s*if \(entry\._camAudio\) entry\.pp = '';/.test(REND), 'and is not given the default profile');
+  ok(/f\.style\.display = audio \? 'none' : ''/.test(extractFn(REND, 'renderKioskSource')), 'in the kiosk too');
+  // The detection says which cards are audio recorders, and only those.
+  const det = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'camera-detect.js'), 'utf8');
+  const rets = [...det.matchAll(/return \{ brand: '([^']+)'[^}]*\}/g)].map(m => [m[1], /audio: true/.test(m[0]), m[0]]);
+  const AUDIO = ['Tascam', 'Zoom', 'PicoMic'];
+  const wrong = rets.filter(([b, a, txt]) => a !== (AUDIO.includes(b) || /model: 'DJIMic'/.test(txt)));
+  ok(rets.length > 40 && wrong.length === 0, 'audio: true on the audio recorders (Tascam, Zoom, PicoMic, DJI Mic), on nothing else'
+     + (wrong.length ? ' : ' + wrong.map(w => w[2]).join(' | ') : ''));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

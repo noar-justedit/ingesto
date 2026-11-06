@@ -158,38 +158,38 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 });
 
 // ── What a folder name may hold ─────────────────────────────────────────────
-// The rule follows the language of the interface:
-//   'ascii'   English, French (and any language not listed below): no accent,
-//             no space, no special character in anything that becomes a folder
-//             name. "é" becomes "e", "œ" becomes "oe"; spaces and other signs
-//             are removed. Only the shooting note accepts everything.
-//   'unicode' Chinese: wibi8bo's rule. Only what a filesystem forbids is
-//             removed (/ \ : * ? " < > | and control characters).
-// The template variables ({counter}, {cardname}...) are English in every
-// language. The engine is told the rule with each card (nameRule), the same
-// rule as the preview.
-function nameRule(){
-  const l = (typeof INGESTO_I18N!=='undefined' && INGESTO_I18N) ? INGESTO_I18N.getLanguage() : 'en';
-  return /^zh/.test(l) ? 'unicode' : 'ascii';
-}
+// The Folder Names setting (S.folderNames) decides:
+//   'strict'   → 'ascii': no accent, no space, no special character in
+//              anything that becomes a folder name. "é" becomes "e", "œ"
+//              becomes "oe"; spaces and other signs are removed, as typed.
+//              Chinese characters go too.
+//   'flexible' → 'unicode': only what a filesystem forbids is removed
+//              (/ \ : * ? " < > | and control characters). Written in one
+//              Unicode form (NFC, see cleanSegment), so an accent typed on a
+//              Mac and the same accent read back from a NAS are one name.
+// Its default follows the language of the first launch (Chinese: flexible,
+// any other: strict); once saved it no longer follows the language. Only the
+// shooting note accepts everything. The engine is told the rule with each
+// card (nameRule), the same rule as the preview.
+function nameRule(){ return S.folderNames === 'flexible' ? 'unicode' : 'ascii'; }
 // Folder names and source kinds come from src/shared, the same code as the
 // engine: what this window previews is what the engine creates.
 const { asciiFold, isHdeSource, MAX_FOLDER_DEPTH } = window.IngestoShared;
 function isSafeFolderName(n){ return window.IngestoShared.isSafeFolderName(n, window.ingesto.platform); }
 // A piece of fixed text of the template (DAY1, CLIENT...), under the rule.
-function tplText(x){
-  return nameRule()==='ascii' ? asciiFold(x).replace(/[^A-Za-z0-9_\-\/]/g,'') : String(x==null?'':x);
+function tplText(x, rule){
+  return (rule || nameRule())==='ascii' ? asciiFold(x).replace(/[^A-Za-z0-9_\-\/]/g,'') : String(x==null?'':x).normalize('NFC');
 }
 
 // OPERATOR / CAMERA MODEL, under the folder-name rule, applied live.
 // ascii: letters and digits only, accents turned into the plain letter
 // ("Hélène" gives "Helene", not "Hlne").
 // unicode: only what a filesystem forbids is removed.
-function cleanMeta(v){
+function cleanMeta(v, rule){
   const s = String(v==null?'':v);
-  return nameRule()==='ascii'
+  return (rule || nameRule())==='ascii'
     ? asciiFold(s).replace(/[^A-Za-z0-9]/g,'')
-    : s.replace(/[\/\\:*?"<>|\x00-\x1f]/g,'');
+    : s.replace(/[\/\\:*?"<>|\x00-\x1f]/g,'').normalize('NFC');
 }
 function sanitizeMeta(el){
   const start = el.selectionStart;
@@ -215,6 +215,9 @@ function sanitizeMeta(el){
 // arriving from a settings file all go through the same line rather than three
 // copies of it that drift apart.
 function normPP(v){ return String(v==null?'':v).replace(/[^A-Za-z0-9]/g,'').toUpperCase(); }
+// The profile a card is ingested with: its own, else the default. None for an
+// audio recorder, whatever the default says: it has no picture.
+function profileOf(src, fallback){ return (src && src._camAudio) ? '' : normPP((src && src.pp) || fallback); }
 function sanitizePP(el){
   const start = el.selectionStart;
   const before = el.value;

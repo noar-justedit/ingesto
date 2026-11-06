@@ -449,6 +449,9 @@ async function onSourceAdded(entry) {
       if (!entry._customised) {
         entry.camera = (cam.model||'').replace(/[^A-Za-z0-9]/g,'');
         entry._camDetected = true;
+        entry._camBrand = cam.brand || '';   // the Profile menu offers this brand's profiles
+        entry._camAudio = !!cam.audio;       // an audio recorder: no Profile at all
+        if (entry._camAudio) entry.pp = '';
         // The next card starts from what this one really is.
         if (entry.camera) { S.copyDefaults.camera = entry.camera; persistPrefs(); }
         // Update the corresponding input if the source card is rendered

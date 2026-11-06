@@ -48,8 +48,11 @@ function walkCardFolders(root, matcher, onCard, maxDepth, structural) {
       if (!isDir) continue;
       if (e.name === 'ascmhl') continue;          // our own manifest history
       const childRel = rel ? rel + '/' + e.name : e.name;
-      if (!levels.some(rx => rx.test(e.name))) {
-        const n = matcher.extract(e.name);
+      // Compared in the form ingesto writes (NFC): a folder whose accents a
+      // drive stored the other way is still the same card.
+      const nm = e.name.normalize('NFC');
+      if (!levels.some(rx => rx.test(nm))) {
+        const n = matcher.extract(nm);
         if (n != null && onCard(n, childRel) === false) { stopped = true; return; }
       }
       if (depth < maxDepth) walk(path.join(dir, e.name), depth + 1, childRel);

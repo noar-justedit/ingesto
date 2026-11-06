@@ -100,7 +100,7 @@ console.log('\nwhat the preferences file holds comes back the same');
     'historyClearedAt','lastTemplate','noteMode','activePreset','writeSentinel','writeReport','counterWidth','reportHtml',
     'reportCsv','reportJson','reportFull','writeChecksum','cksumList','cksumMhl','ascMhl','ntfyEnabled','ntfyServer',
     'ntfyTopic','hookEnabled','exportInclude','hookCommand','handoffEnabled','handoffCommand','fileFilterFormats',
-    'copyEmptyFolders','reorganizeFiles'];
+    'copyEmptyFolders','reorganizeFiles','folderNames'];
   const missing = KEPT.filter(k => !(k in file));
   ok(missing.length === 0, 'no field of the earlier preferences file is lost' + (missing.length ? ' : ' + missing.join(', ') : ''));
   ok(!('fileFilter' in file), 'the filter main switch is not saved (it is off at each launch)');
@@ -117,6 +117,27 @@ console.log('\nan earlier preferences file keeps what it meant');
   ok(T.S.tokens[0].legacy === true, 'a template saved without tplVersion is read the old way');
   T.applySettings({ lastTemplate: [] }, { from: 'prefs' });
   ok(T.S.tokens.length === T.SETTING_DEFAULTS.tokens.length && !T.S.tokens[0].legacy, 'an empty template gives the default one');
+}
+
+console.log('\nFolder Names: the rule the language gave, until it is chosen (2.14.0)');
+{
+  const T = freshWindow();
+  ok(T.S.folderNames === 'strict', 'the default of ingesto: Strict');
+  T.applySettings({ language: 'zh-CN' }, { from: 'prefs' });
+  ok(T.S.folderNames === 'flexible', 'a Chinese preferences file without the setting: Flexible, as before');
+  T.applySettings({ language: 'fr' }, { from: 'prefs' });
+  ok(T.S.folderNames === 'strict', 'a French one: Strict, as before');
+  T.applySettings({ language: 'zh-CN', folderNames: 'strict' }, { from: 'prefs' });
+  ok(T.S.folderNames === 'strict', 'once chosen, the language no longer decides');
+  T.applySettings({ language: 'en', folderNames: 'flexible' }, { from: 'prefs' });
+  ok(T.S.folderNames === 'flexible', 'Flexible in English');
+  T.applySettings({ folderNames: 'loose' }, { from: 'prefs' });
+  ok(T.S.folderNames === 'strict', 'an unknown value: the default');
+  const SRC = read('preferences.js');
+  ok(SRC.indexOf("key:'folderNames'") < SRC.indexOf("key:'tokens'") && SRC.indexOf("key:'folderNames'") < SRC.indexOf("key:'presets'"),
+     'read before the template and the presets, which are read under it');
+  const out = T.settingsForFile({ to: 'export', cats: { namingTemplate: true } });
+  ok(out.folderNames === 'flexible' || out.folderNames === 'strict', 'it travels with the naming template');
 }
 
 console.log('\nimport: the file says what it carries, and the same rule applies');

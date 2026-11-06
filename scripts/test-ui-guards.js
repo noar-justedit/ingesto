@@ -114,11 +114,13 @@ console.log('\nkiosk fields are cleaned like the standard window');
   // And again when Start is pressed, for a value that never went through an
   // input event: restored, pasted by a script, set programmatically.
   const start = extractFn(REND, 'kioskStart');
-  ok(/replace\(\/\[\^A-Za-z0-9\]\/g,\s*''\)/.test(start),
-     'kioskStart cleans the values again rather than trusting the fields');
-  const clean = x => String(x == null ? '' : x).replace(/[^A-Za-z0-9]/g, '');
-  ok(clean('Jean Marc') === 'JeanMarc' && clean('A/B') === 'AB' && clean('') === '',
-     'the rule itself: letters and digits only');
+  ok(/const op=cleanMeta\(document\.getElementById\('k-op'\)\.value\);\s*const cam=cleanMeta\(document\.getElementById\('k-cam'\)\.value\);/.test(start),
+     'kioskStart cleans the values again rather than trusting the fields, under the Folder Names rule');
+  const kc = vm.createContext({ nameRule:() => 'ascii', asciiFold:t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '') });
+  vm.runInContext(extractFn(REND, 'cleanMeta'), kc);
+  ok(kc.cleanMeta('Jean Marc') === 'JeanMarc' && kc.cleanMeta('A/B') === 'AB' && kc.cleanMeta('') === '',
+     'the rule itself, under Strict: letters and digits only');
+  ok(kc.cleanMeta('Jean Marc/B', 'unicode') === 'Jean MarcB', 'under Flexible: the space stays, the slash still goes');
 }
 
 // ── 4. What cannot be done while an ingest is in flight ─────────────────────
@@ -798,6 +800,38 @@ console.log('\nwhat a card or a destination brings, shown only once it is there 
   ok(!/titlebar-logo/.test(REND), 'the title bar shows the name, without the icon');
 }
 
+console.log('\nFolder Names: switching to Strict corrects what is typed (2.14.0)');
+{
+  const noop = () => {};
+  const kop = { value:'Jean Dupont' }, kcam = { value:'' };
+  let saved = 0, scanned = 0;
+  const c = vm.createContext({
+    S:{ folderNames:'flexible', copying:false, dests:[{}],
+        sources:[{ operator:'Hélène Dupont', camera:'FX 6', note:'a note, kept' }],
+        copyDefaults:{ operator:'Hélène Dupont', camera:'FX 6', pp:'SLOG3', note:'n' },
+        tokens:[{ type:'var', key:'counter' }, { type:'sep', key:'_' }, { type:'sep', key:'DAY 1' }, { type:'sep', key:' ' }] },
+    asciiFold:t => t.normalize('NFD').replace(/[̀-ͯ]/g, ''),
+    document:{ getElementById:(id) => id === 'k-op' ? kop : id === 'k-cam' ? kcam : null, querySelectorAll:() => [] },
+    renderTemplate:noop, renderSourceInfoCards:noop, updatePreview:noop, scanCounter:() => scanned++, persistPrefs:() => saved++,
+    renderFolderNames:noop,
+  });
+  vm.runInContext(['nameRule', 'tplText', 'cleanMeta', 'setFolderNames'].map(n => extractFn(REND, n)).join('\n'), c);
+  c.setFolderNames('strict');
+  const S2 = c.S;
+  ok(S2.folderNames === 'strict' && saved === 1 && scanned === 1, 'saved, and the counter read again under the new template');
+  ok(S2.sources[0].operator === 'HeleneDupont' && S2.sources[0].camera === 'FX6' && S2.sources[0].note === 'a note, kept',
+     'the cards are corrected, the note is not');
+  ok(S2.copyDefaults.operator === 'HeleneDupont' && S2.copyDefaults.camera === 'FX6', 'and the defaults of the next card');
+  ok(kop.value === 'JeanDupont', 'and the kiosk fields');
+  ok(S2.tokens.map(t => t.key).join('|') === 'counter|_|DAY1', 'and the fixed text of the template, an empty piece dropped');
+  S2.sources[0].operator = 'Jean Marc'; c.setFolderNames('flexible');
+  ok(S2.folderNames === 'flexible' && S2.sources[0].operator === 'Jean Marc', 'switching to Flexible changes nothing typed');
+  S2.copying = true; c.setFolderNames('strict');
+  ok(S2.folderNames === 'flexible', 'never during an ingest');
+  c.setFolderNames('loose');
+  ok(S2.folderNames === 'flexible', 'an unknown value is refused');
+}
+
 console.log('\na button says what happens when it is clicked (2.12.2)');
 {
   // The rule: the verb of the question, never Yes/No, Cancel to back out,
@@ -811,10 +845,11 @@ console.log('\na button says what happens when it is clicked (2.12.2)');
                       .split(/\s+/).filter(w => /[A-Za-z]/.test(w));
   const labels = [];
   // Buttons of the markup, and those built by the scripts. The copy-mode
-  // cards and the items of the insert menu are choices in a list, not
-  // buttons that act, and carry a description under their name.
+  // cards, the items of the insert menu and the Folder Names choices are
+  // choices in a list, not buttons that act, and carry a description under
+  // their name.
   for (const m of REND.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)) {
-    if (/class="[^"]*\b(mbtn|ins-it)\b/.test(m[1])) continue;
+    if (/class="[^"]*\b(mbtn|ins-it|nm-opt)\b/.test(m[1])) continue;
     const text = m[2].replace(/<[^>]*>/g, ' ').replace(/`\s*\+\s*`/g, '').trim();
     if (text) labels.push(text);
   }

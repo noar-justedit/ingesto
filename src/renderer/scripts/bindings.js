@@ -102,6 +102,8 @@ on('#dr-info-ov', 'click', function (event) { if(event.target===this)hideDrInfo(
 on('[data-js="hide-dr-info"]', 'click', function (event) { hideDrInfo(); });
 on('#counter-info-ov', 'click', function (event) { if(event.target===this)hideCounterInfo(); });
 on('[data-js="set-counter-width-2"]', 'click', function (event) { setCounterWidth(2); });
+on('[data-js="folder-names-strict"]', 'click', function (event) { setFolderNames('strict'); });
+on('[data-js="folder-names-flexible"]', 'click', function (event) { setFolderNames('flexible'); });
 on('[data-js="set-counter-width-3"]', 'click', function (event) { setCounterWidth(3); });
 on('[data-js="set-counter-width-4"]', 'click', function (event) { setCounterWidth(4); });
 on('[data-js="hide-counter-info"]', 'click', function (event) { hideCounterInfo(); });

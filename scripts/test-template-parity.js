@@ -76,7 +76,7 @@ const ren = vm.createContext({
   window: { IngestoShared: SHARED_API },
 });
 vm.runInContext(extractFn(REND, 'padCounter', 'index.html'), ren);
-vm.runInContext(extractFn(REND, 'resolveTplSegs', 'index.html'), ren);
+vm.runInContext(['normPP', 'profileOf', 'resolveTplSegs'].map(n => extractFn(REND, n, 'index.html')).join('\n'), ren);
 
 // A fixed clock: the two functions each call new Date() otherwise, and a run
 // straddling a second boundary would fail on {SS} for the wrong reason.

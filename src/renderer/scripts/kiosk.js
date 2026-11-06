@@ -147,7 +147,7 @@ async function kioskBrowse(){
   try{
     const cam=isHdeSource(fp) ? null : await window.ingesto.detectCamera(fp);
     const camModel=(cam && cam.model) ? cam.model.replace(/[^A-Za-z0-9]/g,'') : '';
-    if(camModel){ if(S.sources[0]) S.sources[0].camera=camModel; document.getElementById('k-cam').value=camModel; kioskCamMark('A'); }
+    if(camModel){ if(S.sources[0]){ S.sources[0].camera=camModel; S.sources[0]._camBrand=cam.brand||''; S.sources[0]._camAudio=!!cam.audio; } document.getElementById('k-cam').value=camModel; kioskCamMark('A'); }
     else   { kioskCamMark(''); }
   }catch(_){}
   renderKioskSource();
@@ -169,6 +169,11 @@ function kioskRemoveSource(){ S.sources=[]; renderVolumes(); renderKioskSource()
 function renderKioskSource(){
   const el=document.getElementById('k-source'); if(!el) return;
   const s=S.sources[0];
+  // An audio recorder has no picture profile: no Profile field for it.
+  { const kp=document.getElementById('k-pp'), f=kp && kp.closest('.k-field');
+    const audio=!!(s && s._camAudio);
+    if(f) f.style.display = audio ? 'none' : '';
+    if(audio && kp && kp.value) kp.value=''; }
   if(!s){
     el.innerHTML='<div class="k-browse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v6h10V4"/></svg>Browse a card…</div>';
     el.querySelector('.k-browse').onclick = function(){ kioskBrowse(); };
@@ -190,12 +195,12 @@ async function kioskStart(){
     kioskShowResult('stop','Not set up yet','No destination has been chosen.',
                     'Ask the person who set up this station.');
     return; }
-  // The same rule as the standard window, applied again here rather than
-  // trusted from the field: a value restored, pasted or set by script must not
-  // put a space (or a slash) into a folder name that the engine only flattens.
-  const clean = x => String(x==null?'':x).replace(/[^A-Za-z0-9]/g,'');
-  const op=clean(document.getElementById('k-op').value);
-  const cam=clean(document.getElementById('k-cam').value);
+  // The folder-name rule of the standard window (cleanMeta), applied again
+  // here rather than trusted from the field: a value restored, pasted or set
+  // by script must not put a slash, or under Strict a space, into a folder
+  // name.
+  const op=cleanMeta(document.getElementById('k-op').value);
+  const cam=cleanMeta(document.getElementById('k-cam').value);
   const pp=normPP(document.getElementById('k-pp').value);
   const note=document.getElementById('k-note').value.trim();
   S.copyDefaults = { operator:op, camera:cam, pp, note };

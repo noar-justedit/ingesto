@@ -51,6 +51,8 @@ function prefsCounter(prefs){
 }
 const S = {
   counterWidth:3,           // digits in the folder counter: a minimum, not a maximum
+  folderNames:'strict',     // 'strict' or 'flexible': see nameRule() in init.js
+  ppAllBrands:false,        // Profile menu shows every brand. NEVER saved: filtered again at each launch
   volumes:[], sources:[], dests:[],
   kioskMode:false, kioskPin:'',
   writeReport:true,

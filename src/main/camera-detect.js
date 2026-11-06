@@ -18,7 +18,8 @@
 // ────────────────────────────────────────────────────────────────────────────
 // ingesto — camera-detect.js
 // Detects camera brand & model from the structure/contents of a memory card.
-// Returns { brand, model } or null if nothing matched.
+// Returns { brand, model } or null if nothing matched; an audio recorder also
+// carries audio: true (it has no picture profile).
 //
 // Strategy:
 //   1. Structural signature (folder layout) → identifies the brand/family
@@ -479,7 +480,7 @@ function detectDJIMic(root) {
   // Sanity check: it must NOT also be a DJI camera/drone card
   // (those have DCIM/DJI_xxx + MISC/, never DJI_Audio_xxx at root)
   if (has(root, 'DCIM') && has(root, 'MISC')) return null;
-  return { brand: 'DJI', model: 'DJIMic' };
+  return { brand: 'DJI', model: 'DJIMic', audio: true };
 }
 
 // ----- DJI (drones, Osmo Pocket/Nano, Inspire 3, Ronin) ------------------
@@ -546,7 +547,7 @@ function detectTascam(root) {
     if (m) {
       // Normalise: uppercase, strip hyphen
       const model = m[1].toUpperCase().replace(/-/g, '');
-      return { brand: 'Tascam', model };
+      return { brand: 'Tascam', model, audio: true };
     }
   }
   // Fallback: sniff first bytes of any file for "DR-XXXX" pattern
@@ -557,11 +558,11 @@ function detectTascam(root) {
     const txt = head.toString('binary');
     const m = txt.match(/DR-?[0-9]{2,4}[A-Z]?/);
     if (m) {
-      return { brand: 'Tascam', model: m[0].toUpperCase().replace(/-/g, '') };
+      return { brand: 'Tascam', model: m[0].toUpperCase().replace(/-/g, ''), audio: true };
     }
   }
   // Has Tascam-like folder structure but no model marker
-  return { brand: 'Tascam', model: 'Tascam' };
+  return { brand: 'Tascam', model: 'Tascam', audio: true };
 }
 
 // ----- Panasonic Lumix (GH, S series) ------------------------------------
@@ -722,7 +723,7 @@ function detectPicoMic(root) {
   const hasFolder = has(root, 'PicoRecorder');
   const hasFw = files.some(f => /^fw_rec.*\.par$/i.test(f));
   if (!hasFolder && !hasFw) return null;
-  return { brand: 'PicoMic', model: 'PicoRecorder' };
+  return { brand: 'PicoMic', model: 'PicoRecorder', audio: true };
 }
 
 // ----- Zoom (handheld audio recorder: H6/H5/F6/F8…) ----------------------
@@ -730,7 +731,7 @@ function detectZoom(root) {
   // Characteristic multitrack naming: ZOOM####_BU/LR/TrN.WAV
   const hasZoom = listFiles(root, n => /^ZOOM\d+_(BU|LR|Tr\d+)\.wav$/i.test(n)).length > 0;
   if (!hasZoom) return null;
-  return { brand: 'Zoom', model: 'Zoom' };
+  return { brand: 'Zoom', model: 'Zoom', audio: true };
 }
 
 // ----- Z CAM (E2 / F6 / F8…) ---------------------------------------------

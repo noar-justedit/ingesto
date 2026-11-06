@@ -45,7 +45,7 @@ function renderSourceInfoCards(){
               aria-label="Camera of card ${esc(src.name)}"
               placeholder="Camera">
           </div>
-          <div>
+          <div${src._camAudio ? ' style="display:none"' : ''}>
             <div class="sif-label">PROFILE</div>
             <input class="sif-input" type="text" value="${esc(pp)}" data-pp data-js="pp"
               aria-label="Picture profile of card ${esc(src.name)}">

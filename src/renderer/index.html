@@ -573,6 +573,25 @@ Save
 </div>
 </div>
 
+<div class="set-section" id="set-names-sec">
+<div class="set-sec-title" style="margin-bottom:4px;">Folder Names</div>
+<div class="set-desc nm-intro">How operator, camera, card names and the fixed text of the template are written in folder names.</div>
+<div class="nm-list lockable" role="radiogroup" aria-label="Folder Names">
+<button type="button" class="nm-opt" role="radio" data-js="folder-names-strict" data-v="strict">
+<div class="nm-top"><span class="nm-name">Strict</span><svg class="nm-ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+<div class="nm-desc">Letters, digits, _ and -. Accents become plain letters, spaces are removed, as you type.</div>
+<div class="nm-desc nm-zh">Chinese characters are removed.</div>
+<div class="nm-ex" id="nm-ex-strict" data-i18n-skip></div>
+</button>
+<button type="button" class="nm-opt" role="radio" data-js="folder-names-flexible" data-v="flexible">
+<div class="nm-top"><span class="nm-name">Flexible</span><svg class="nm-ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+<div class="nm-desc">Spaces, accents and other scripts are kept. Only the characters a drive refuses are removed.</div>
+<div class="nm-ex" id="nm-ex-flexible" data-i18n-skip></div>
+</button>
+</div>
+<div class="nm-note">Changing it renames nothing already on the drives: it applies to the next ingest.</div>
+</div>
+
 <div class="set-section">
 <div class="set-hd"><label class="switch"><input type="checkbox" aria-label="Card Tracking" id="sentinel-toggle"><span class="slider"></span></label><span class="set-sec-title">Card Tracking</span></div>
 <div class="set-desc">Writes a small tag on the source card to detect it wasn't reformatted between two ingests.</div>

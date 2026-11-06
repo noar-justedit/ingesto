@@ -261,22 +261,74 @@ const PP_GROUPS = [
   ['Panasonic',   [['V-Log','VLOG'],['Cinelike D2','CINELIKED2']]],
   ['Fujifilm',    [['F-Log2 C','FLOG2C'],['F-Log2','FLOG2'],['F-Log','FLOG'],['Eterna','ETERNA']]],
   ['ARRI',        [['LogC4','LOGC4'],['LogC3','LOGC3']]],
-  ['RED / Nikon', [['Log3G10','LOG3G10'],['N-Log','NLOG']]],
+  ['RED',         [['Log3G10','LOG3G10']]],
+  ['Nikon',       [['N-Log','NLOG']]],
   ['Blackmagic',  [['Film Gen 5','BMDFILM5'],['Blackmagic RAW','BRAW']]],
   ['DJI',         [['D-Log','DLOG'],['D-Log M','DLOGM']]],
   ['Smartphones', [['Apple Log 2','APPLELOG2'],['Apple Log','APPLELOG'],['Samsung Log','SAMSUNGLOG']]],
   ['Other',       [['L-Log (Leica, Sigma)','LLOG'],['I-Log (Insta360)','ILOG'],['Z-Log2 (Z CAM)','ZLOG2'],['KineLog3','KINELOG3']]],
   ['Standard',    [['Rec.709','REC709'],['HLG','HLG'],['PQ','PQ']]],
 ];
-const PP_COLUMNS = [['Sony','Canon','Panasonic','Fujifilm'],['ARRI','RED / Nikon','Blackmagic','DJI'],['Smartphones','Other','Standard']];
+const PP_COLUMNS = [['Sony','Canon','Panasonic','Fujifilm'],['ARRI','RED','Nikon','Blackmagic','DJI'],['Smartphones','Other','Standard']];
+// What a card whose camera was detected is offered: the profiles of its brand,
+// then the standard curves every camera has, then a value of one's own. The
+// key is the brand the detection gives (camera-detect.js), in lower case. A
+// brand given alone offers its group of PP_GROUPS; with a list, those values,
+// under that title. A brand not listed (GoPro, Phantom...) gets the whole
+// list; an audio recorder has no Profile field at all (profileOf). Nikon
+// bodies record R3D NE too, hence Log3G10.
+const PP_BRANDS = {
+  sony:['Sony'], canon:['Canon'], panasonic:['Panasonic'], fuji:['Fujifilm'], arri:['ARRI'], red:['RED'],
+  nikon:['Nikon', ['NLOG','LOG3G10']], bmd:['Blackmagic'], dji:['DJI'],
+  apple:['Apple', ['APPLELOG2','APPLELOG']], insta360:['Insta360', ['ILOG']], zcam:['Z CAM', ['ZLOG2']],
+};
+// [[title, [[label, value]...]]...] for a brand, or null for the whole list.
+function ppGroupsFor(brand){
+  const b = PP_BRANDS[String(brand||'').toLowerCase()]; if(!b) return null;
+  const G = Object.fromEntries(PP_GROUPS);
+  const all = PP_GROUPS.flatMap(([, items]) => items);
+  const items = b[1] ? b[1].map(w => all.find(([, v]) => v === w)).filter(Boolean) : G[b[0]];
+  return [[b[0], items], ['Standard', G.Standard]];
+}
+// The brand the menu filters on, for the field it opens from: only while the
+// camera shown is the one read off the card (the (A) mark). A camera typed
+// over, or no detection, offers the whole list.
+function ppBrandFor(input){
+  if(!input) return '';
+  if(input.id === 'k-pp'){
+    const kc = document.getElementById('k-cam'), src = S.sources[0];
+    return (src && src._camBrand && !(kc && kc._typed)) ? src._camBrand : '';
+  }
+  const card = input.closest('.src-info-card'); if(!card) return '';
+  const src = S.sources[Number(String(card.id).replace('sic-', ''))];
+  return (src && src._camDetected && src._camBrand && !(src._forced && src._forced.camera)) ? src._camBrand : '';
+}
 let _ppMenu = null, _ppFor = null;
+const ppItem = ([l, w]) => `<button type="button" class="pp-it" role="menuitemradio" data-w="${w}"><span>${esc(l)}</span><span class="w">${w}</span></button>`;
+const ppGroup = (title, items) => `<div class="pp-g"><div class="pp-gh">${esc(title)}</div>${items.map(ppItem).join('')}</div>`;
+// The list of the menu, for the field it is open on.
+function ppFill(){
+  const m = ppMenuEl(), input = _ppFor;
+  const groups = ppGroupsFor(ppBrandFor(input));
+  const cols = m.querySelector('.pp-cols');
+  if(groups && !S.ppAllBrands){
+    cols.classList.add('one');
+    cols.innerHTML = `<div>${groups.map(([t, items]) => ppGroup(t, items)).join('')}</div>`;
+  } else {
+    const G = Object.fromEntries(PP_GROUPS);
+    cols.classList.remove('one');
+    cols.innerHTML = PP_COLUMNS.map(col => `<div>${col.map(g => ppGroup(g, G[g])).join('')}</div>`).join('');
+  }
+  const all = m.querySelector('.pp-all');
+  all.hidden = !groups;
+  all.querySelector('input').checked = S.ppAllBrands;
+  m.querySelectorAll('.pp-it').forEach(it => it.classList.toggle('cur', !!input && it.dataset.w === input.value));
+}
 function ppMenuEl(){
   if(_ppMenu) return _ppMenu;
-  const G = Object.fromEntries(PP_GROUPS);
   const m = document.createElement('div'); m.className = 'pp-menu'; m.id = 'pp-menu'; m.setAttribute('role', 'menu');
-  m.innerHTML = `<div class="pp-cols">${PP_COLUMNS.map(col => `<div>${col.map(g => `<div class="pp-g"><div class="pp-gh">${esc(g)}</div>${
-      G[g].map(([l, w]) => `<button type="button" class="pp-it" role="menuitemradio" data-w="${w}"><span>${esc(l)}</span><span class="w">${w}</span></button>`).join('')
-    }</div>`).join('')}</div>`).join('')}</div>`+
+  m.innerHTML = `<div class="pp-cols"></div>`+
+    `<div class="pp-all" hidden><label class="switch"><input type="checkbox" aria-label="All brands"><span class="slider"></span></label><span>All brands</span></div>`+
     `<div class="pp-foot"><input type="text" maxlength="16" spellcheck="false" aria-label="Other picture profile" placeholder="Other profile, type it and press Enter"><button type="button" class="none">None</button></div>`+
     `<div class="pp-hint">The value on the right is what {pp} writes in the folder name.</div>`;
   document.body.appendChild(m);
@@ -284,7 +336,10 @@ function ppMenuEl(){
     const it = e.target.closest('.pp-it'); if(it){ ppApply(it.dataset.w); return; }
     if(e.target.closest('.none')) ppApply('');
   });
-  const inp = m.querySelector('input');
+  // The whole list, kept for the session (not saved: filtered again at the
+  // next launch).
+  m.querySelector('.pp-all input').addEventListener('change', e => { S.ppAllBrands = e.target.checked; ppFill(); ppPlace(); });
+  const inp = m.querySelector('.pp-foot input');
   inp.addEventListener('input', () => sanitizePP(inp));
   inp.addEventListener('keydown', e => {
     if(e.key === 'Enter'){ e.preventDefault(); const w = normPP(inp.value); if(w) ppApply(w); }
@@ -320,11 +375,16 @@ function ppOpen(input){
   ppClose();
   const m = ppMenuEl(); _ppFor = input;
   input._ppBtn.setAttribute('aria-expanded', 'true');
-  m.querySelectorAll('.pp-it').forEach(it => it.classList.toggle('cur', it.dataset.w === input.value));
-  m.querySelector('input').value = '';
+  ppFill();
+  m.querySelector('.pp-foot input').value = '';
   m.classList.add('open');
-  // Below the button if it fits, else above, else beside it: the menu must
-  // never need scrolling, down to the smallest window (1280 x 760).
+  ppPlace();
+  const cur = m.querySelector('.pp-it.cur') || m.querySelector('.pp-it'); if(cur) cur.focus();
+}
+// Below the button if it fits, else above, else beside it: the menu must
+// never need scrolling, down to the smallest window (1280 x 760).
+function ppPlace(){
+  const m = _ppMenu, input = _ppFor; if(!m || !input || !input._ppBtn) return;
   const r = input._ppBtn.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight, W = innerWidth, H = innerHeight, g = 6;
   let left, top;
   if(r.bottom + g + mh <= H - 8){ top = r.bottom + g; left = r.left; }
@@ -332,7 +392,6 @@ function ppOpen(input){
   else { top = Math.max(8, Math.min(r.top, H - 8 - mh)); left = (r.right + g + mw <= W - 8) ? r.right + g : r.left - g - mw; }
   left = Math.max(8, Math.min(left, W - 8 - mw));
   m.style.left = left + 'px'; m.style.top = top + 'px';
-  const cur = m.querySelector('.pp-it.cur') || m.querySelector('.pp-it'); if(cur) cur.focus();
 }
 // Turns every <input data-pp> under root into a button that opens the menu.
 function ppInit(root){

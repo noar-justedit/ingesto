@@ -71,6 +71,7 @@ function initMaster(masterId, anyFormat, setFlag, getFlag){
 // ── Settings panel + ntfy notification ──
 function openSettings(){
   updateSettingsDetails();
+  renderFolderNames();
   if (S.fileFilter && S.fileFilterFormats) renderFilterList();
   document.getElementById('settings-ov').classList.add('open');
 }
@@ -160,4 +161,48 @@ async function importSettingsFile(){
   persistPrefs();
   updateSettingsDetails();
   showToast('Settings imported. All included categories applied.', 'ok');
+}
+
+// ══════════════════════════ FOLDER NAMES ══════════════════════════
+// Strict or Flexible (see nameRule() in init.js). Under each choice, the
+// current template written with example values, so the rule is read by
+// looking at a name rather than at a description.
+const NM_EXAMPLE = { name:'DAY 1', cameraman:'Hélène Dupont', camera:'FX6', pp:'SLOG3' };
+function folderNameExample(rule){
+  const tpl = S.tokens.map(t => t.type==='var' ? `{${t.key}}` : tplText(t.key, rule)).join('');
+  const segs = window.IngestoShared.buildFolderSegments(tpl,
+    Object.assign({ counter: padCounter(S.counter||1), nameRule: rule }, NM_EXAMPLE, { name: tplText(NM_EXAMPLE.name, rule) }),
+    new Date());
+  return segs.join('/');
+}
+function renderFolderNames(){
+  document.querySelectorAll('#set-names-sec .nm-opt').forEach(b => {
+    const on = b.dataset.v === S.folderNames;
+    b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  const ex = { strict:'ascii', flexible:'unicode' };
+  for(const [v, rule] of Object.entries(ex)){
+    const el = document.getElementById('nm-ex-' + v); if(el) el.textContent = folderNameExample(rule);
+  }
+}
+// Switching to Strict corrects what is already typed, as typing would: the
+// cards, the defaults, the kiosk fields and the fixed text of the template.
+// Switching to Flexible changes nothing typed: there is nothing to undo.
+function setFolderNames(v){
+  if(v !== 'strict' && v !== 'flexible') return;
+  if(S.copying || S._starting) return;
+  S.folderNames = v;
+  if(v === 'strict'){
+    for(const src of S.sources){ src.operator = cleanMeta(src.operator); src.camera = cleanMeta(src.camera); }
+    S.copyDefaults.operator = cleanMeta(S.copyDefaults.operator);
+    S.copyDefaults.camera   = cleanMeta(S.copyDefaults.camera);
+    for(const id of ['k-op', 'k-cam']){ const el = document.getElementById(id); if(el) el.value = cleanMeta(el.value); }
+    S.tokens = S.tokens.map(t => t.type==='var' ? t : Object.assign({}, t, { key: tplText(t.key) })).filter(t => t.type==='var' || t.key !== '');
+    renderTemplate();
+  }
+  renderSourceInfoCards();
+  updatePreview();
+  if(S.dests.length) scanCounter(false);
+  persistPrefs();
+  renderFolderNames();
 }

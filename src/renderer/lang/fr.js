@@ -490,6 +490,15 @@ window.INGESTO_LANG_FR = {
     "Other profile, type it and press Enter": "Autre profil : tapez-le puis Entrée",
     "Smartphones": "Smartphones",
     "Standard": "Standard",
+    "Folder Names": "Noms de dossier",
+    "How operator, camera, card names and the fixed text of the template are written in folder names.": "Comment l'opérateur, la caméra, le nom des cartes et le texte fixe du modèle s'écrivent dans les noms de dossier.",
+    "Strict": "Strict",
+    "Letters, digits, _ and -. Accents become plain letters, spaces are removed, as you type.": "Lettres, chiffres, _ et -. Les accents sont convertis, les espaces retirés, au fil de la saisie.",
+    "Chinese characters are removed.": "Les caractères chinois sont retirés.",
+    "Flexible": "Souple",
+    "Spaces, accents and other scripts are kept. Only the characters a drive refuses are removed.": "Espaces, accents et autres écritures sont gardés. Seuls les caractères refusés par un disque sont retirés.",
+    "Changing it renames nothing already on the drives: it applies to the next ingest.": "Le changer ne renomme rien sur les disques : il s'applique au prochain ingest.",
+    "All brands": "Toutes les marques",
     "Other": "Autre",
 
     /* ── Not enough space ── */
